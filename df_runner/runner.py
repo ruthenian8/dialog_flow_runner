@@ -1,5 +1,5 @@
 import uuid
-from typing import ForwardRef
+from pydantic.typing import ForwardRef
 from typing import Any, Optional, Union, Callable
 from abc import ABC, abstractmethod
 
