@@ -1,8 +1,10 @@
-from typing import Callable
+from typing import Callable, Tuple
 
 from df_engine.core import Context, Actor
 
 
-ServiceFunctionType = Callable[[Context, Actor], (Context, bool)]
+AnnotatorFunctionType = Callable[[Context, Actor], Context]
+
+ServiceFunctionType = Callable[[Context, Actor], Tuple[Context, bool]]
 
 ServiceConditionType = Callable[[Context], bool]

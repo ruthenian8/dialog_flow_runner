@@ -1,27 +1,21 @@
-from abc import ABC, abstractmethod
 from typing import Any, Optional, Union, Callable
 
 from df_engine.core import Context, Actor, Script
 from df_engine.core.types import NodeLabel2Type
 from df_db_connector import DBAbstractConnector
 
-from df_runner import AbsProvider, CLIProvider
+from df_runner import AnnotatorFunctionType
+from .provider import AbsProvider, CLIProvider
 
 
-class AbsRunner(ABC):
-    @abstractmethod
-    def start(self, *args, **kwargs) -> None:
-        raise NotImplementedError
-
-
-class Runner(AbsRunner):
+class Runner:
     def __init__(
         self,
         actor: Actor,
         db: Optional[DBAbstractConnector] = None,
         request_provider: Optional[AbsProvider] = None,
-        pre_annotators: Optional[list] = None,
-        post_annotators: Optional[list] = None,
+        pre_annotators: Optional[list[AnnotatorFunctionType]] = None,
+        post_annotators: Optional[list[AnnotatorFunctionType]] = None,
         *args,
         **kwargs,
     ):
@@ -77,8 +71,8 @@ class ScriptRunner(Runner):
         fallback_label: Optional[NodeLabel2Type] = None,
         db: DBAbstractConnector = dict(),
         request_provider: AbsProvider = CLIProvider(),
-        pre_annotators: list = [],
-        post_annotators: list = [],
+        pre_annotators: list[AnnotatorFunctionType] = [],
+        post_annotators: list[AnnotatorFunctionType] = [],
         *args,
         **kwargs,
     ):

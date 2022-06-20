@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, Tuple
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, validate_arguments
@@ -20,6 +20,12 @@ def _sort_dict_keys(dictionary: dict) -> dict:
 
 def _default_start_condition(ctx: Context, actor: Actor) -> (Context, bool):
     return ctx, True
+
+
+def service_successful_condition(name: str) -> ServiceConditionType:
+    def internal(ctx: Context, actor: Actor) -> bool:
+        return ctx.misc.get(f"{name}-success", False)
+    return internal
 
 
 class Service(BaseModel):

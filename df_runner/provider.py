@@ -1,10 +1,10 @@
 import uuid
 from abc import abstractmethod, ABC
-from typing import Optional
+from typing import Optional, ForwardRef
 
 from df_engine.core import Context
 
-from df_runner import Runner
+Runner = ForwardRef("Runner")
 
 
 class AbsProvider(ABC):

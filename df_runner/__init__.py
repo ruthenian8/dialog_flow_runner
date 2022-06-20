@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa: F401
+from .types import ServiceFunctionType, ServiceConditionType, AnnotatorFunctionType
+
 from .provider import AbsProvider, CLIProvider
 from .runner import Runner, ScriptRunner
-from .types import ServiceFunctionType, ServiceConditionType
+from .service import Service
 
 
 __author__ = "Denis Kuznetsov"
