@@ -1,8 +1,8 @@
 from df_engine.core.keywords import TRANSITIONS, RESPONSE
-from df_engine.core import Context, Actor
 import df_engine.conditions as cnd
 
 from df_runner import ScriptRunner
+
 
 script = {
     "greeting_flow": {

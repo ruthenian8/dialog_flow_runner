@@ -4,6 +4,7 @@ import df_engine.conditions as cnd
 
 from df_runner import ScriptRunner
 
+
 script = {
     "greeting_flow": {
         "start_node": {  # This is an initial node, it doesn't need an `RESPONSE`
