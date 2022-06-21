@@ -7,13 +7,6 @@ from df_runner import AbsProvider, Service, ServiceFunctionType, Runner
 from df_runner.connector import CLIConnector
 
 
-ServiceDict = TypedDict('ServiceDict', {
-    'provider': Union[AbsProvider, List[AbsProvider]],
-    'connector': Optional[Union[DBAbstractConnector, List[DBAbstractConnector]]],
-    'services': List[Union[Service, Actor, Dict, ServiceFunctionType]]
-})
-
-
 class Pipeline:
     def __init__(
         self,
@@ -40,15 +33,14 @@ class Pipeline:
         self.runner = Runner(self.actor, self.connector, self.provider, self.preprocessing, self.postprocessing)
 
     @classmethod
-    def create(cls, pipeline: ServiceDict):
-        if 'connector' not in pipeline:
-            connectors = []
-        elif isinstance(pipeline['connector'], list):
-            connectors = pipeline['connector']
-        else:
-            connectors = [pipeline['connector']]
+    def create(cls, pipeline: TypedDict('ServiceDict', {
+        'provider': Union[AbsProvider, List[AbsProvider]],
+        'connector': Optional[DBAbstractConnector],
+        'services': List[Union[Service, Actor, Dict, ServiceFunctionType]]
+    })):
+        connector = pipeline['connector']
         providers = pipeline['provider'] if isinstance(pipeline['provider'], list) else [pipeline['provider']]
-        return [cls(provider, pipeline['services'], connector) for provider in providers for connector in connectors]
+        return [cls(provider, pipeline['services'], connector) for provider in providers]
 
     def run(self):
         self.runner.start()

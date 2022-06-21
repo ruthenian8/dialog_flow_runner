@@ -6,27 +6,28 @@ from df_engine.core.types import NodeLabel2Type
 from df_db_connector import DBAbstractConnector
 
 from df_runner import AnnotatorFunctionType, Service, AbsProvider, CLIProvider
+from df_runner.connector import CLIConnector
 
 
 class AbsRunner(ABC):
     def __init__(
         self,
-        connector: Optional[DBAbstractConnector] = None,
-        provider: Optional[AbsProvider] = None,
+        connector: DBAbstractConnector = CLIConnector(),
+        provider: AbsProvider = CLIProvider(),
         *args,
         **kwargs,
     ):
-        self._connector: DBAbstractConnector = dict() if connector is None else connector
-        self._provider: AbsProvider = CLIProvider() if provider is None else provider
+        self._connector = connector
+        self._provider = provider
 
     def start(self, *args, **kwargs) -> None:
         while True:
             request = self._provider.request()
-            ctx = self.request_handler(self._provider.ctx_id, request)
+            ctx = self._request_handler(self._provider.ctx_id, request)
             self._provider.response(ctx.last_response)
 
     @abstractmethod
-    def request_handler(
+    def _request_handler(
         self,
         ctx_id: Any,
         ctx_update: Optional[Union[Any, Callable]],
@@ -39,19 +40,19 @@ class Runner(AbsRunner):
     def __init__(
         self,
         actor: Actor,
-        db: Optional[DBAbstractConnector] = None,
-        request_provider: Optional[AbsProvider] = None,
+        connector: DBAbstractConnector = CLIConnector(),
+        provider: AbsProvider = CLIProvider(),
         pre_annotators: Optional[List[Union[AnnotatorFunctionType, Service]]] = None,
         post_annotators: Optional[List[Union[AnnotatorFunctionType, Service]]] = None,
         *args,
         **kwargs
     ):
-        super().__init__(db, request_provider, *args, **kwargs)
+        super().__init__(connector, provider, *args, **kwargs)
         self._actor: Actor = actor
-        self._pre_annotators: list = [] if pre_annotators is None else pre_annotators
-        self._post_annotators: list = [] if post_annotators is None else post_annotators
+        self._pre_annotators = [] if pre_annotators is None else pre_annotators
+        self._post_annotators = [] if post_annotators is None else post_annotators
 
-    def request_handler(
+    def _request_handler(
         self,
         ctx_id: Any,
         ctx_update: Optional[Union[Any, Callable]],
@@ -90,16 +91,16 @@ class ScriptRunner(Runner):
         script: Union[Script, Dict],
         start_label: NodeLabel2Type,
         fallback_label: Optional[NodeLabel2Type] = None,
-        db: DBAbstractConnector = dict(),
+        connector: DBAbstractConnector = CLIConnector(),
         request_provider: AbsProvider = CLIProvider(),
-        pre_annotators: List[AnnotatorFunctionType] = [],
-        post_annotators: List[AnnotatorFunctionType] = [],
+        pre_annotators: Optional[List[AnnotatorFunctionType]] = None,
+        post_annotators: Optional[List[AnnotatorFunctionType]] = None,
         *args,
         **kwargs,
     ):
         super(ScriptRunner, self).__init__(
             Actor(script, start_label, fallback_label),
-            db,
+            connector,
             request_provider,
             pre_annotators,
             post_annotators,

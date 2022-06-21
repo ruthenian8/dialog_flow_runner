@@ -2,21 +2,12 @@ import logging
 from typing import Callable, Optional, Union, Dict
 
 from df_engine.core import Actor, Context
-from pydantic import BaseModel, validate_arguments
+from pydantic import BaseModel
 
 from df_runner import ServiceFunctionType, ServiceConditionType
 
 
 logger = logging.getLogger(__name__)
-
-
-@validate_arguments
-def _sort_dict_keys(dictionary: dict) -> dict:
-    """
-    Sorting of keys in the `dictionary`.
-    It is necessary to do it after the deserialization: keys deserialize in a random order.
-    """
-    return {key: dictionary[key] for key in sorted(dictionary)}
 
 
 def _default_start_condition(ctx: Context, actor: Actor) -> (Context, bool):
