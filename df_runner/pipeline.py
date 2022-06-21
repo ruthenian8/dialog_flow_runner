@@ -17,12 +17,12 @@ ServiceDict = TypedDict('ServiceDict', {
 class Pipeline:
     def __init__(
         self,
-        provider: AbsProvider.__class__,
+        provider: AbsProvider,
         services: List[Union[Service, Actor, Dict, ServiceFunctionType]],
-        connector: DBAbstractConnector.__class__ = DefaultConnector
+        connector: DBAbstractConnector = DefaultConnector()
     ):
-        self.provider = provider()
-        self.connector = connector()
+        self.provider = provider
+        self.connector = connector
         self.services = []
         for service in services:
             if isinstance(service, Service):

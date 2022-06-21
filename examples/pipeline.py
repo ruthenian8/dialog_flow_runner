@@ -6,8 +6,9 @@ import df_engine.conditions as cnd
 
 from df_runner import CLIProvider, Service
 from df_runner.connector import DefaultConnector
-from df_runner.pipeline import ServiceDict, Pipeline
+from df_runner.pipeline import Pipeline
 from df_runner.service import service_successful_condition
+
 
 script = {
     "greeting_flow": {
@@ -53,9 +54,9 @@ def print_misc(ctx: Context) -> Tuple[Context, bool]:
     return ctx, True
 
 
-pipeline: ServiceDict = {
-    "provider": CLIProvider,
-    "connector": DefaultConnector,
+pipeline = {
+    "provider": CLIProvider(),
+    "connector": DefaultConnector(),
     "services": [
         {
             "service": preprocess,
