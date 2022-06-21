@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, Optional, Union, Tuple
+from typing import Callable, Optional, Union, Dict
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, validate_arguments
@@ -37,17 +37,19 @@ class Service(BaseModel):
         start_condition: ServiceConditionType = _default_start_condition,
         is_actor: bool = False
     ):
-        super().__init__(service, name, timeout, start_condition, is_actor)
-        self.service = service
-        self.name = repr(service) if name is None else name
-        self.timeout = timeout
-        self.start_condition = start_condition
-        self.is_actor = is_actor
+        super().__init__(service=service, name=name, timeou=timeout, start_condition=start_condition, is_actor=is_actor)
+
+    def act(self, ctx: Context) -> Context:
+        if isinstance(self.service, Actor):
+            return self.service(ctx)
+        else:
+            context, result = self.service(ctx)
+            return context
 
     @classmethod
     def create(
         cls,
-        service: Union[Actor, ServiceFunctionType],
+        service: Union[Actor, Dict, ServiceFunctionType],
         name: Optional[str] = None,
         timeout: int = 1000,
         start_condition: ServiceConditionType = _default_start_condition,

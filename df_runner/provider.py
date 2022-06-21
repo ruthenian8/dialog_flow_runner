@@ -4,12 +4,12 @@ from typing import Optional, ForwardRef
 
 from df_engine.core import Context
 
-Runner = ForwardRef("Runner")
+AbsRunner = ForwardRef("AbsRunner")
 
 
 class AbsProvider(ABC):
     @abstractmethod
-    def run(self, runner: Runner):
+    def run(self, runner: AbsRunner):
         raise NotImplementedError
 
 
@@ -24,7 +24,7 @@ class CLIProvider(AbsProvider):
         self.prompt_request: str = prompt_request
         self.prompt_response: str = prompt_response
 
-    def run(self, runner: Runner):
+    def run(self, runner: AbsRunner):
         ctx_id = uuid.uuid4()
         if self.intro is not None:
             print(self.intro)

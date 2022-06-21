@@ -3,8 +3,9 @@
 from .types import ServiceFunctionType, ServiceConditionType, AnnotatorFunctionType
 
 from .provider import AbsProvider, CLIProvider
-from .runner import Runner, ScriptRunner
+from .runner import Runner, ScriptRunner, PipelineRunner
 from .service import Service
+from .pipeline import Pipeline
 
 
 __author__ = "Denis Kuznetsov"
