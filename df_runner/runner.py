@@ -21,6 +21,7 @@ class AbsRunner(ABC):
         self._provider = provider
 
     def start(self, *args, **kwargs) -> None:
+        self._provider.init()
         while True:
             request = self._provider.request()
             ctx = self._request_handler(self._provider.ctx_id, request)

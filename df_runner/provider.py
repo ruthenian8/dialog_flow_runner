@@ -4,8 +4,16 @@ from typing import Optional
 
 
 class AbsProvider(ABC):
-    def __init__(self):
-        self.ctx_id = uuid.uuid4()
+    def __init__(
+        self,
+        intro: Optional[str] = None,
+        prompt_request: str = "request: ",
+        prompt_response: str = "response: ",
+    ):
+        self.ctx_id = None
+        self.intro: Optional[str] = intro
+        self.prompt_request: str = prompt_request
+        self.prompt_response: str = prompt_response
 
     @abstractmethod
     def init(self):
@@ -21,18 +29,8 @@ class AbsProvider(ABC):
 
 
 class CLIProvider(AbsProvider):
-    def __init__(
-        self,
-        intro: Optional[str] = None,
-        prompt_request: str = "request: ",
-        prompt_response: str = "response: ",
-    ):
-        super().__init__()
-        self.intro: Optional[str] = intro
-        self.prompt_request: str = prompt_request
-        self.prompt_response: str = prompt_response
-
     def init(self):
+        self.ctx_id = uuid.uuid4()
         if self.intro is not None:
             print(self.intro)
 
