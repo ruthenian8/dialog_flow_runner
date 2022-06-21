@@ -3,8 +3,8 @@ from typing import Union, List, Dict, TypedDict, Optional
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor
 
-from df_runner import AbsProvider, Service, ServiceFunctionType, PipelineRunner
-from df_runner.connector import DefaultConnector
+from df_runner import AbsProvider, Service, ServiceFunctionType, Runner
+from df_runner.connector import CLIConnector
 
 
 ServiceDict = TypedDict('ServiceDict', {
@@ -19,16 +19,25 @@ class Pipeline:
         self,
         provider: AbsProvider,
         services: List[Union[Service, Actor, Dict, ServiceFunctionType]],
-        connector: DBAbstractConnector = DefaultConnector()
+        connector: DBAbstractConnector = CLIConnector()
     ):
         self.provider = provider
         self.connector = connector
-        self.services = []
+
+        self.actor = None
+        self.preprocessing = []
+        self.postprocessing = []
         for service in services:
-            if isinstance(service, Service):
-                self.services.append(service)
+            if isinstance(service, Actor):
+                self.actor = service
             else:
-                self.services.append(Service.create(service))
+                inst = service if isinstance(service, Service) else Service.create(service)
+                if self.actor is None:
+                    self.preprocessing.append(inst)
+                else:
+                    self.postprocessing.append(inst)
+
+        self.runner = Runner(self.actor, self.connector, self.provider, self.preprocessing, self.postprocessing)
 
     @classmethod
     def create(cls, pipeline: ServiceDict):
@@ -42,9 +51,4 @@ class Pipeline:
         return [cls(provider, pipeline['services'], connector) for provider in providers for connector in connectors]
 
     def run(self):
-        runner = PipelineRunner(
-            self.connector,
-            self.provider,
-            self.services
-        )
-        self.provider.run(runner)
+        self.runner.start()

@@ -1,32 +1,41 @@
-from df_db_connector import DBConnector, threadsafe_method
-from df_engine.core import Context
+import logging
+from typing import Any
+
+from df_db_connector import DBConnector
 
 
-class DefaultConnector(DBConnector):
+logger = logging.getLogger(__name__)
+
+
+class CLIConnector(DBConnector):
     def __init__(self):
         super().__init__("")
+        logging.basicConfig(level=logging.INFO)
+        self._container = dict()
+
+    def _log(self, key: str):
+        logging.info(f"Database entry acquired: {key} -> {self._container[key]}")
+
+    def __getitem__(self, key: str) -> Any:
+        self._log(key)
+        return self._container[key]
+
+    def __setitem__(self, key: str, value: dict):
+        self._container[key] = value
+        self._log(key)
+
+    def __delitem__(self, key: str):
+        self._log(key)
+        del self._container[key]
 
     def __contains__(self, key: str) -> bool:
-        return False
+        logging.info(f"Database contains key: {key}")
+        return key in self._container
 
     def __len__(self) -> int:
-        return -1
+        logging.info(f"Database length: {len(self._container)}")
+        return len(self._container)
 
-    def get(self, key: str, default=None):
-        return default
-
-    @threadsafe_method
-    def __getitem__(self, key: str) -> Context:
-        return Context.cast({})
-
-    @threadsafe_method
-    def __setitem__(self, key: str, value: Context) -> None:
-        print(f"Database entry added: {key} -> {value}")
-
-    @threadsafe_method
-    def __delitem__(self, key: str):
-        print(f"Database entry deleted: {key}")
-
-    @threadsafe_method
-    def clear(self):
-        print("Database entries cleared")
+    def clear(self) -> None:
+        logging.info("Database cleared")
+        return self._container.clear()

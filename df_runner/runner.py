@@ -5,9 +5,7 @@ from df_engine.core import Context, Actor, Script
 from df_engine.core.types import NodeLabel2Type
 from df_db_connector import DBAbstractConnector
 
-from df_runner import AnnotatorFunctionType
-from .provider import AbsProvider, CLIProvider
-from .service import Service
+from df_runner import AnnotatorFunctionType, Service, AbsProvider, CLIProvider
 
 
 class AbsRunner(ABC):
@@ -22,8 +20,10 @@ class AbsRunner(ABC):
         self._provider: AbsProvider = CLIProvider() if provider is None else provider
 
     def start(self, *args, **kwargs) -> None:
-        while self._provider.run(self):
-            pass
+        while True:
+            request = self._provider.request()
+            ctx = self.request_handler(self._provider.ctx_id, request)
+            self._provider.response(ctx.last_response)
 
     @abstractmethod
     def request_handler(
@@ -41,8 +41,8 @@ class Runner(AbsRunner):
         actor: Actor,
         db: Optional[DBAbstractConnector] = None,
         request_provider: Optional[AbsProvider] = None,
-        pre_annotators: Optional[List[AnnotatorFunctionType]] = None,
-        post_annotators: Optional[List[AnnotatorFunctionType]] = None,
+        pre_annotators: Optional[List[Union[AnnotatorFunctionType, Service]]] = None,
+        post_annotators: Optional[List[Union[AnnotatorFunctionType, Service]]] = None,
         *args,
         **kwargs
     ):
@@ -57,7 +57,6 @@ class Runner(AbsRunner):
         ctx_update: Optional[Union[Any, Callable]],
         init_ctx: Optional[Union[Context, Callable]] = None,
     ) -> Context:
-        # db
         ctx: Context = self._connector.get(ctx_id)
         if ctx is None:
             if init_ctx is None:
@@ -80,7 +79,7 @@ class Runner(AbsRunner):
         for annotator in self._post_annotators:
             ctx = annotator(ctx, self._actor)
 
-        self._connector |= {ctx_id: ctx}
+        self._connector[ctx_id] = ctx
 
         return ctx
 
@@ -107,42 +106,3 @@ class ScriptRunner(Runner):
             *args,
             **kwargs,
         )
-
-
-class PipelineRunner(AbsRunner):
-    def __init__(
-        self,
-        connector: Optional[DBAbstractConnector] = None,
-        provider: Optional[AbsProvider] = None,
-        services: Optional[List[Service]] = None,
-        *args,
-        **kwargs
-    ):
-        super().__init__(connector, provider, *args, **kwargs)
-        self._services = services
-
-    def request_handler(
-        self,
-        ctx_id: Any,
-        ctx_update: Optional[Union[Any, Callable]],
-        init_ctx: Optional[Union[Context, Callable]] = None
-    ) -> Context:
-        ctx: Context = self._connector.get(ctx_id)
-        if ctx is None:
-            if init_ctx is None:
-                ctx: Context = Context()
-            else:
-                ctx: Context = init_ctx() if callable(init_ctx) else init_ctx
-
-        if callable(ctx_update):
-            ctx = ctx_update(ctx)
-        else:
-            ctx.add_request(ctx_update)
-
-        # pre_annotators
-        for service in self._services:
-            ctx = service.act(ctx)
-
-        self._connector |= {ctx_id: ctx}
-
-        return ctx

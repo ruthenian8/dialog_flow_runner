@@ -5,7 +5,7 @@ from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 
 from df_runner import CLIProvider, Service
-from df_runner.connector import DefaultConnector
+from df_runner.connector import CLIConnector
 from df_runner.pipeline import Pipeline
 from df_runner.service import service_successful_condition
 
@@ -39,24 +39,24 @@ script = {
 actor = Actor(script, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node"))
 
 
-def preprocess(ctx: Context) -> Tuple[Context, bool]:
+def preprocess(ctx: Context, actor: Actor) -> Tuple[Context, bool]:
     print(f"{ctx.misc=}")
     return ctx, True
 
 
-def postprocess(ctx: Context) -> Tuple[Context, bool]:
+def postprocess(ctx: Context, actor: Actor) -> Tuple[Context, bool]:
     print(f"{ctx.misc=}")
     return ctx, True
 
 
-def print_misc(ctx: Context) -> Tuple[Context, bool]:
+def print_misc(ctx: Context, actor: Actor) -> Tuple[Context, bool]:
     print(f"{ctx.misc=}")
     return ctx, True
 
 
 pipeline = {
     "provider": CLIProvider(),
-    "connector": DefaultConnector(),
+    "connector": CLIConnector(),
     "services": [
         {
             "service": preprocess,
@@ -65,7 +65,7 @@ pipeline = {
         actor,
         print_misc,
         Service(
-            postprocess,
+            service=postprocess,
             name="postprocess",
             timeout=2000,
             start_condition=service_successful_condition("preprocess")

@@ -3,8 +3,8 @@
 from .types import ServiceFunctionType, ServiceConditionType, AnnotatorFunctionType
 
 from .provider import AbsProvider, CLIProvider
-from .runner import Runner, ScriptRunner, PipelineRunner
 from .service import Service
+from .runner import Runner, ScriptRunner
 from .pipeline import Pipeline
 
 

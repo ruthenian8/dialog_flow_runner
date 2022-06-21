@@ -1,15 +1,22 @@
 import uuid
 from abc import abstractmethod, ABC
-from typing import Optional, ForwardRef
-
-from df_engine.core import Context
-
-AbsRunner = ForwardRef("AbsRunner")
+from typing import Optional
 
 
 class AbsProvider(ABC):
+    def __init__(self):
+        self.ctx_id = uuid.uuid4()
+
     @abstractmethod
-    def run(self, runner: AbsRunner):
+    def init(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def request(self) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def response(self, response: str):
         raise NotImplementedError
 
 
@@ -20,15 +27,17 @@ class CLIProvider(AbsProvider):
         prompt_request: str = "request: ",
         prompt_response: str = "response: ",
     ):
+        super().__init__()
         self.intro: Optional[str] = intro
         self.prompt_request: str = prompt_request
         self.prompt_response: str = prompt_response
 
-    def run(self, runner: AbsRunner):
-        ctx_id = uuid.uuid4()
+    def init(self):
         if self.intro is not None:
             print(self.intro)
-        while True:
-            request = input(self.prompt_request)
-            ctx: Context = runner.request_handler(ctx_id, request)
-            print(f"{self.prompt_response}{ctx.last_response}")
+
+    def request(self) -> str:
+        return input(self.prompt_request)
+
+    def response(self, response: str):
+        print(f"{self.prompt_response}{response}")
