@@ -5,6 +5,7 @@ from .types import ServiceFunction, ServiceCondition, WrapperFunction
 from .provider import AbsProvider, CLIProvider
 from .conditions import always_start_condition, service_successful_condition
 from .service import Service
+from .wrapper import Wrapper, WrappedService, wrap
 from .runner import Runner, ScriptRunner
 from .pipeline import Pipeline, create_pipelines
 
