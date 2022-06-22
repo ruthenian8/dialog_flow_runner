@@ -1,10 +1,10 @@
-from typing import Callable, Tuple
+from typing import Callable
 
 from df_engine.core import Context, Actor
 
 
-AnnotatorFunctionType = Callable[[Context, Actor], Context]
+ServiceFunction = Callable[[Context, Actor], Context]
 
-ServiceFunctionType = Callable[[Context, Actor], Tuple[Context, bool]]
+ServiceCondition = Callable[[Context, Actor], bool]
 
-ServiceConditionType = Callable[[Context, Actor], bool]
+WrapperFunction = Callable[[Context, Actor], None]

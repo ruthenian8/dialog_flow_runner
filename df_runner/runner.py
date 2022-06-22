@@ -5,19 +5,18 @@ from df_engine.core import Context, Actor, Script
 from df_engine.core.types import NodeLabel2Type
 from df_db_connector import DBAbstractConnector
 
-from df_runner import AnnotatorFunctionType, Service, AbsProvider, CLIProvider
-from df_runner.connector import CLIConnector
+from df_runner import Service, AbsProvider, CLIProvider, ServiceFunction
 
 
 class AbsRunner(ABC):
     def __init__(
         self,
-        connector: DBAbstractConnector = CLIConnector(),
+        connector: Optional[Union[DBAbstractConnector, Dict]] = None,
         provider: AbsProvider = CLIProvider(),
         *args,
         **kwargs,
     ):
-        self._connector = connector
+        self._connector = dict() if connector is None else connector
         self._provider = provider
 
     def start(self, *args, **kwargs) -> None:
@@ -41,10 +40,10 @@ class Runner(AbsRunner):
     def __init__(
         self,
         actor: Actor,
-        connector: DBAbstractConnector = CLIConnector(),
+        connector: Optional[Union[DBAbstractConnector, Dict]] = None,
         provider: AbsProvider = CLIProvider(),
-        pre_annotators: Optional[List[Union[AnnotatorFunctionType, Service]]] = None,
-        post_annotators: Optional[List[Union[AnnotatorFunctionType, Service]]] = None,
+        pre_annotators: Optional[List[Union[ServiceFunction, Service]]] = None,
+        post_annotators: Optional[List[Union[ServiceFunction, Service]]] = None,
         *args,
         **kwargs
     ):
@@ -92,10 +91,10 @@ class ScriptRunner(Runner):
         script: Union[Script, Dict],
         start_label: NodeLabel2Type,
         fallback_label: Optional[NodeLabel2Type] = None,
-        connector: DBAbstractConnector = CLIConnector(),
+        connector: Optional[Union[DBAbstractConnector, Dict]] = None,
         request_provider: AbsProvider = CLIProvider(),
-        pre_annotators: Optional[List[AnnotatorFunctionType]] = None,
-        post_annotators: Optional[List[AnnotatorFunctionType]] = None,
+        pre_annotators: Optional[List[ServiceFunction]] = None,
+        post_annotators: Optional[List[ServiceFunction]] = None,
         *args,
         **kwargs,
     ):

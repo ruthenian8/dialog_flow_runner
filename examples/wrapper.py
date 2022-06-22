@@ -2,7 +2,7 @@ from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 
-from df_runner import CLIProvider, Service, service_successful_condition, Pipeline
+from df_runner import CLIProvider, Service, service_successful_condition, wrap, Wrapper, Pipeline
 
 script = {
     "greeting_flow": {
@@ -43,6 +43,7 @@ def postprocess(ctx: Context, actor: Actor) -> Context:
     return ctx
 
 
+@wrap(Wrapper(pre_func=lambda ctx, act: print("pre-wrapper"), post_func=lambda ctx, act: print("post-wrapper")))
 def print_misc(ctx: Context, actor: Actor) -> Context:
     print(f"{ctx.misc=}")
     return ctx
@@ -50,7 +51,7 @@ def print_misc(ctx: Context, actor: Actor) -> Context:
 
 pipeline = {
     "provider": CLIProvider(),
-    "connector": {},
+    "connector": dict(),
     "services": [
         {
             "service": preprocess,
