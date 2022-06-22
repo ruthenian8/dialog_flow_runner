@@ -35,13 +35,13 @@ class Runner:
         Method for starting a runner, sets up corresponding provider callback.
         Since one runner always has only one provider, there is no need for thread management here.
         """
-        def callback(user_input: str) -> str:
-            return self._request_handler(user_input, self._provider.ctx_id).last_response
-        self._provider.setup(callback)
+        def callback(request: Any) -> Context:
+            return self._request_handler(request, self._provider.ctx_id)
+        self._provider.run(callback)
 
     def _request_handler(
         self,
-        user_input: Any,
+        request: Any,
         ctx_id: Optional[Any] = None
     ) -> Context:
         """
@@ -53,7 +53,7 @@ class Runner:
         if ctx is None:
             ctx = Context()
 
-        ctx.add_request(user_input)
+        ctx.add_request(request)
 
         for annotator in self._pre_annotators:
             ctx = annotator(ctx, self._actor)

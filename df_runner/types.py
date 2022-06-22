@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Any
 
 from df_engine.core import Context, Actor
 
@@ -7,7 +7,7 @@ from df_engine.core import Context, Actor
 A function type for provider-to-client interaction.
 Accepts string (user input), returns string (answer from runner).
 """
-ProviderFunction = Callable[[str], str]
+ProviderFunction = Callable[[Any], Context]
 
 """
 A function type for creating annotators (and also for creating services from).

@@ -3,11 +3,11 @@ from df_engine.core import Actor, Context
 from df_runner import ServiceCondition
 
 
-def always_start_condition(ctx: Context, actor: Actor) -> Context:
+def always_start_condition(ctx: Context, actor: Actor) -> bool:
     """
     Condition that always allows service execution, it's the default condition for all services.
     """
-    return ctx
+    return True
 
 
 def service_successful_condition(name: str) -> ServiceCondition:

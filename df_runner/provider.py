@@ -11,16 +11,12 @@ class AbsProvider(ABC):
     Class that represents a provider used for communication between runner and user.
     """
 
-    def __init__(
-        self,
-        intro: Optional[str] = None
-    ):
+    def __init__(self):
         self.ctx_id: Optional[Any] = None
-        self._intro: Optional[str] = intro
         self._callback: Optional[ProviderFunction] = None
 
     @abstractmethod
-    def setup(self, callback: ProviderFunction):
+    def run(self, callback: ProviderFunction):
         """
         Method invoked when user first interacts with the runner and dialog starts.
         A good place to generate self.ctx_id - a unique ID of the dialog.
@@ -37,10 +33,9 @@ class PollingProvider(AbsProvider):
 
     def __init__(
         self,
-        intro: Optional[str] = None,
         timeout: int = 0
     ):
-        super().__init__(intro)
+        super().__init__()
         self._timeout = timeout
 
     @abstractmethod
@@ -58,15 +53,15 @@ class PollingProvider(AbsProvider):
         raise NotImplementedError
 
     @abstractmethod
-    def setup(self, callback: ProviderFunction):
+    def run(self, callback: ProviderFunction):
         """
         Method, running a request - response cycle in a loop, sleeping for self._timeout seconds after each iteration.
         """
-        super().setup(callback)
+        super().run(callback)
         while True:
             request = self._request()
-            response = self._callback(request)
-            self._respond(response)
+            context = self._callback(request)
+            self._respond(context.last_response)
             time.sleep(self._timeout)
 
 
@@ -94,15 +89,16 @@ class CLIProvider(PollingProvider):
         prompt_request: str = "request: ",
         prompt_response: str = "response: "
     ):
-        super().__init__(intro)
+        super().__init__()
+        self._intro: Optional[str] = intro
         self._prompt_request: str = prompt_request
         self._prompt_response: str = prompt_response
 
-    def setup(self, callback: ProviderFunction):
+    def run(self, callback: ProviderFunction):
         self.ctx_id = uuid.uuid4()
         if self._intro is not None:
             print(self._intro)
-        super().setup(callback)
+        super().run(callback)
 
     def _request(self) -> str:
         return input(self._prompt_request)
