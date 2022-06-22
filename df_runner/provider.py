@@ -15,7 +15,6 @@ class AbsProvider(ABC):
         self.ctx_id: Optional[Any] = None
         self._callback: Optional[ProviderFunction] = None
 
-    @abstractmethod
     def run(self, callback: ProviderFunction):
         """
         Method invoked when user first interacts with the runner and dialog starts.
@@ -52,7 +51,6 @@ class PollingProvider(AbsProvider):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def run(self, callback: ProviderFunction):
         """
         Method, running a request - response cycle in a loop, sleeping for self._timeout seconds after each iteration.
@@ -60,8 +58,7 @@ class PollingProvider(AbsProvider):
         super().run(callback)
         while True:
             request = self._request()
-            context = self._callback(request)
-            self._respond(context.last_response)
+            self._respond(self._callback(request).last_response)
             time.sleep(self._timeout)
 
 
@@ -70,12 +67,11 @@ class CallbackProvider(AbsProvider):
     Callback provider is waiting for user input and answers once it gets one.
     """
 
-    @abstractmethod
-    def _on_input(self, user_input: str) -> str:
+    def _on_request(self, request: Any) -> Any:
         """
         Method invoked on user input, should run self._callback function (if any).
         """
-        raise NotImplementedError
+        return self._callback(request).last_response
 
 
 class CLIProvider(PollingProvider):
