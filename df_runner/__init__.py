@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa: F401
-from .types import ServiceFunction, ServiceCondition, WrapperFunction
+from .types import ProviderFunction, ServiceFunction, ServiceCondition, WrapperFunction
 
-from .provider import AbsProvider, CLIProvider
+from .provider import AbsProvider, PollingProvider, CallbackProvider, CLIProvider
 from .conditions import always_start_condition, service_successful_condition
 from .service import Service
 from .wrapper import Wrapper, WrappedService, wrap

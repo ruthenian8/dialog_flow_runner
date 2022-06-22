@@ -4,14 +4,15 @@ import df_engine.conditions as cnd
 
 from df_runner import CLIProvider, Service, service_successful_condition, wrap, Wrapper, Pipeline
 
+
 script = {
     "greeting_flow": {
-        "start_node": {  # This is an initial node, it doesn't need an `RESPONSE`
+        "start_node": {
             RESPONSE: "",
-            TRANSITIONS: {"node1": cnd.exact_match("Hi")},  # If "Hi" == request of user then we make the transition
+            TRANSITIONS: {"node1": cnd.exact_match("Hi")},
         },
         "node1": {
-            RESPONSE: "Hi, how are you?",  # When the agent goes to node1, we return "Hi, how are you?"
+            RESPONSE: "Hi, how are you?",
             TRANSITIONS: {"node2": cnd.exact_match("i'm fine, how are you?")},
         },
         "node2": {
@@ -23,7 +24,7 @@ script = {
             TRANSITIONS: {"node4": cnd.exact_match("Ok, goodbye.")},
         },
         "node4": {RESPONSE: "bye", TRANSITIONS: {"node1": cnd.exact_match("Hi")}},
-        "fallback_node": {  # We get to this node if an error occurred while the agent was running
+        "fallback_node": {
             RESPONSE: "Ooops",
             TRANSITIONS: {"node1": cnd.exact_match("Hi")},
         },
@@ -34,18 +35,18 @@ actor = Actor(script, start_label=("greeting_flow", "start_node"), fallback_labe
 
 
 def preprocess(ctx: Context, actor: Actor) -> Context:
-    print(f"{ctx.misc=}")
+    print(f"    preprocession Service")
     return ctx
 
 
 def postprocess(ctx: Context, actor: Actor) -> Context:
-    print(f"{ctx.misc=}")
+    print(f"    postprocession Service")
     return ctx
 
 
-@wrap(Wrapper(pre_func=lambda ctx, act: print("pre-wrapper"), post_func=lambda ctx, act: print("post-wrapper")))
-def print_misc(ctx: Context, actor: Actor) -> Context:
-    print(f"{ctx.misc=}")
+@wrap(Wrapper(pre_func=lambda ctx, act: print("        pre-wrapper"), post_func=lambda ctx, act: print("        post-wrapper")))
+def wrapped_service(ctx: Context, actor: Actor) -> Context:
+    print(f"            the Service, that was wrapped")
     return ctx
 
 
@@ -58,7 +59,7 @@ pipeline = {
             "timeout": 1000
         },
         actor,
-        print_misc,
+        wrapped_service,
         Service(
             service=postprocess,
             name="postprocess",
@@ -70,4 +71,4 @@ pipeline = {
 
 
 if __name__ == "__main__":
-    Pipeline.parse_obj(pipeline).run()
+    Pipeline(**pipeline).start()

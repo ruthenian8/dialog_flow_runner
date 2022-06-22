@@ -1,5 +1,4 @@
-from abc import abstractmethod, ABC
-from typing import Any, Optional, Union, Callable, List, Dict
+from typing import Any, Optional, Union, List, Dict
 
 from df_engine.core import Context, Actor, Script
 from df_engine.core.types import NodeLabel2Type
@@ -8,35 +7,13 @@ from df_db_connector import DBAbstractConnector
 from df_runner import Service, AbsProvider, CLIProvider, ServiceFunction
 
 
-class AbsRunner(ABC):
-    def __init__(
-        self,
-        connector: Optional[Union[DBAbstractConnector, Dict]] = None,
-        provider: AbsProvider = CLIProvider(),
-        *args,
-        **kwargs,
-    ):
-        self._connector = dict() if connector is None else connector
-        self._provider = provider
+class Runner:
+    """
+    Class, representing a runner, that executes actor together with pre- and post_annotators.
+    Provider and connector are shared through the execution.
+    The services are executed sequentially with a shared context.
+    """
 
-    def start(self, *args, **kwargs) -> None:
-        self._provider.init()
-        while True:
-            request = self._provider.request()
-            ctx = self._request_handler(self._provider.ctx_id, request)
-            self._provider.response(ctx.last_response)
-
-    @abstractmethod
-    def _request_handler(
-        self,
-        ctx_id: Any,
-        ctx_update: Optional[Union[Any, Callable]],
-        init_ctx: Optional[Union[Context, Callable]] = None,
-    ) -> Context:
-        raise NotImplementedError
-
-
-class Runner(AbsRunner):
     def __init__(
         self,
         actor: Actor,
@@ -47,36 +24,42 @@ class Runner(AbsRunner):
         *args,
         **kwargs
     ):
-        super().__init__(connector, provider, *args, **kwargs)
+        self._connector = dict() if connector is None else connector
+        self._provider = provider
         self._actor: Actor = actor
         self._pre_annotators = [] if pre_annotators is None else pre_annotators
         self._post_annotators = [] if post_annotators is None else post_annotators
 
+    def start(self) -> None:
+        """
+        Method for starting a runner, sets up corresponding provider callback.
+        Since one runner always has only one provider, there is no need for thread management here.
+        """
+        def callback(user_input: str) -> str:
+            return self._request_handler(user_input, self._provider.ctx_id).last_response
+        self._provider.setup(callback)
+
     def _request_handler(
         self,
-        ctx_id: Any,
-        ctx_update: Optional[Union[Any, Callable]],
-        init_ctx: Optional[Union[Context, Callable]] = None,
+        user_input: Any,
+        ctx_id: Optional[Any] = None
     ) -> Context:
-        ctx: Context = self._connector.get(ctx_id)
+        """
+        Method for handling user input request through actor and all the annotators.
+        :user_input: - input, received from user.
+        :ctx_id: - id of current user in self._connector database (if not the first input).
+        """
+        ctx = self._connector.get(ctx_id)
         if ctx is None:
-            if init_ctx is None:
-                ctx: Context = Context()
-            else:
-                ctx: Context = init_ctx() if callable(init_ctx) else init_ctx
+            ctx = Context()
 
-        if callable(ctx_update):
-            ctx = ctx_update(ctx)
-        else:
-            ctx.add_request(ctx_update)
+        ctx.add_request(user_input)
 
-        # pre_annotators
         for annotator in self._pre_annotators:
             ctx = annotator(ctx, self._actor)
 
         ctx = self._actor(ctx)
 
-        # post_annotators
         for annotator in self._post_annotators:
             ctx = annotator(ctx, self._actor)
 
@@ -86,6 +69,11 @@ class Runner(AbsRunner):
 
 
 class ScriptRunner(Runner):
+    """
+    A standalone runner for scripts.
+    It automatically creates actor and is alternative to pipelines.
+    """
+
     def __init__(
         self,
         script: Union[Script, Dict],

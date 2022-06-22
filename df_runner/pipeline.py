@@ -9,36 +9,35 @@ from df_runner import AbsProvider, Service, ServiceFunction, Runner, CLIProvider
 
 class Pipeline(BaseModel):
     """
-    Class that represents a pipeline of services with shared provider and connector.
-    The services are executed sequentially with a shared context.
+    Class that automates runner creation from dict and execution.
+    It also allows actor and annotators wrapping with special services, which enables more control over execution.
     It accepts:
         services - a Service list for this pipeline, should include Actor
         provider (optionally) - an AbsProvider instance for this pipeline
         connector (optionally) - an DBAbstractConnector instance for this pipeline or a dict
     """
 
-    _provider: Optional[AbsProvider] = CLIProvider()
-    _services: List[Union[Service, Actor, Dict, ServiceFunction]]
-    _connector: Optional[Union[DBAbstractConnector, Dict]] = None
+    provider: Optional[AbsProvider] = CLIProvider()
+    connector: Optional[Union[DBAbstractConnector, Dict]] = None
+    services: List[Union[Service, Actor, Dict, ServiceFunction]] = None
 
     class Config:
-        fields = {'_provider': 'provider', '_services': 'services', '_connector': 'connector'}
         arbitrary_types_allowed = True
         extra = Extra.allow
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._connector = dict() if self._connector is None else self._connector
+        self.connector = dict() if self.connector is None else self.connector
 
         self._actor = None
         self._preprocessing = []
         self._postprocessing = []
-        for service in self._services:
+        for service in self.services:
             if isinstance(service, Actor):
                 self._actor = service
             else:
                 inst = service if isinstance(service, Service) else Service.cast(service)
-                if inst.is_actor:
+                if isinstance(inst.service, Actor):
                     self._actor = inst
                 elif self._actor is None:
                     self._preprocessing.append(inst)
@@ -49,11 +48,11 @@ class Pipeline(BaseModel):
             raise Exception("Incorrect pipeline description: missing actor")
 
         # Here, self._actor is not necessarily an Actor instance, it may also be a Service instance (wrapping Actor) with the same callable interface, but please, don't tell anyone
-        self._runner = Runner(self._actor, self._connector, self._provider, self._preprocessing, self._postprocessing)
+        self._runner = Runner(self._actor, self.connector, self.provider, self._preprocessing, self._postprocessing)
 
-    def run(self):
+    def start(self):
         """
-        Execute pipeline.
+        Execute pipeline, an alias method for runner.start().
         TODO: add threading policy here (especially in case of multiple runners)
         """
         self._runner.start()
