@@ -33,21 +33,17 @@ class Pipeline(BaseModel):
         self._preprocessing = []
         self._postprocessing = []
         for service in self.services:
-            if isinstance(service, Actor):
-                self._actor = service
+            inst = service if isinstance(service, Service) else Service.cast(service)
+            if isinstance(inst.service, Actor):
+                self._actor = inst
+            elif self._actor is None:
+                self._preprocessing.append(inst)
             else:
-                inst = service if isinstance(service, Service) else Service.cast(service)
-                if isinstance(inst.service, Actor):
-                    self._actor = inst
-                elif self._actor is None:
-                    self._preprocessing.append(inst)
-                else:
-                    self._postprocessing.append(inst)
+                self._postprocessing.append(inst)
 
         if self._actor is None:
             raise Exception("Incorrect pipeline description: missing actor")
 
-        # Here, self._actor is not necessarily an Actor instance, it may also be a Service instance (wrapping Actor) with the same callable interface, but please, don't tell anyone
         self._runner = Runner(self._actor, self.connector, self.provider, self._preprocessing, self._postprocessing)
 
     def start(self):

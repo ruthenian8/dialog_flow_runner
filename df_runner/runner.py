@@ -16,7 +16,7 @@ class Runner:
 
     def __init__(
         self,
-        actor: Actor,
+        actor: Union[Actor, Service],
         connector: Optional[Union[DBAbstractConnector, Dict]] = None,
         provider: AbsProvider = CLIProvider(),
         pre_annotators: Optional[List[Union[ServiceFunction, Service]]] = None,

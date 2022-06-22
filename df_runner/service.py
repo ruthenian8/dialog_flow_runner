@@ -25,7 +25,7 @@ class Service(BaseModel):
     class Config:
         extra = Extra.allow
 
-    def __call__(self, ctx: Context, actor: Actor, *args, **kwargs) -> Context:
+    def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Context:
         """
         Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
         If execution fails the error is caught here and TODO: set special value in context for other services start_conditions.
@@ -33,6 +33,8 @@ class Service(BaseModel):
         try:
             if isinstance(self.service, Actor):
                 return self.service(ctx)
+            elif actor is None:
+                raise Exception(f"For service {self.name} no actor has been provided!")
             else:
                 return self.service(ctx, actor)
         except Exception as e:
