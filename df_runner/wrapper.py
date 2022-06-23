@@ -68,7 +68,7 @@ class WrappedService(Service):
 def wrap(*wrappers: Wrapper):
     """
     A wrapper wrapping function that creates WrappedService from any service function.
-    NB! Generated Service name will imply it was an object as it, actually, really was.
+    Target function will no longer be a function after wrapping; it will become a WrappedService object.
     :wrappers: - wrappers to surround the function.
     """
     def inner(service: ServiceFunction) -> WrappedService:
