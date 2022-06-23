@@ -2,8 +2,8 @@ from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 
-from df_runner import CLIProvider, Service, service_successful_condition, Pipeline
-
+from df_runner import CLIProvider, Service, Pipeline
+from df_runner.conditions import service_successful_condition
 
 script = {
     "greeting_flow": {

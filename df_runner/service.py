@@ -3,7 +3,8 @@ from typing import Optional, Union, Dict, Callable
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
 
-from df_runner import ServiceFunction, ServiceCondition, always_start_condition
+from df_runner import ServiceFunction, ServiceCondition
+from df_runner.conditions import always_start_condition
 
 
 class Service(BaseModel):

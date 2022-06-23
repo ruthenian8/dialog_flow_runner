@@ -1,4 +1,4 @@
-import time
+import asyncio
 import uuid
 from abc import abstractmethod, ABC
 from typing import Optional, Any
@@ -59,7 +59,7 @@ class PollingProvider(AbsProvider):
         while True:
             request = self._request()
             self._respond(self._callback(request).last_response)
-            time.sleep(self._timeout)
+            asyncio.sleep(self._timeout)
 
 
 class CallbackProvider(AbsProvider):

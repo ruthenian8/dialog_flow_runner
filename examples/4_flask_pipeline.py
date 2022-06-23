@@ -3,7 +3,8 @@ from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 from flask import Flask
 
-from df_runner import Pipeline, Service, service_successful_condition
+from df_runner import Pipeline, Service
+from df_runner.conditions import service_successful_condition
 from df_runner.providers import FlaskProvider
 
 
@@ -49,7 +50,7 @@ def postprocess(ctx: Context, actor: Actor) -> Context:
 
 
 pipeline = {
-    "provider": FlaskProvider(app),
+    "provider": FlaskProvider(app, param_name='request'),
     "connector": {},
     "services": [
         {
@@ -70,3 +71,4 @@ pipeline = {
 if __name__ == '__main__':
     Pipeline(**pipeline).start()
     app.run()
+    # Navigate to http://127.0.0.1:5000/df_provider?request=Hi

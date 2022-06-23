@@ -3,7 +3,8 @@ from typing import List, Union, Dict, Optional, Callable
 from df_engine.core import Actor, Context
 from pydantic import BaseModel
 
-from df_runner import Service, WrapperFunction, ServiceFunction, ServiceCondition, always_start_condition
+from df_runner import Service, WrapperFunction, ServiceFunction, ServiceCondition
+from df_runner.conditions import always_start_condition
 
 
 class Wrapper(BaseModel):
@@ -26,7 +27,7 @@ class WrappedService(Service):
 
     wrappers: List[Wrapper]
 
-    def __call__(self, ctx: Context, actor: Actor, *args, **kwargs) -> Context:
+    def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Context:
         for wrapper in self.wrappers:
             wrapper.pre_func(ctx, actor)
         ctx = super(WrappedService, self).__call__(ctx, actor, *args, **kwargs)
