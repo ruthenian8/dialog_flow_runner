@@ -19,21 +19,23 @@ class Pipeline(BaseModel):
 
     provider: Optional[AbsProvider] = CLIProvider()
     connector: Optional[Union[DBAbstractConnector, Dict]] = None
-    services: List[Union[Service, Actor, Dict, ServiceFunction]] = None
+    services: List[Union[Service, Actor, ServiceFunction]] = None
 
     class Config:
         arbitrary_types_allowed = True
         extra = Extra.allow
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.connector = dict() if self.connector is None else self.connector
 
         self._actor = None
         self._preprocessing = []
         self._postprocessing = []
+
+        naming = {}
         for service in self.services:
-            inst = service if isinstance(service, Service) else Service.cast(service)
+            inst = Service.cast(service, naming)
             if isinstance(inst.service, Actor):
                 self._actor = inst
             elif self._actor is None:

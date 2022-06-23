@@ -35,7 +35,7 @@ actor = Actor(script, start_label=("greeting_flow", "start_node"), fallback_labe
 
 
 def preprocess(ctx: Context, actor: Actor) -> Context:
-    print(f"    preprocession Service (defined as an dict)")
+    print(f"    preprocession Service (defined as a dict)")
     return ctx
 
 
@@ -45,7 +45,7 @@ def postprocess(ctx: Context, actor: Actor) -> Context:
 
 
 def postpostprocess(ctx: Context, actor: Actor) -> Context:
-    print(f"    another postprocession Service (defined as an object)")
+    print(f"    another postprocession Service (defined as a dict)")
     return ctx
 
 
@@ -63,7 +63,7 @@ pipeline = {
             service=postpostprocess,
             name="postprocess",
             timeout=2000,
-            start_condition=service_successful_condition("preprocess")
+            start_condition=service_successful_condition("dict-preprocess-0")
         )
     ]
 }

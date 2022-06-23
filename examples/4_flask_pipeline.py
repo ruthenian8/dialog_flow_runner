@@ -45,7 +45,7 @@ def preprocess(ctx: Context, actor: Actor) -> Context:
 
 
 def postprocess(ctx: Context, actor: Actor) -> Context:
-    print(f"    postprocession Service (defined as a callable)")
+    print(f"    postprocession Service (defined as a dict)")
     return ctx
 
 

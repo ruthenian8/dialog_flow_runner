@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 from abc import abstractmethod, ABC
 from typing import Optional, Any
@@ -54,12 +53,13 @@ class PollingProvider(AbsProvider):
     def run(self, callback: ProviderFunction):
         """
         Method, running a request - response cycle in a loop, sleeping for self._timeout seconds after each iteration.
+        TODO: add timeout support
         """
         super().run(callback)
         while True:
             request = self._request()
             self._respond(self._callback(request).last_response)
-            asyncio.sleep(self._timeout)
+            # asyncio.sleep(self._timeout)
 
 
 class CallbackProvider(AbsProvider):

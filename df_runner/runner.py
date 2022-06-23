@@ -49,23 +49,24 @@ class Runner:
         :user_input: - input, received from user.
         :ctx_id: - id of current user in self._connector database (if not the first input).
         """
-        ctx = self._connector.get(ctx_id)
-        if ctx is None:
-            ctx = Context()
+        context = self._connector.get(ctx_id)
+        if context is None:
+            context = Context()
+            context.framework_states['RUNNER'] = dict()
 
-        ctx.add_request(request)
+        context.add_request(request)
 
         for annotator in self._pre_annotators:
-            ctx = annotator(ctx, self._actor)
+            context = annotator(context, self._actor)
 
-        ctx = self._actor(ctx)
+        context = self._actor(context)
 
         for annotator in self._post_annotators:
-            ctx = annotator(ctx, self._actor)
+            context = annotator(context, self._actor)
 
-        self._connector[ctx_id] = ctx
+        self._connector[ctx_id] = context
 
-        return ctx
+        return context
 
 
 class ScriptRunner(Runner):
