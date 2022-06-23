@@ -53,15 +53,21 @@ pipeline = {
     "provider": CLIProvider(),
     "connector": {},
     "services": [
-        {
-            "service": preprocess,
-            "timeout": 1000
-        },
-        actor,
-        postprocess,
+        [
+            {
+                "service": preprocess,
+                "timeout": 1000,
+                "groups": ['group-meta', 'group-1']
+            }
+        ],
+        [
+            actor,
+            postprocess
+        ],
         Service(
             service=postpostprocess,
             name="postprocess",
+            groups=['group-meta', 'group-0'],
             timeout=2000,
             start_condition=service_successful_condition("dict-preprocess-0")
         )
@@ -71,6 +77,7 @@ pipeline = {
 
 if __name__ == "__main__":
     pipe = Pipeline.parse_obj(pipeline)
-    print("It may be not easy to understand what service names were generated for the pipeline.")
-    print(f"Use given code in that case to acquire them: {[service.name for service in pipe._runner._pre_annotators + [pipe._runner._actor] + pipe._runner._post_annotators]}")
+    print("It may be not easy to understand what service names and groups were generated for the pipeline.")
+    print(f"Use given code in that case to acquire names: {[service.name for service in pipe.processed_services]}")
+    print(f"And this for groups: {[service.groups for service in pipe.processed_services]}")
     pipe.start()

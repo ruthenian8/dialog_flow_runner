@@ -7,6 +7,9 @@ from pydantic import BaseModel, Extra
 from df_runner import AbsProvider, Service, ServiceFunction, Runner, CLIProvider
 
 
+_ServiceCallable = Union[Service, Actor, ServiceFunction]
+
+
 class Pipeline(BaseModel):
     """
     Class that automates runner creation from dict and execution.
@@ -19,7 +22,7 @@ class Pipeline(BaseModel):
 
     provider: Optional[AbsProvider] = CLIProvider()
     connector: Optional[Union[DBAbstractConnector, Dict]] = None
-    services: List[Union[Service, Actor, ServiceFunction]] = None
+    services: List[Union[_ServiceCallable, List[_ServiceCallable]]] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -33,20 +36,53 @@ class Pipeline(BaseModel):
         self._preprocessing = []
         self._postprocessing = []
 
-        naming = {}
-        for service in self.services:
-            inst = Service.cast(service, naming)
-            if isinstance(inst.service, Actor):
-                self._actor = inst
-            elif self._actor is None:
-                self._preprocessing.append(inst)
-            else:
-                self._postprocessing.append(inst)
+        self._group_services(self.services)
 
         if self._actor is None:
             raise Exception("Incorrect pipeline description: missing actor")
 
         self._runner = Runner(self._actor, self.connector, self.provider, self._preprocessing, self._postprocessing)
+
+    def _create_service(
+        self,
+        service: _ServiceCallable,
+        naming: Dict[str, int],
+        groups: List[str]
+    ):
+        inst = Service.cast(service, naming, groups=groups)
+        if isinstance(inst.service, Actor):
+            if self._actor is None:
+                self._actor = inst
+            else:
+                raise Exception("Two actors defined for a pipeline!")
+        elif self._actor is None:
+            self._preprocessing.append(inst)
+        else:
+            self._postprocessing.append(inst)
+
+    def _group_services(
+        self,
+        services: List[_ServiceCallable],
+        naming: Optional[Dict[str, int]] = None,
+        groups: Optional[List[str]] = None,
+    ):
+        if naming is not None:
+            number = naming.get('group', 0)
+            naming['group'] = number + 1
+            groups = groups + [f'group-{number}']
+        else:
+            naming = {}
+            groups = []
+
+        for service in services:
+            if isinstance(service, List):
+                self._group_services(service, naming, groups)
+            else:
+                self._create_service(service, naming, groups)
+
+    @property
+    def processed_services(self):
+        return self._runner._pre_annotators + [self._runner._actor] + self._runner._post_annotators
 
     def start(self):
         """
@@ -66,4 +102,4 @@ def create_pipelines(pipeline: TypedDict('ServiceDict', {
     """
     connector = pipeline['connector']
     providers = pipeline['provider'] if isinstance(pipeline['provider'], list) else [pipeline['provider']]
-    return [Pipeline(provider, pipeline['services'], connector) for provider in providers]
+    return [Pipeline(provider=provider, services=pipeline['services'], connector=connector) for provider in providers]

@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Union, Dict, Callable
+from typing import Optional, Union, Dict, Callable, List
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
@@ -26,6 +26,7 @@ class Service(BaseModel):
 
     service: Union[Actor, ServiceFunction]
     name: Optional[str] = None
+    groups: Optional[List[str]] = None
     timeout: int = -1
     start_condition: ServiceCondition = always_start_condition
 
@@ -107,22 +108,24 @@ class Service(BaseModel):
         service: Union[Actor, Dict, ServiceFunction, Self],
         naming: Optional[Dict[str, int]] = None,
         name: Optional[str] = None,
-        timeout: int = -1,
-        start_condition: ServiceCondition = always_start_condition
+        groups: Optional[List[str]] = None,
+        **kwargs
     ):
         """
         Method for service creation from actor, function or dict.
         No other sources are accepted (yet).
         """
+        groups = groups if groups is not None else []
         if isinstance(service, Service):
             service.name = cls._get_name(service, naming, service.name)
+            service.groups = service.groups + groups if service.groups is not None else groups
             return service
         elif isinstance(service, Actor) or isinstance(service, Callable):
             return cls(
                 service=service,
                 name=cls._get_name(service, naming, name),
-                timeout=timeout,
-                start_condition=start_condition
+                groups=groups,
+                **kwargs
             )
         else:
             raise Exception(f"Unknown type of service {service}")

@@ -45,24 +45,12 @@ class WrappedService(Service):
         service: Union[Actor, Dict, ServiceFunction, Service],
         naming: Optional[Dict[str, int]] = None,
         name: Optional[str] = None,
-        timeout: int = 1000,
-        start_condition: ServiceCondition = always_start_condition,
-        wrappers: Optional[List[Wrapper]] = None
+        groups: Optional[List[str]] = None,
+        wrappers: Optional[List[Wrapper]] = None,
+        **kwargs
     ):
         wrappers = [] if wrappers is None else wrappers
-        if isinstance(service, Service):
-            service.name = cls._get_name(service, naming, service.name)
-            return service
-        elif isinstance(service, Actor) or isinstance(service, Callable):
-            return cls(
-                service=service,
-                name=cls._get_name(service, naming, name),
-                timeout=timeout,
-                start_condition=start_condition,
-                wrappers=wrappers
-            )
-        else:
-            raise Exception(f"Unknown type of wrapped service {service}")
+        super().cast(service, naming, name, groups, wrappers=wrappers, **kwargs)
 
 
 def wrap(*wrappers: Wrapper):
