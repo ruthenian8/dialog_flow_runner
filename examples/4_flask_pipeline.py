@@ -57,7 +57,10 @@ pipeline = {
             "service": preprocess,
             "timeout": 1000
         },
-        actor,
+        {
+            "service": actor,
+            "name": "encapsulated-actor"
+        },
         Service(
             service=postprocess,
             name="postprocess",

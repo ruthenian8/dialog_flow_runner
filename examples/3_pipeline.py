@@ -70,4 +70,7 @@ pipeline = {
 
 
 if __name__ == "__main__":
-    Pipeline.parse_obj(pipeline).start()
+    pipe = Pipeline.parse_obj(pipeline)
+    print("It may be not easy to understand what service names were generated for the pipeline.")
+    print(f"Use given code in that case to acquire them: {[service.name for service in pipe._runner._pre_annotators + [pipe._runner._actor] + pipe._runner._post_annotators]}")
+    pipe.start()
