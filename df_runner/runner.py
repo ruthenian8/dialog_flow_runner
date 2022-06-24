@@ -1,10 +1,11 @@
+from asyncio import Future, run
 from typing import Any, Optional, Union, List, Dict
 
 from df_engine.core import Context, Actor, Script
 from df_engine.core.types import NodeLabel2Type
 from df_db_connector import DBAbstractConnector
 
-from df_runner import Service, AbsProvider, CLIProvider, ServiceFunction
+from df_runner import Service, AbsProvider, CLIProvider, ServiceFunction, ServiceState
 
 
 class Runner:
@@ -26,7 +27,7 @@ class Runner:
     ):
         self._connector = dict() if connector is None else connector
         self._provider = provider
-        self._actor: Actor = actor
+        self._actor = actor
         self._pre_annotators = [] if pre_annotators is None else pre_annotators
         self._post_annotators = [] if post_annotators is None else post_annotators
 
@@ -99,6 +100,41 @@ class ScriptRunner(Runner):
 
 
 class PipelineRunner(Runner):
+    def __init__(
+        self,
+        actor: Union[Actor, Service],
+        connector: Optional[Union[DBAbstractConnector, Dict]] = None,
+        provider: AbsProvider = CLIProvider(),
+        pre_annotators: Optional[List[Union[ServiceFunction, Service]]] = None,
+        post_annotators: Optional[List[Union[ServiceFunction, Service]]] = None,
+        grouping: Optional[Dict[str, List[str]]] = None,
+        *args,
+        **kwargs
+    ):
+        super().__init__(actor, connector, provider, pre_annotators, post_annotators, *args, **kwargs)
+        self._grouping = dict() if grouping is None else grouping
+
+    async def _run_annotators(
+        self,
+        context: Context,
+        actor: Actor,
+        annotators: List[Union[ServiceFunction, Service]],
+        cancel_waiting: bool = False
+    ) -> Context:
+        for annotator in annotators:
+            if context.framework_states['RUNNER'].get(annotator.name, ServiceState.NOT_RUN).value < 2:
+                ctx = annotator(context, actor)
+                if isinstance(ctx, Future):
+                    context = await ctx
+                    context = await self._run_annotators(context, actor, annotators)
+                else:
+                    context = ctx
+        if cancel_waiting:
+            for annotator in annotators:
+                if context.framework_states['RUNNER'].get(annotator.name) == ServiceState.WAITING:
+                    context.framework_states['RUNNER'][annotator.name] = ServiceState.FAILED
+        return context
+
     def _request_handler(
         self,
         request: Any,
@@ -107,18 +143,17 @@ class PipelineRunner(Runner):
         context = self._connector.get(ctx_id)
         if context is None:
             context = Context()
+            context.framework_states['SERVICES'] = self._grouping
             context.framework_states['RUNNER'] = dict()
 
         context.add_request(request)
 
-        for annotator in self._pre_annotators:
-            context = annotator(context, self._actor)
-
+        context = run(self._run_annotators(context, self._actor, self._pre_annotators, True))
         context = self._actor(context)
+        context = run(self._run_annotators(context, self._actor, self._post_annotators, True))
 
-        for annotator in self._post_annotators:
-            context = annotator(context, self._actor)
-
+        print(context.framework_states['RUNNER'])
+        context.framework_states.pop('RUNNER')
         self._connector[ctx_id] = context
 
         return context

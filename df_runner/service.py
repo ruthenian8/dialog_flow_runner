@@ -1,11 +1,12 @@
 import logging
+from asyncio import Future, iscoroutinefunction
 from typing import Optional, Union, Dict, Callable, List
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
 from typing_extensions import Self
 
-from df_runner import ServiceFunction, ServiceCondition
+from df_runner import ServiceFunction, ServiceCondition, ServiceState, ConditionState
 from df_runner.conditions import always_start_condition
 
 
@@ -36,12 +37,11 @@ class Service(BaseModel):
         super().__init__(**kwargs)
         self.groups = []
 
-    def __call__(self, context: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Context:
+    def __call__(self, context: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Union[Future[Context], Context]:
         """
         Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
         It also sets named variables in context.framework_states for other services start_conditions.
         If execution fails the error is caught here.
-        TODO: add asyncio with timeouts.
         """
         try:
             if not isinstance(self.service, Actor):
@@ -50,24 +50,26 @@ class Service(BaseModel):
                 else:
                     actor = self.service
 
-            if self.start_condition(context, self.service):
-                if isinstance(self.service, Actor):
-                    context = self.service(context)
+            state = self.start_condition(context, self.service)
+            if state == ConditionState.ALLOWED:
+                if iscoroutinefunction(self.service):
+                    context.framework_states['RUNNER'][self.name] = ServiceState.RUNNING
+                    context = self.service(context, actor)
                 else:
                     context = self.service(context, actor)
+                    context.framework_states['RUNNER'][self.name] = ServiceState.FINISHED
+            elif state == ConditionState.WAITING:
+                context.framework_states['RUNNER'][self.name] = ServiceState.WAITING
             else:
-                raise BrokenPipeError(f"For service {self.name} start_condition hasn't been met!")
-
-            context.framework_states['RUNNER'][f'{self.name}-success'] = True
+                context.framework_states['RUNNER'][self.name] = ServiceState.FAILED
 
         except Exception as e:
-            context.framework_states['RUNNER'][f'{self.name}-success'] = False
+            context.framework_states['RUNNER'][self.name] = ServiceState.FAILED
             if isinstance(e, BrokenPipeError):
                 logger.info(e)
             else:
                 logger.error(e)
 
-        context.framework_states['RUNNER'][f'{self.name}-finished'] = True
         return context
 
     @staticmethod
@@ -125,7 +127,7 @@ class Service(BaseModel):
         """
         groups = groups if groups is not None else []
         if isinstance(service, Service):
-            service.name = cls._get_name(service, naming, service.name)
+            service.name = cls._get_name(service.service, naming, service.name)
             service.groups = groups
             return service
         elif isinstance(service, Actor) or isinstance(service, Callable):

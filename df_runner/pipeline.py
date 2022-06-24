@@ -5,8 +5,7 @@ from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor
 from pydantic import BaseModel, Extra
 
-from df_runner import AbsProvider, Service, ServiceFunction, Runner, CLIProvider
-
+from df_runner import AbsProvider, Service, ServiceFunction, CLIProvider, PipelineRunner
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +43,13 @@ class Pipeline(BaseModel):
         self._preprocessing = []
         self._postprocessing = []
 
-        self._group_services(self.services)
+        grouping = {}
+        self._group_services(self.services, grouping=grouping)
 
         if self._actor is None:
             raise Exception("Incorrect pipeline description: missing actor")
 
-        self._runner = Runner(self._actor, self.connector, self.provider, self._preprocessing, self._postprocessing)
+        self._runner = PipelineRunner(self._actor, self.connector, self.provider, self._preprocessing, self._postprocessing, grouping)
 
     @staticmethod
     def _get_group_name(
@@ -83,9 +83,11 @@ class Pipeline(BaseModel):
         self,
         service: _ServiceCallable,
         naming: Dict[str, int],
+        grouping: Dict[str, List[str]],
         groups: List[str]
     ):
         inst = Service.cast(service, naming, groups=groups)
+
         if isinstance(inst.service, Actor):
             if self._actor is None:
                 self._actor = inst
@@ -96,29 +98,35 @@ class Pipeline(BaseModel):
         else:
             self._postprocessing.append(inst)
 
+        for group in groups:
+            grouping[group].append(inst.name)
+
     def _group_services(
         self,
-        services: Union[List[_ServiceCallable], ServiceGroup],
+        group: Union[List[_ServiceCallable], ServiceGroup],
         naming: Optional[Dict[str, int]] = None,
-        groups: Optional[List[str]] = None,
+        grouping: Optional[Dict[str, List[str]]] = None,
+        groups: Optional[List[str]] = None
     ):
-        if isinstance(services, ServiceGroup):
-            name = services.name
-            services = services.services
+        if isinstance(group, ServiceGroup):
+            name = group.name
+            group = group.services
         else:
             name = None
 
         if naming is not None:
-            groups = groups + [self._get_group_name(naming, name)]
+            name = self._get_group_name(naming, name)
+            grouping[name] = []
+            groups = groups + [name]
         else:
             naming = {}
             groups = []
 
-        for service in services:
+        for service in group:
             if isinstance(service, List) or isinstance(service, ServiceGroup):
-                self._group_services(service, naming, groups)
+                self._group_services(service, naming, grouping, groups)
             else:
-                self._create_service(service, naming, groups)
+                self._create_service(service, naming, grouping, groups)
 
     @property
     def processed_services(self):

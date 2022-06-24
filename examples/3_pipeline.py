@@ -70,7 +70,7 @@ pipeline = {
             service=postpostprocess,
             name="postprocess",
             timeout=2000,
-            start_condition=service_successful_condition("dict-preprocess-0")
+            start_condition=service_successful_condition(group="other-group")
         )
     ]
 }
