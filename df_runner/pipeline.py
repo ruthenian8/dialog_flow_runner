@@ -1,3 +1,4 @@
+import logging
 from typing import Union, List, Dict, TypedDict, Optional
 
 from df_db_connector import DBAbstractConnector
@@ -7,7 +8,14 @@ from pydantic import BaseModel, Extra
 from df_runner import AbsProvider, Service, ServiceFunction, Runner, CLIProvider
 
 
+logger = logging.getLogger(__name__)
+
 _ServiceCallable = Union[Service, Actor, ServiceFunction]
+
+
+class ServiceGroup(BaseModel):
+    name: Optional[str] = None
+    services: List[_ServiceCallable]
 
 
 class Pipeline(BaseModel):
@@ -22,7 +30,7 @@ class Pipeline(BaseModel):
 
     provider: Optional[AbsProvider] = CLIProvider()
     connector: Optional[Union[DBAbstractConnector, Dict]] = None
-    services: List[Union[_ServiceCallable, List[_ServiceCallable]]] = None
+    services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup]] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -43,6 +51,34 @@ class Pipeline(BaseModel):
 
         self._runner = Runner(self._actor, self.connector, self.provider, self._preprocessing, self._postprocessing)
 
+    @staticmethod
+    def _get_group_name(
+            naming: Optional[Dict[str, int]] = None,
+            name: Optional[str] = None
+    ) -> str:
+        """
+        Method for name generation.
+        Name is generated using following convention:
+            'group_[NUMBER]'
+        If user provided name uses same syntax it will be changed to auto-generated.
+        """
+        if name is not None and not (name.startswith('group_')):
+            if naming is not None:
+                if name in naming:
+                    raise Exception(f"User defined group name collision: {name}")
+                else:
+                    naming[name] = True
+            return name
+        elif name is not None:
+            logger.warning(f"User defined name for group '{name}' violates naming convention, the service will be renamed")
+
+        if naming is not None:
+            number = naming.get('group', 0)
+            naming['group'] = number + 1
+            return f'group_{number}'
+        else:
+            return name
+
     def _create_service(
         self,
         service: _ServiceCallable,
@@ -62,20 +98,24 @@ class Pipeline(BaseModel):
 
     def _group_services(
         self,
-        services: List[_ServiceCallable],
+        services: Union[List[_ServiceCallable], ServiceGroup],
         naming: Optional[Dict[str, int]] = None,
         groups: Optional[List[str]] = None,
     ):
+        if isinstance(services, ServiceGroup):
+            name = services.name
+            services = services.services
+        else:
+            name = None
+
         if naming is not None:
-            number = naming.get('group', 0)
-            naming['group'] = number + 1
-            groups = groups + [f'group-{number}']
+            groups = groups + [self._get_group_name(naming, name)]
         else:
             naming = {}
             groups = []
 
         for service in services:
-            if isinstance(service, List):
+            if isinstance(service, List) or isinstance(service, ServiceGroup):
                 self._group_services(service, naming, groups)
             else:
                 self._create_service(service, naming, groups)

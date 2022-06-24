@@ -26,12 +26,15 @@ class Service(BaseModel):
 
     service: Union[Actor, ServiceFunction]
     name: Optional[str] = None
-    groups: Optional[List[str]] = None
     timeout: int = -1
     start_condition: ServiceCondition = always_start_condition
 
     class Config:
         extra = Extra.allow
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.groups = []
 
     def __call__(self, context: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Context:
         """
@@ -76,15 +79,15 @@ class Service(BaseModel):
         """
         Method for name generation.
         Name is generated using following convention:
-            actor: 'actor-[NUMBER]'
-            function: 'func-[REPR]-[NUMBER]'
-            service object: 'obj-[NUMBER]'
+            actor: 'actor_[NUMBER]'
+            function: 'func_[REPR]_[NUMBER]'
+            service object: 'obj_[NUMBER]'
         If user provided name uses same syntax it will be changed to auto-generated.
         """
         if name is not None and not (name.startswith('actor_') or name.startswith('func_') or name.startswith('obj_')):
             if naming is not None:
                 if name in naming:
-                    raise Exception(f"User defined name collision: {name}")
+                    raise Exception(f"User defined service name collision: {name}")
                 else:
                     naming[name] = True
             return name
@@ -123,14 +126,15 @@ class Service(BaseModel):
         groups = groups if groups is not None else []
         if isinstance(service, Service):
             service.name = cls._get_name(service, naming, service.name)
-            service.groups = service.groups + groups if service.groups is not None else groups
+            service.groups = groups
             return service
         elif isinstance(service, Actor) or isinstance(service, Callable):
-            return cls(
+            service = cls(
                 service=service,
                 name=cls._get_name(service, naming, name),
-                groups=groups,
                 **kwargs
             )
+            service.groups = groups
+            return service
         else:
             raise Exception(f"Unknown type of service {service}")

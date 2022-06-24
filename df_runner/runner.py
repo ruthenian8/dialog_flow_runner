@@ -96,3 +96,29 @@ class ScriptRunner(Runner):
             *args,
             **kwargs,
         )
+
+
+class PipelineRunner(Runner):
+    def _request_handler(
+        self,
+        request: Any,
+        ctx_id: Optional[Any] = None
+    ) -> Context:
+        context = self._connector.get(ctx_id)
+        if context is None:
+            context = Context()
+            context.framework_states['RUNNER'] = dict()
+
+        context.add_request(request)
+
+        for annotator in self._pre_annotators:
+            context = annotator(context, self._actor)
+
+        context = self._actor(context)
+
+        for annotator in self._post_annotators:
+            context = annotator(context, self._actor)
+
+        self._connector[ctx_id] = context
+
+        return context

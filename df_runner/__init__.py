@@ -6,7 +6,7 @@ from .provider import AbsProvider, PollingProvider, CallbackProvider, CLIProvide
 from .service import Service
 from .wrapper import Wrapper, WrappedService, wrap
 from .runner import Runner, ScriptRunner
-from .pipeline import Pipeline, create_pipelines
+from .pipeline import Pipeline, ServiceGroup, create_pipelines
 
 
 __author__ = "Denis Kuznetsov"

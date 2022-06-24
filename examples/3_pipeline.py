@@ -2,7 +2,7 @@ from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 
-from df_runner import CLIProvider, Service, Pipeline
+from df_runner import CLIProvider, Service, Pipeline, ServiceGroup
 from df_runner.conditions import service_successful_condition
 
 script = {
@@ -57,17 +57,18 @@ pipeline = {
             {
                 "service": preprocess,
                 "timeout": 1000,
-                "groups": ['group-meta', 'group-1']
             }
         ],
-        [
-            actor,
-            postprocess
-        ],
+        ServiceGroup(
+            name="other-group",
+            services=[
+                actor,
+                postprocess
+            ]
+        ),
         Service(
             service=postpostprocess,
             name="postprocess",
-            groups=['group-meta', 'group-0'],
             timeout=2000,
             start_condition=service_successful_condition("dict-preprocess-0")
         )
