@@ -81,7 +81,12 @@ class Service(BaseModel):
             service object: 'obj-[NUMBER]'
         If user provided name uses same syntax it will be changed to auto-generated.
         """
-        if name is not None and not (name.startswith('actor-') or name.startswith('func-') or name.startswith('obj-')):
+        if name is not None and not (name.startswith('actor_') or name.startswith('func_') or name.startswith('obj_')):
+            if naming is not None:
+                if name in naming:
+                    raise Exception(f"User defined name collision: {name}")
+                else:
+                    naming[name] = True
             return name
         elif name is not None:
             logger.warning(f"User defined name for service '{name}' violates naming convention, the service will be renamed")
@@ -89,16 +94,16 @@ class Service(BaseModel):
         if isinstance(service, Actor):
             name = 'actor'
         elif isinstance(service, Service):
-            name = 'obj'
+            name = 'serv'
         elif isinstance(service, Callable):
-            name = f'func-{service.__name__}'
+            name = f'func_{service.__name__}'
         else:
             name = 'unknown'
 
         if naming is not None:
             number = naming.get(name, 0)
             naming[name] = number + 1
-            return f'{name}-{number}'
+            return f'{name}_{number}'
         else:
             return name
 

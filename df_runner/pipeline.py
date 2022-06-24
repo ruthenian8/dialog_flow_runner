@@ -87,7 +87,6 @@ class Pipeline(BaseModel):
     def start(self):
         """
         Execute pipeline, an alias method for runner.start().
-        TODO: add threading policy here (especially in case of multiple runners)
         """
         self._runner.start()
 
