@@ -1,4 +1,4 @@
-from asyncio import Future, run
+from asyncio import Future, run, Task, gather
 from typing import Any, Optional, Union, List, Dict
 
 from df_engine.core import Context, Actor, Script
@@ -121,18 +121,27 @@ class PipelineRunner(Runner):
         annotators: List[Union[ServiceFunction, Service]],
         cancel_waiting: bool = False
     ) -> Context:
+        async def rerun(task: Task):
+            result = task.result()
+            return await self._run_annotators(result, actor, annotators)
+
+        running = set()
         for annotator in annotators:
             if context.framework_states['RUNNER'].get(annotator.name, ServiceState.NOT_RUN).value < 2:
                 ctx = annotator(context, actor)
                 if isinstance(ctx, Future):
-                    context = await ctx
-                    context = await self._run_annotators(context, actor, annotators)
+                    ctx.add_done_callback(rerun)
+                    running.add(ctx)
                 else:
                     context = ctx
+
         if cancel_waiting:
             for annotator in annotators:
                 if context.framework_states['RUNNER'].get(annotator.name) == ServiceState.WAITING:
                     context.framework_states['RUNNER'][annotator.name] = ServiceState.FAILED
+
+        contexts = gather(*running)
+        # TODO: merge contexts
         return context
 
     def _request_handler(
