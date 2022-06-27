@@ -6,6 +6,7 @@ from df_engine.core.types import NodeLabel2Type
 from df_db_connector import DBAbstractConnector
 
 from df_runner import Service, AbsProvider, CLIProvider, ServiceFunction, ServiceState
+from .context import merge
 
 
 class Runner:
@@ -140,9 +141,8 @@ class PipelineRunner(Runner):
                 if context.framework_states['RUNNER'].get(annotator.name) == ServiceState.WAITING:
                     context.framework_states['RUNNER'][annotator.name] = ServiceState.FAILED
 
-        contexts = gather(*running)
-        # TODO: merge contexts
-        return context
+        contexts = await gather(*running)
+        return merge(context, *contexts)
 
     def _request_handler(
         self,
