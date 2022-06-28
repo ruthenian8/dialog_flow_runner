@@ -49,7 +49,7 @@ class WrappedService(Service):
         **kwargs
     ):
         wrappers = [] if wrappers is None else wrappers
-        super().cast(service, naming, name, groups, wrappers=wrappers, **kwargs)
+        return super().cast(service, naming, name, groups, wrappers=wrappers, **kwargs)
 
 
 def wrap(*wrappers: Wrapper):

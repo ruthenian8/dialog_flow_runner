@@ -5,7 +5,7 @@ from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor
 from pydantic import BaseModel, Extra
 
-from df_runner import AbsProvider, Service, ServiceFunction, CLIProvider, PipelineRunner
+from df_runner import AbsProvider, Service, ServiceFunction, CLIProvider, PipelineRunner, Wrapper, WrappedService
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,11 @@ _ServiceCallable = Union[Service, Actor, ServiceFunction]
 class ServiceGroup(BaseModel):
     name: Optional[str] = None
     services: List[_ServiceCallable]
+    wrappers: Optional[List[Wrapper.__class__]] = None
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.wrappers = [] if self.wrappers is None else self.wrappers
 
 
 class Pipeline(BaseModel):
@@ -30,6 +35,7 @@ class Pipeline(BaseModel):
     provider: Optional[AbsProvider] = CLIProvider()
     connector: Optional[Union[DBAbstractConnector, Dict]] = None
     services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup]] = None
+    wrappers: Optional[List[Wrapper.__class__]] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -38,13 +44,14 @@ class Pipeline(BaseModel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.connector = dict() if self.connector is None else self.connector
+        self.wrappers = [] if self.wrappers is None else self.wrappers
 
         self._actor = None
         self._preprocessing = []
         self._postprocessing = []
 
         grouping = {}
-        self._group_services(self.services, grouping=grouping)
+        self._group_services(self.services, grouping=grouping, wrappers=self.wrappers)
 
         if self._actor is None:
             raise Exception("Incorrect pipeline description: missing actor")
@@ -84,9 +91,11 @@ class Pipeline(BaseModel):
         service: _ServiceCallable,
         naming: Dict[str, int],
         grouping: Dict[str, List[str]],
-        groups: List[str]
+        groups: List[str],
+        wrappers: Optional[List[Wrapper.__class__]] = None
     ):
-        inst = Service.cast(service, naming, groups=groups)
+        wrappers = [wrapper() for wrapper in wrappers]
+        inst = WrappedService.cast(service, naming, groups=groups, wrappers=wrappers)
 
         if isinstance(inst.service, Actor):
             if self._actor is None:
@@ -106,10 +115,14 @@ class Pipeline(BaseModel):
         group: Union[List[_ServiceCallable], ServiceGroup],
         naming: Optional[Dict[str, int]] = None,
         grouping: Optional[Dict[str, List[str]]] = None,
-        groups: Optional[List[str]] = None
+        groups: Optional[List[str]] = None,
+        wrappers: Optional[List[Wrapper.__class__]] = None
     ):
+        wrappers = [] if wrappers is None else wrappers
+
         if isinstance(group, ServiceGroup):
             name = group.name
+            wrappers = wrappers + group.wrappers
             group = group.services
         else:
             name = None
@@ -124,9 +137,9 @@ class Pipeline(BaseModel):
 
         for service in group:
             if isinstance(service, List) or isinstance(service, ServiceGroup):
-                self._group_services(service, naming, grouping, groups)
+                self._group_services(service, naming, grouping, groups, wrappers)
             else:
-                self._create_service(service, naming, grouping, groups)
+                self._create_service(service, naming, grouping, groups, wrappers)
 
     @property
     def processed_services(self):

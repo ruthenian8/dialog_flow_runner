@@ -161,8 +161,6 @@ class PipelineRunner(Runner):
         context = self._actor(context)
         context = run(self._run_annotators(context, self._actor, self._post_annotators, True))
 
-        print(context.framework_states['RUNNER'])
-        context.framework_states.pop('RUNNER')
+        context.framework_states['RUNNER'] = dict()
         self._connector[ctx_id] = context
-
         return context
