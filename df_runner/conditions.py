@@ -22,8 +22,8 @@ def service_successful_condition(service: Optional[str] = None, group: Optional[
     if service is None and group is None:
         raise Exception(f"In one of the conditions none service ({service}) nor group ({group}) were defined!")
 
-    def check_service_state(name: str, context: Context):
-        state = context.framework_states['RUNNER'].get(name, ServiceState.NOT_RUN)
+    def check_service_state(name: str, ctx: Context):
+        state = ctx.framework_states['RUNNER'].get(name, ServiceState.NOT_RUN)
         if state.value < 3:
             return ConditionState.WAITING
         elif state == ServiceState.FINISHED:
@@ -31,11 +31,11 @@ def service_successful_condition(service: Optional[str] = None, group: Optional[
         else:
             return ConditionState.DENIED
 
-    def internal(context: Context, actor: Actor) -> ConditionState:
+    def internal(ctx: Context, actor: Actor) -> ConditionState:
         if service is not None:
-            return check_service_state(service, context)
+            return check_service_state(service, ctx)
         if group is not None:
-            state = [check_service_state(serv, context) for serv in context.framework_states['SERVICES'][group]]
+            state = [check_service_state(serv, ctx) for serv in ctx.framework_states['SERVICES'][group]]
             if ConditionState.DENIED in state:
                 return ConditionState.DENIED
             elif ConditionState.WAITING in state:

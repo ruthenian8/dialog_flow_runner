@@ -51,24 +51,24 @@ class Runner:
         :user_input: - input, received from user.
         :ctx_id: - id of current user in self._connector database (if not the first input).
         """
-        context = self._connector.get(ctx_id)
-        if context is None:
-            context = Context()
-            context.framework_states['RUNNER'] = dict()
+        ctx = self._connector.get(ctx_id)
+        if ctx is None:
+            ctx = Context()
+            ctx.framework_states['RUNNER'] = dict()
 
-        context.add_request(request)
+        ctx.add_request(request)
 
         for annotator in self._pre_annotators:
-            context = annotator(context, self._actor)
+            ctx = annotator(ctx, self._actor)
 
-        context = self._actor(context)
+        ctx = self._actor(ctx)
 
         for annotator in self._post_annotators:
-            context = annotator(context, self._actor)
+            ctx = annotator(ctx, self._actor)
 
-        self._connector[ctx_id] = context
+        self._connector[ctx_id] = ctx
 
-        return context
+        return ctx
 
 
 class ScriptRunner(Runner):
@@ -117,7 +117,7 @@ class PipelineRunner(Runner):
 
     async def _run_annotators(
         self,
-        context: Context,
+        ctx: Context,
         actor: Actor,
         annotators: List[Union[ServiceFunction, Service]],
         cancel_waiting: bool = False
@@ -128,39 +128,39 @@ class PipelineRunner(Runner):
 
         running = set()
         for annotator in annotators:
-            if context.framework_states['RUNNER'].get(annotator.name, ServiceState.NOT_RUN).value < 2:
-                ctx = annotator(context, actor)
-                if isinstance(ctx, Future):
-                    ctx.add_done_callback(rerun)
-                    running.add(ctx)
+            if ctx.framework_states['RUNNER'].get(annotator.name, ServiceState.NOT_RUN).value < 2:
+                service_result = annotator(ctx, actor)
+                if isinstance(service_result, Future):
+                    service_result.add_done_callback(rerun)
+                    running.add(service_result)
                 else:
-                    context = ctx
+                    ctx = service_result
 
         if cancel_waiting:
             for annotator in annotators:
-                if context.framework_states['RUNNER'].get(annotator.name) == ServiceState.WAITING:
-                    context.framework_states['RUNNER'][annotator.name] = ServiceState.FAILED
+                if ctx.framework_states['RUNNER'].get(annotator.name) == ServiceState.WAITING:
+                    ctx.framework_states['RUNNER'][annotator.name] = ServiceState.FAILED
 
         contexts = await gather(*running)
-        return merge(context, *contexts)
+        return merge(ctx, *contexts)
 
     def _request_handler(
         self,
         request: Any,
         ctx_id: Optional[Any] = None
     ) -> Context:
-        context = self._connector.get(ctx_id)
-        if context is None:
-            context = Context()
-            context.framework_states['SERVICES'] = self._grouping
-            context.framework_states['RUNNER'] = dict()
+        ctx = self._connector.get(ctx_id)
+        if ctx is None:
+            ctx = Context()
+            ctx.framework_states['SERVICES'] = self._grouping
+            ctx.framework_states['RUNNER'] = dict()
 
-        context.add_request(request)
+        ctx.add_request(request)
 
-        context = run(self._run_annotators(context, self._actor, self._pre_annotators, True))
-        context = self._actor(context)
-        context = run(self._run_annotators(context, self._actor, self._post_annotators, True))
+        ctx = run(self._run_annotators(ctx, self._actor, self._pre_annotators, True))
+        ctx = self._actor(ctx)
+        ctx = run(self._run_annotators(ctx, self._actor, self._post_annotators, True))
 
-        context.framework_states['RUNNER'] = dict()
-        self._connector[ctx_id] = context
-        return context
+        ctx.framework_states['RUNNER'] = dict()
+        self._connector[ctx_id] = ctx
+        return ctx

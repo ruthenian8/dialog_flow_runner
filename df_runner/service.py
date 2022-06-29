@@ -37,7 +37,7 @@ class Service(BaseModel):
         super().__init__(**kwargs)
         self.groups = []
 
-    def __call__(self, context: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Union[Future[Context], Context]:
+    def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Union[Future[Context], Context]:
         """
         Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
         It also sets named variables in context.framework_states for other services start_conditions.
@@ -50,27 +50,27 @@ class Service(BaseModel):
                 else:
                     actor = self.service
 
-            state = self.start_condition(context, self.service)
+            state = self.start_condition(ctx, self.service)
             if state == ConditionState.ALLOWED:
                 if iscoroutinefunction(self.service):
-                    context.framework_states['RUNNER'][self.name] = ServiceState.RUNNING
-                    context = self.service(context, actor)
+                    ctx.framework_states['RUNNER'][self.name] = ServiceState.RUNNING
+                    ctx = self.service(ctx, actor)
                 else:
-                    context = self.service(context, actor)
-                    context.framework_states['RUNNER'][self.name] = ServiceState.FINISHED
+                    ctx = self.service(ctx, actor)
+                    ctx.framework_states['RUNNER'][self.name] = ServiceState.FINISHED
             elif state == ConditionState.WAITING:
-                context.framework_states['RUNNER'][self.name] = ServiceState.WAITING
+                ctx.framework_states['RUNNER'][self.name] = ServiceState.WAITING
             else:
-                context.framework_states['RUNNER'][self.name] = ServiceState.FAILED
+                ctx.framework_states['RUNNER'][self.name] = ServiceState.FAILED
 
         except Exception as e:
-            context.framework_states['RUNNER'][self.name] = ServiceState.FAILED
+            ctx.framework_states['RUNNER'][self.name] = ServiceState.FAILED
             if isinstance(e, BrokenPipeError):
                 logger.info(e)
             else:
                 logger.error(e)
 
-        return context
+        return ctx
 
     @staticmethod
     def _get_name(
