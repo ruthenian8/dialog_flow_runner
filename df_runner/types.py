@@ -5,6 +5,15 @@ from df_engine.core import Context, Actor
 
 
 class ServiceState(Enum):
+    """
+    Enum, representing service in a pipeline state.
+    The following states are supported:
+        NOT_RUN: service has not been executed yet (the default one)
+        PENDING: service depends on other currently running service and can not be executed right now
+        FINISHED: service executed successfully
+        FAILED: service execution failed for some reason
+    """
+
     NOT_RUN = 0
     PENDING = 1
     RUNNING = 2
@@ -13,6 +22,14 @@ class ServiceState(Enum):
 
 
 class ConditionState(Enum):
+    """
+    Enum, representing service condition state.
+    The following states are supported:
+        ALLOWED: service can be executed and all its conditions met
+        DENIED: service can not be executed, some services it depends on failed
+        PENDING: service can not be executed right now, some services it depends on are still running
+    """
+
     ALLOWED = 0
     DENIED = 1
     PENDING = 2

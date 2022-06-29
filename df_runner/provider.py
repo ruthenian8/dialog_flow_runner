@@ -53,7 +53,7 @@ class PollingProvider(AbsProvider):
     def run(self, callback: ProviderFunction):
         """
         Method, running a request - response cycle in a loop, sleeping for self._timeout seconds after each iteration.
-        TODO: add timeout support
+        TODO: add timeout support, make async
         """
         super().run(callback)
         while True:

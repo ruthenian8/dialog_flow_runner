@@ -101,6 +101,10 @@ class ScriptRunner(Runner):
 
 
 class PipelineRunner(Runner):
+    """
+    A special Runner for use in Pipelines.
+    """
+
     def __init__(
         self,
         actor: Union[Actor, Service],
@@ -122,6 +126,12 @@ class PipelineRunner(Runner):
         annotators: List[Union[ServiceFunction, Service]],
         cancel_waiting: bool = False
     ) -> Context:
+        """
+        A method for async services list procession.
+        It manages service execution result: runs synchronous methods synchronously and collects asynchronous services tasks into a list.
+        For every unfinished task a callback is added, rerunning services that have not already been run in case of requirements satisfaction.
+        After all possible services run or TODO: timeout time exceeded, marks all pending services as FAILED and finishes.
+        """
         async def rerun(task: Task):
             result = task.result()
             return await self._run_annotators(result, actor, annotators)

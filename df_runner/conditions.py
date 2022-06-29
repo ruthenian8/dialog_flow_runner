@@ -23,6 +23,10 @@ def service_successful_condition(service: Optional[str] = None, group: Optional[
         raise Exception(f"In one of the conditions none service ({service}) nor group ({group}) were defined!")
 
     def check_service_state(name: str, ctx: Context):
+        """
+        Function that checks single service ServiceState and returns ConditionState for this service.
+        """
+
         state = ctx.framework_states['RUNNER'].get(name, ServiceState.NOT_RUN)
         if state.value < 3:
             return ConditionState.PENDING
@@ -32,6 +36,11 @@ def service_successful_condition(service: Optional[str] = None, group: Optional[
             return ConditionState.DENIED
 
     def internal(ctx: Context, actor: Actor) -> ConditionState:
+        """
+        Function that checks single or multiple service ServiceState and returns ConditionState.
+        For multiple services it is the minimal value (i.e. DENIED if one failed and PENDING if one pending).
+        """
+
         if service is not None:
             return check_service_state(service, ctx)
         if group is not None:

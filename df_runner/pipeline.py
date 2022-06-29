@@ -13,6 +13,17 @@ _ServiceCallable = Union[Service, Actor, ServiceFunction]
 
 
 class ServiceGroup(BaseModel):
+    """
+    An instance that represents a service group.
+    Group can be also defined in pipeline dict as a nested service list.
+    Instance of this class, however, provides possibility to explicitly define group name and wrapper classes for all group members.
+    It accepts:
+        name - custom group name (used for identification)
+            NB! if name is not provided, it will be generated.
+        services - a Service list in this group, may include Actor
+        wrappers (optionally) - Wrapper classes array to add to all group services
+    """
+
     name: Optional[str] = None
     services: List[_ServiceCallable]
     wrappers: Optional[List[Wrapper.__class__]] = None
@@ -30,6 +41,7 @@ class Pipeline(BaseModel):
         services - a Service list for this pipeline, should include Actor
         provider (optionally) - an AbsProvider instance for this pipeline
         connector (optionally) - an DBAbstractConnector instance for this pipeline or a dict
+        wrappers (optionally) - Wrapper classes array to add to all pipeline services
     """
 
     provider: Optional[AbsProvider] = CLIProvider()
@@ -94,6 +106,12 @@ class Pipeline(BaseModel):
         groups: List[str],
         wrappers: Optional[List[Wrapper.__class__]] = None
     ):
+        """
+        Method for Service creation.
+        Handles also wrappers creation for the service and adding it to specific groups.
+        Keeps track of inner pipeline structure, separates preprocessors, postprocessors and actor.
+        Raises an error in case of second actor appearance.
+        """
         wrappers = [wrapper() for wrapper in wrappers]
         inst = WrappedService.cast(service, naming, groups=groups, wrappers=wrappers)
 
@@ -118,6 +136,12 @@ class Pipeline(BaseModel):
         groups: Optional[List[str]] = None,
         wrappers: Optional[List[Wrapper.__class__]] = None
     ):
+        """
+        Method for pipeline services creation.
+        It iterates service groups recursively and creates string arrays of group names for each service.
+        As a result, flat services lists are generated.
+        It also creates a naming dict, which is used during service and group name generation.
+        """
         wrappers = [] if wrappers is None else wrappers
 
         if isinstance(group, ServiceGroup):
@@ -142,7 +166,11 @@ class Pipeline(BaseModel):
                 self._create_service(service, naming, grouping, groups, wrappers)
 
     @property
-    def processed_services(self):
+    def processed_services(self) -> List[Service]:
+        """
+        Returns a copy of created inner services flat array used during actual pipeline running.
+        Might be used for debugging purposes.
+        """
         return self._runner._pre_annotators + [self._runner._actor] + self._runner._post_annotators
 
     def start(self):
@@ -159,6 +187,7 @@ def create_pipelines(pipeline: TypedDict('ServiceDict', {
 })):
     """
     TODO: requires refactoring, maybe add multiple providers support for one Pipeline (with async)
+    TODO: ... needed anymore?
     """
     connector = pipeline['connector']
     providers = pipeline['provider'] if isinstance(pipeline['provider'], list) else [pipeline['provider']]

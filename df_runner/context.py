@@ -2,6 +2,11 @@ from df_engine.core import Context
 
 
 def merge(*contexts: Context):
+    """
+    Function that merges multiple contexts.
+    It adds new values to dicts defined in Context class and replaces collisions with data defined later in contexts list.
+    """
+
     context = {
         'id': contexts[0].id,
         'labels': dict(),
