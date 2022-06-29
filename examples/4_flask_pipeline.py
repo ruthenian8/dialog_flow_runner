@@ -1,11 +1,10 @@
 from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
-from flask import Flask
+from flask import Flask, request
 
-from df_runner import Pipeline, Service
+from df_runner import Pipeline, Service, CallbackProvider
 from df_runner.conditions import service_successful_condition
-from df_runner.providers import FlaskProvider
 
 
 app = Flask(__name__)
@@ -49,8 +48,10 @@ def postprocess(ctx: Context, actor: Actor) -> Context:
     return ctx
 
 
+provider = CallbackProvider()
+
 pipeline = {
-    "provider": FlaskProvider(app, param_name='request'),
+    "provider": provider,
     "connector": {},
     "services": [
         {
@@ -69,6 +70,12 @@ pipeline = {
         )
     ]
 }
+
+
+@app.route('/df_provider')
+def route():
+    req = request.args.get('request')
+    return provider.on_request(req)
 
 
 if __name__ == '__main__':

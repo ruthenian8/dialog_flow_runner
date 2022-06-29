@@ -67,7 +67,7 @@ class CallbackProvider(AbsProvider):
     Callback provider is waiting for user input and answers once it gets one.
     """
 
-    def _on_request(self, request: Any) -> Any:
+    def on_request(self, request: Any) -> Any:
         """
         Method invoked on user input, should run self._callback function (if any).
         """
