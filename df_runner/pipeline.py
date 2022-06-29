@@ -60,8 +60,8 @@ class Pipeline(BaseModel):
 
     @staticmethod
     def _get_group_name(
-            naming: Optional[Dict[str, int]] = None,
-            name: Optional[str] = None
+        naming: Optional[Dict[str, int]] = None,
+        given_name: Optional[str] = None
     ) -> str:
         """
         Method for name generation.
@@ -69,22 +69,22 @@ class Pipeline(BaseModel):
             'group_[NUMBER]'
         If user provided name uses same syntax it will be changed to auto-generated.
         """
-        if name is not None and not (name.startswith('group_')):
+        if given_name is not None and not (given_name.startswith('group_')):
             if naming is not None:
-                if name in naming:
-                    raise Exception(f"User defined group name collision: {name}")
+                if given_name in naming:
+                    raise Exception(f"User defined group name collision: {given_name}")
                 else:
-                    naming[name] = True
-            return name
-        elif name is not None:
-            logger.warning(f"User defined name for group '{name}' violates naming convention, the service will be renamed")
+                    naming[given_name] = True
+            return given_name
+        elif given_name is not None:
+            logger.warning(f"User defined name for group '{given_name}' violates naming convention, the service will be renamed")
 
         if naming is not None:
             number = naming.get('group', 0)
             naming['group'] = number + 1
             return f'group_{number}'
         else:
-            return name
+            return given_name
 
     def _create_service(
         self,

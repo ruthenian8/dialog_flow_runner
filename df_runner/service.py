@@ -76,7 +76,7 @@ class Service(BaseModel):
     def _get_name(
         service: Union[Actor, Dict, ServiceFunction],
         naming: Optional[Dict[str, int]] = None,
-        name: Optional[str] = None
+        given_name: Optional[str] = None
     ) -> str:
         """
         Method for name generation.
@@ -86,15 +86,15 @@ class Service(BaseModel):
             service object: 'obj_[NUMBER]'
         If user provided name uses same syntax it will be changed to auto-generated.
         """
-        if name is not None and not (name.startswith('actor_') or name.startswith('func_') or name.startswith('obj_')):
+        if given_name is not None and not (given_name.startswith('actor_') or given_name.startswith('func_') or given_name.startswith('obj_')):
             if naming is not None:
-                if name in naming:
-                    raise Exception(f"User defined service name collision: {name}")
+                if given_name in naming:
+                    raise Exception(f"User defined service name collision: {given_name}")
                 else:
-                    naming[name] = True
-            return name
-        elif name is not None:
-            logger.warning(f"User defined name for service '{name}' violates naming convention, the service will be renamed")
+                    naming[given_name] = True
+            return given_name
+        elif given_name is not None:
+            logger.warning(f"User defined name for service '{given_name}' violates naming convention, the service will be renamed")
 
         if isinstance(service, Actor):
             name = 'actor'
