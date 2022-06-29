@@ -138,7 +138,7 @@ class PipelineRunner(Runner):
 
         if cancel_waiting:
             for annotator in annotators:
-                if ctx.framework_states['RUNNER'].get(annotator.name) == ServiceState.WAITING:
+                if ctx.framework_states['RUNNER'].get(annotator.name) == ServiceState.PENDING:
                     ctx.framework_states['RUNNER'][annotator.name] = ServiceState.FAILED
 
         contexts = await gather(*running)

@@ -58,8 +58,8 @@ class Service(BaseModel):
                 else:
                     ctx = self.service(ctx, actor)
                     ctx.framework_states['RUNNER'][self.name] = ServiceState.FINISHED
-            elif state == ConditionState.WAITING:
-                ctx.framework_states['RUNNER'][self.name] = ServiceState.WAITING
+            elif state == ConditionState.PENDING:
+                ctx.framework_states['RUNNER'][self.name] = ServiceState.PENDING
             else:
                 ctx.framework_states['RUNNER'][self.name] = ServiceState.FAILED
 

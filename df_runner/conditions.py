@@ -25,7 +25,7 @@ def service_successful_condition(service: Optional[str] = None, group: Optional[
     def check_service_state(name: str, ctx: Context):
         state = ctx.framework_states['RUNNER'].get(name, ServiceState.NOT_RUN)
         if state.value < 3:
-            return ConditionState.WAITING
+            return ConditionState.PENDING
         elif state == ServiceState.FINISHED:
             return ConditionState.ALLOWED
         else:
@@ -38,8 +38,8 @@ def service_successful_condition(service: Optional[str] = None, group: Optional[
             state = [check_service_state(serv, ctx) for serv in ctx.framework_states['SERVICES'][group]]
             if ConditionState.DENIED in state:
                 return ConditionState.DENIED
-            elif ConditionState.WAITING in state:
-                return ConditionState.WAITING
+            elif ConditionState.PENDING in state:
+                return ConditionState.PENDING
             else:
                 return ConditionState.ALLOWED
 

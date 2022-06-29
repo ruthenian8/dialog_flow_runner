@@ -6,7 +6,7 @@ from df_engine.core import Context, Actor
 
 class ServiceState(Enum):
     NOT_RUN = 0
-    WAITING = 1
+    PENDING = 1
     RUNNING = 2
     FINISHED = 3
     FAILED = 4
@@ -15,7 +15,7 @@ class ServiceState(Enum):
 class ConditionState(Enum):
     ALLOWED = 0
     DENIED = 1
-    WAITING = 2
+    PENDING = 2
 
 
 """
