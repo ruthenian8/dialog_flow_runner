@@ -19,18 +19,18 @@ class Runner:
     def __init__(
         self,
         actor: Union[Actor, Service],
-        connector: Optional[Union[DBAbstractConnector, Dict]] = None,
+        contex_db: Optional[Union[DBAbstractConnector, Dict]] = None,
         provider: AbsProvider = CLIProvider(),
         pre_annotators: Optional[List[Union[ServiceFunction, Service]]] = None,
         post_annotators: Optional[List[Union[ServiceFunction, Service]]] = None,
         *args,
         **kwargs
     ):
-        self._connector = dict() if connector is None else connector
-        self._provider = provider
-        self._actor = actor
-        self._pre_annotators = [] if pre_annotators is None else pre_annotators
-        self._post_annotators = [] if post_annotators is None else post_annotators
+        self.contex_db = dict() if contex_db is None else contex_db
+        self.provider = provider
+        self.actor = actor
+        self.pre_annotators = [] if pre_annotators is None else pre_annotators
+        self.post_annotators = [] if post_annotators is None else post_annotators
 
     def start(self) -> None:
         """
@@ -38,8 +38,8 @@ class Runner:
         Since one runner always has only one provider, there is no need for thread management here.
         """
         def callback(request: Any) -> Context:
-            return self._request_handler(request, self._provider.ctx_id)
-        self._provider.run(callback)
+            return self._request_handler(request, self.provider.ctx_id)
+        self.provider.run(callback)
 
     def _request_handler(
         self,
@@ -51,22 +51,22 @@ class Runner:
         :user_input: - input, received from user.
         :ctx_id: - id of current user in self._connector database (if not the first input).
         """
-        ctx = self._connector.get(ctx_id)
+        ctx = self.contex_db.get(ctx_id)
         if ctx is None:
             ctx = Context()
             ctx.framework_states['RUNNER'] = dict()
 
         ctx.add_request(request)
 
-        for annotator in self._pre_annotators:
-            ctx = annotator(ctx, self._actor)
+        for annotator in self.pre_annotators:
+            ctx = annotator(ctx, self.actor)
 
-        ctx = self._actor(ctx)
+        ctx = self.actor(ctx)
 
-        for annotator in self._post_annotators:
-            ctx = annotator(ctx, self._actor)
+        for annotator in self.post_annotators:
+            ctx = annotator(ctx, self.actor)
 
-        self._connector[ctx_id] = ctx
+        self.contex_db[ctx_id] = ctx
 
         return ctx
 
@@ -159,7 +159,7 @@ class PipelineRunner(Runner):
         request: Any,
         ctx_id: Optional[Any] = None
     ) -> Context:
-        ctx = self._connector.get(ctx_id)
+        ctx = self.contex_db.get(ctx_id)
         if ctx is None:
             ctx = Context()
             ctx.framework_states['SERVICES'] = self._grouping
@@ -167,10 +167,10 @@ class PipelineRunner(Runner):
 
         ctx.add_request(request)
 
-        ctx = run(self._run_annotators(ctx, self._actor, self._pre_annotators, True))
-        ctx = self._actor(ctx)
-        ctx = run(self._run_annotators(ctx, self._actor, self._post_annotators, True))
+        ctx = run(self._run_annotators(ctx, self.actor, self.pre_annotators, True))
+        ctx = self.actor(ctx)
+        ctx = run(self._run_annotators(ctx, self.actor, self.post_annotators, True))
 
         ctx.framework_states['RUNNER'] = dict()
-        self._connector[ctx_id] = ctx
+        self.contex_db[ctx_id] = ctx
         return ctx

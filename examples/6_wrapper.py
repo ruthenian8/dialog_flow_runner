@@ -2,7 +2,7 @@ from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 
-from df_runner import CLIProvider, Service, wrap, Wrapper, Pipeline
+from df_runner import CLIProvider, Service, wrap, Wrapper, Pipeline, ServiceGroup
 from df_runner.conditions import service_successful_condition
 
 script = {
@@ -50,6 +50,20 @@ def wrapped_service(ctx: Context, actor: Actor) -> Context:
     return ctx
 
 
+class ActorWrapper(Wrapper):
+    def __init__(self, **kwargs):
+        def pre_func(ctx: Context, actor: Actor) -> Context:
+            print(f"        actor pre wrapper")
+            return ctx
+
+        def post_func(ctx: Context, actor: Actor) -> Context:
+            print(f"        actor post wrapper")
+            return ctx
+
+        super().__init__(pre_func=pre_func, post_func=post_func, **kwargs)
+
+
+
 pipeline = {
     "provider": CLIProvider(),
     "connector": dict(),
@@ -58,13 +72,18 @@ pipeline = {
             "service": preprocess,
             "timeout": 1000
         },
-        actor,
+        ServiceGroup(
+            wrappers=[ActorWrapper],
+            services=[
+                actor
+            ]
+        ),
         wrapped_service,
         Service(
             service=postprocess,
             name="postprocess",
             timeout=2000,
-            start_condition=service_successful_condition("preprocess")
+            start_condition=service_successful_condition("func_preprocess_0")
         )
     ]
 }

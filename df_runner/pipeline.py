@@ -5,7 +5,8 @@ from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor
 from pydantic import BaseModel, Extra
 
-from df_runner import AbsProvider, Service, ServiceFunction, CLIProvider, PipelineRunner, Wrapper, WrappedService
+from df_runner import AbsProvider, Service, ServiceFunction, CLIProvider, PipelineRunner, Wrapper, WrappedService, ServiceCondition
+from df_runner.conditions import always_start_condition
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,8 @@ class ServiceGroup(BaseModel):
     name: Optional[str] = None
     services: List[_ServiceCallable]
     wrappers: Optional[List[Wrapper.__class__]] = None
+    timeout: int = -1  # TODO: timeout
+    start_condition: ServiceCondition = always_start_condition  # TODO: add with aggregation
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -45,7 +48,7 @@ class Pipeline(BaseModel):
     """
 
     provider: Optional[AbsProvider] = CLIProvider()
-    connector: Optional[Union[DBAbstractConnector, Dict]] = None
+    contex_db: Optional[Union[DBAbstractConnector, Dict]] = None
     services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup]] = None
     wrappers: Optional[List[Wrapper.__class__]] = None
 
@@ -55,7 +58,7 @@ class Pipeline(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.connector = dict() if self.connector is None else self.connector
+        self.contex_db = dict() if self.contex_db is None else self.contex_db
         self.wrappers = [] if self.wrappers is None else self.wrappers
 
         self._actor = None
@@ -68,7 +71,7 @@ class Pipeline(BaseModel):
         if self._actor is None:
             raise Exception("Incorrect pipeline description: missing actor")
 
-        self._runner = PipelineRunner(self._actor, self.connector, self.provider, self._preprocessing, self._postprocessing, grouping)
+        self._runner = PipelineRunner(self._actor, self.contex_db, self.provider, self._preprocessing, self._postprocessing, grouping)
 
     @staticmethod
     def _get_group_name(
@@ -171,7 +174,7 @@ class Pipeline(BaseModel):
         Returns a copy of created inner services flat array used during actual pipeline running.
         Might be used for debugging purposes.
         """
-        return self._runner._pre_annotators + [self._runner._actor] + self._runner._post_annotators
+        return self._runner.pre_annotators + [self._runner.actor] + self._runner.post_annotators
 
     def start(self):
         """
@@ -182,13 +185,13 @@ class Pipeline(BaseModel):
 
 def create_pipelines(pipeline: TypedDict('ServiceDict', {
     'provider': Union[AbsProvider, List[AbsProvider]],
-    'connector': Optional[DBAbstractConnector],
+    'contex_db': Optional[DBAbstractConnector],
     'services': List[Union[Service, Actor, Dict, ServiceFunction]]
 })):
     """
     TODO: requires refactoring, maybe add multiple providers support for one Pipeline (with async)
     TODO: ... needed anymore?
     """
-    connector = pipeline['connector']
+    connector = pipeline['contex_db']
     providers = pipeline['provider'] if isinstance(pipeline['provider'], list) else [pipeline['provider']]
     return [Pipeline(provider=provider, services=pipeline['services'], connector=connector) for provider in providers]
