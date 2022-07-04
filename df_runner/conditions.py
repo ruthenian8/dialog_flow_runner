@@ -44,7 +44,7 @@ def service_successful_condition(service: Optional[str] = None, group: Optional[
         if service is not None:
             return check_service_state(service, ctx)
         if group is not None:
-            state = [check_service_state(serv, ctx) for serv in ctx.framework_states['SERVICES'][group]]
+            state = [check_service_state(serv, ctx) for serv in ctx.framework_states['SERVICES'].get(group, [ConditionState.DENIED])]
             if ConditionState.DENIED in state:
                 return ConditionState.DENIED
             elif ConditionState.PENDING in state:

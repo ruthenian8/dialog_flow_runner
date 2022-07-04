@@ -1,5 +1,5 @@
 import logging
-from asyncio import Future, iscoroutinefunction
+from asyncio import Future, iscoroutinefunction, create_task
 from typing import Optional, Union, Dict, Callable, List
 
 from df_engine.core import Actor, Context
@@ -43,18 +43,18 @@ class Service(BaseModel):
         It also sets named variables in context.framework_states for other services start_conditions.
         If execution fails the error is caught here.
         """
-        try:
-            if not isinstance(self.service, Actor):
-                if actor is None:
-                    raise AttributeError(f"For service {self.name} no actor has been provided!")
-                else:
-                    actor = self.service
+        if not isinstance(self.service, Actor):
+            if actor is None:
+                raise AttributeError(f"For service {self.name} no actor has been provided!")
+            else:
+                actor = self.service
 
+        try:
             state = self.start_condition(ctx, self.service)
             if state == ConditionState.ALLOWED:
                 if iscoroutinefunction(self.service):
                     ctx.framework_states['RUNNER'][self.name] = ServiceState.RUNNING
-                    ctx = self.service(ctx, actor)
+                    ctx = create_task(self.service(ctx, actor), name=self.name)
                 else:
                     ctx = self.service(ctx, actor)
                     ctx.framework_states['RUNNER'][self.name] = ServiceState.FINISHED
@@ -65,10 +65,7 @@ class Service(BaseModel):
 
         except Exception as e:
             ctx.framework_states['RUNNER'][self.name] = ServiceState.FAILED
-            if isinstance(e, BrokenPipeError):
-                logger.info(e)
-            else:
-                logger.error(e)
+            logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
 
         return ctx
 

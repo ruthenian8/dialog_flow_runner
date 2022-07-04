@@ -1,5 +1,6 @@
 import uuid
 from abc import abstractmethod, ABC
+from asyncio import sleep
 from typing import Optional, Any
 
 from df_runner import ProviderFunction
@@ -14,7 +15,7 @@ class AbsProvider(ABC):
         self.ctx_id: Optional[Any] = None
         self._callback: Optional[ProviderFunction] = None
 
-    def run(self, callback: ProviderFunction):
+    async def run(self, callback: ProviderFunction):
         """
         Method invoked when user first interacts with the runner and dialog starts.
         A good place to generate self.ctx_id - a unique ID of the dialog.
@@ -50,16 +51,16 @@ class PollingProvider(AbsProvider):
         """
         raise NotImplementedError
 
-    def run(self, callback: ProviderFunction):
+    async def run(self, callback: ProviderFunction):
         """
         Method, running a request - response cycle in a loop, sleeping for self._timeout seconds after each iteration.
-        TODO: add timeout support, make async
         """
-        super().run(callback)
+        await super().run(callback)
         while True:
             request = self._request()
-            self._respond(self._callback(request).last_response)
-            # asyncio.sleep(self._timeout)
+            response = await self._callback(request)
+            self._respond(response.last_response)
+            await sleep(self._timeout)
 
 
 class CallbackProvider(AbsProvider):
@@ -67,11 +68,12 @@ class CallbackProvider(AbsProvider):
     Callback provider is waiting for user input and answers once it gets one.
     """
 
-    def on_request(self, request: Any) -> Any:
+    async def on_request(self, request: Any) -> Any:
         """
-        Method invoked on user input, should run self._callback function (if any).
+        Method invoked on user input, should run await self._callback function (if any).
         """
-        return self._callback(request).last_response
+        response = await self._callback(request)
+        return response.last_response
 
 
 class CLIProvider(PollingProvider):
@@ -90,11 +92,11 @@ class CLIProvider(PollingProvider):
         self._prompt_request: str = prompt_request
         self._prompt_response: str = prompt_response
 
-    def run(self, callback: ProviderFunction):
+    async def run(self, callback: ProviderFunction):
         self.ctx_id = uuid.uuid4()
         if self._intro is not None:
             print(self._intro)
-        super().run(callback)
+        await super().run(callback)
 
     def _request(self) -> str:
         return input(self._prompt_request)

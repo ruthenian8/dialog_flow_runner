@@ -1,3 +1,5 @@
+from asyncio import sleep
+
 from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
@@ -44,7 +46,8 @@ def postprocess(ctx: Context, actor: Actor) -> Context:
     return ctx
 
 
-def postpostprocess(ctx: Context, actor: Actor) -> Context:
+async def postpostprocess(ctx: Context, actor: Actor) -> Context:
+    await sleep(3)
     print(f"    another postprocession Service (defined as a dict)")
     return ctx
 
@@ -62,8 +65,8 @@ pipeline = {
         Service(
             service=postpostprocess,
             name="postprocess",
-            timeout=2000,
-            start_condition=service_successful_condition(group="other-group")
+            timeout=2,
+            start_condition=service_successful_condition(service="func_preprocess_0")
         )
     ]
 }

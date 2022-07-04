@@ -1,4 +1,5 @@
-from asyncio import Future, run, Task, gather
+import logging
+from asyncio import run, wait_for, as_completed, TimeoutError as AsyncTimeoutError, Task
 from typing import Any, Optional, Union, List, Dict
 
 from df_engine.core import Context, Actor, Script
@@ -7,6 +8,9 @@ from df_db_connector import DBAbstractConnector
 
 from df_runner import Service, AbsProvider, CLIProvider, ServiceFunction, ServiceState
 from .context import merge
+
+
+logger = logging.getLogger(__name__)
 
 
 class Runner:
@@ -37,11 +41,11 @@ class Runner:
         Method for starting a runner, sets up corresponding provider callback.
         Since one runner always has only one provider, there is no need for thread management here.
         """
-        def callback(request: Any) -> Context:
-            return self._request_handler(request, self.provider.ctx_id)
-        self.provider.run(callback)
+        async def callback(request: Any) -> Context:
+            return await self._request_handler(request, self.provider.ctx_id)
+        run(self.provider.run(callback))
 
-    def _request_handler(
+    async def _request_handler(
         self,
         request: Any,
         ctx_id: Optional[Any] = None
@@ -130,31 +134,36 @@ class PipelineRunner(Runner):
         A method for async services list procession.
         It manages service execution result: runs synchronous methods synchronously and collects asynchronous services tasks into a list.
         For every unfinished task a callback is added, rerunning services that have not already been run in case of requirements satisfaction.
-        After all possible services run or TODO: timeout time exceeded, marks all pending services as FAILED and finishes.
+        After all possible services run or, marks all pending services as FAILED and finishes.
+        If timeout is exceeded for a service, throws an exception.
         """
-        async def rerun(task: Task):
-            result = task.result()
-            return await self._run_annotators(result, actor, annotators)
-
-        running = set()
+        running = dict()
         for annotator in annotators:
             if ctx.framework_states['RUNNER'].get(annotator.name, ServiceState.NOT_RUN).value < 2:
                 service_result = annotator(ctx, actor)
-                if isinstance(service_result, Future):
-                    service_result.add_done_callback(rerun)
-                    running.add(service_result)
+                if isinstance(service_result, Task):
+                    timeout = annotator.timeout if isinstance(annotator, Service) else None
+                    running.update({service_result.get_name(): wait_for(service_result, timeout=timeout)})
                 else:
                     ctx = service_result
+
+        results = []
+        for name, future in zip(running.keys(), as_completed(running.values())):
+            try:
+                result = await future
+                results.append(await self._run_annotators(result, actor, annotators))
+            except AsyncTimeoutError as _:
+                logger.warning(f"Service {name} timed out!")
+        ctx = merge(ctx, *results)
 
         if cancel_waiting:
             for annotator in annotators:
                 if ctx.framework_states['RUNNER'].get(annotator.name) == ServiceState.PENDING:
                     ctx.framework_states['RUNNER'][annotator.name] = ServiceState.FAILED
 
-        contexts = await gather(*running)
-        return merge(ctx, *contexts)
+        return ctx
 
-    def _request_handler(
+    async def _request_handler(
         self,
         request: Any,
         ctx_id: Optional[Any] = None
@@ -167,9 +176,9 @@ class PipelineRunner(Runner):
 
         ctx.add_request(request)
 
-        ctx = run(self._run_annotators(ctx, self.actor, self.pre_annotators, True))
+        ctx = await self._run_annotators(ctx, self.actor, self.pre_annotators, True)
         ctx = self.actor(ctx)
-        ctx = run(self._run_annotators(ctx, self.actor, self.post_annotators, True))
+        ctx = await self._run_annotators(ctx, self.actor, self.post_annotators, True)
 
         ctx.framework_states['RUNNER'] = dict()
         self.contex_db[ctx_id] = ctx

@@ -1,9 +1,10 @@
 from enum import unique, Enum
-from typing import Callable, Any
+from typing import Callable, Any, Union, Awaitable
 
 from df_engine.core import Context, Actor
 
 
+@unique
 class ServiceState(Enum):
     """
     Enum, representing service in a pipeline state.
@@ -21,6 +22,7 @@ class ServiceState(Enum):
     FAILED = 4
 
 
+@unique
 class ConditionState(Enum):
     """
     Enum, representing service condition state.
@@ -39,13 +41,13 @@ class ConditionState(Enum):
 A function type for provider-to-client interaction.
 Accepts string (user input), returns string (answer from runner).
 """
-ProviderFunction = Callable[[Any], Context]
+ProviderFunction = Callable[[Any], Awaitable[Context]]
 
 """
 A function type for creating annotators (and also for creating services from).
 Accepts context (before processing), returns context (after processing).
 """
-ServiceFunction = Callable[[Context, Actor], Context]
+ServiceFunction = Union[Callable[[Context, Actor], Context], Callable[[Context, Actor], Awaitable[Context]]]
 
 """
 A function type for creating start_conditions for services.

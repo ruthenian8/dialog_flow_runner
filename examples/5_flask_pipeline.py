@@ -73,9 +73,9 @@ pipeline = {
 
 
 @app.route('/df_provider')
-def route():
+async def route():
     req = request.args.get('request')
-    return provider.on_request(req)
+    return await provider.on_request(req)
 
 
 if __name__ == '__main__':
