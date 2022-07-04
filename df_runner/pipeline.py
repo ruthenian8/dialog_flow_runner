@@ -28,7 +28,7 @@ class ServiceGroup(BaseModel):
     name: Optional[str] = None
     services: List[_ServiceCallable]
     wrappers: Optional[List[Wrapper.__class__]] = None
-    timeout: int = -1  # TODO: timeout
+    timeout: int = -1
     start_condition: ServiceCondition = always_start_condition  # TODO: add with aggregation
 
     def __init__(self, **kwargs):
@@ -107,7 +107,8 @@ class Pipeline(BaseModel):
         naming: Dict[str, int],
         grouping: Dict[str, List[str]],
         groups: List[str],
-        wrappers: Optional[List[Wrapper.__class__]] = None
+        wrappers: Optional[List[Wrapper.__class__]] = None,
+        timeout: Optional[int] = -1
     ):
         """
         Method for Service creation.
@@ -116,7 +117,7 @@ class Pipeline(BaseModel):
         Raises an error in case of second actor appearance.
         """
         wrappers = [wrapper() for wrapper in wrappers]
-        inst = WrappedService.cast(service, naming, groups=groups, wrappers=wrappers)
+        inst = WrappedService.cast(service, naming, groups=groups, wrappers=wrappers, timeout=timeout)
 
         if isinstance(inst.service, Actor):
             if self._actor is None:
@@ -137,7 +138,8 @@ class Pipeline(BaseModel):
         naming: Optional[Dict[str, int]] = None,
         grouping: Optional[Dict[str, List[str]]] = None,
         groups: Optional[List[str]] = None,
-        wrappers: Optional[List[Wrapper.__class__]] = None
+        wrappers: Optional[List[Wrapper.__class__]] = None,
+        timeout: Optional[int] = -1
     ):
         """
         Method for pipeline services creation.
@@ -150,6 +152,7 @@ class Pipeline(BaseModel):
         if isinstance(group, ServiceGroup):
             name = group.name
             wrappers = wrappers + group.wrappers
+            timeout = group.timeout
             group = group.services
         else:
             name = None
@@ -164,9 +167,9 @@ class Pipeline(BaseModel):
 
         for service in group:
             if isinstance(service, List) or isinstance(service, ServiceGroup):
-                self._group_services(service, naming, grouping, groups, wrappers)
+                self._group_services(service, naming, grouping, groups, wrappers, timeout)
             else:
-                self._create_service(service, naming, grouping, groups, wrappers)
+                self._create_service(service, naming, grouping, groups, wrappers, timeout)
 
     @property
     def processed_services(self) -> List[Service]:

@@ -142,7 +142,7 @@ class PipelineRunner(Runner):
             if ctx.framework_states['RUNNER'].get(annotator.name, ServiceState.NOT_RUN).value < 2:
                 service_result = annotator(ctx, actor)
                 if isinstance(service_result, Task):
-                    timeout = annotator.timeout if isinstance(annotator, Service) else None
+                    timeout = annotator.timeout if isinstance(annotator, Service) and annotator.timeout > -1 else None
                     running.update({service_result.get_name(): wait_for(service_result, timeout=timeout)})
                 else:
                     ctx = service_result
