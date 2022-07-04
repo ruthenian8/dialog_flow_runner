@@ -57,4 +57,4 @@ runner = ScriptRunner(
 
 
 if __name__ == "__main__":
-    runner.start()
+    runner.start_sync()

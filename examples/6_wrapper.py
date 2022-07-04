@@ -90,4 +90,4 @@ pipeline = {
 
 
 if __name__ == "__main__":
-    Pipeline(**pipeline).start()
+    Pipeline(**pipeline).start_sync()

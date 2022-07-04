@@ -1,6 +1,6 @@
 import uuid
 from abc import abstractmethod, ABC
-from asyncio import sleep
+from asyncio import sleep, run
 from typing import Optional, Any
 
 from df_runner import ProviderFunction
@@ -68,11 +68,20 @@ class CallbackProvider(AbsProvider):
     Callback provider is waiting for user input and answers once it gets one.
     """
 
-    async def on_request(self, request: Any) -> Any:
+    async def on_request_async(self, request: Any) -> Any:
         """
         Method invoked on user input, should run await self._callback function (if any).
+        Use this in async context, await will not work in sync.
         """
         response = await self._callback(request)
+        return response.last_response
+
+    def on_request_sync(self, request: Any) -> Any:
+        """
+        Method invoked on user input, should run self._callback function (if any).
+        Use this in sync context, asyncio.run() will produce error in async.
+        """
+        response = run(self._callback(request))
         return response.last_response
 
 

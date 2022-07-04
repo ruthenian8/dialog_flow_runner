@@ -1,3 +1,5 @@
+import asyncio
+
 from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
@@ -80,4 +82,4 @@ if __name__ == "__main__":
     pipe = Pipeline.parse_obj(pipeline)
     print("It may be not easy to understand what service groups were generated for the pipeline.")
     print(f"Use given code in that case to acquire groups: {[service.groups for service in pipe.processed_services]}")
-    pipe.start()
+    asyncio.run(pipe.start_sync())

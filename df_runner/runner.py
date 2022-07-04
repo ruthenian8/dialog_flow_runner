@@ -36,14 +36,25 @@ class Runner:
         self.pre_annotators = [] if pre_annotators is None else pre_annotators
         self.post_annotators = [] if post_annotators is None else post_annotators
 
-    def start(self) -> None:
+    def start_sync(self) -> None:
         """
         Method for starting a runner, sets up corresponding provider callback.
         Since one runner always has only one provider, there is no need for thread management here.
+        Use this in async context, await will not work in sync.
         """
         async def callback(request: Any) -> Context:
             return await self._request_handler(request, self.provider.ctx_id)
         run(self.provider.run(callback))
+
+    async def start_async(self) -> None:
+        """
+        Method for starting a runner, sets up corresponding provider callback.
+        Since one runner always has only one provider, there is no need for thread management here.
+        Use this in sync context, asyncio.run() will produce error in async.
+        """
+        async def callback(request: Any) -> Context:
+            return await self._request_handler(request, self.provider.ctx_id)
+        await self.provider.run(callback)
 
     async def _request_handler(
         self,

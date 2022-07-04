@@ -179,11 +179,17 @@ class Pipeline(BaseModel):
         """
         return self._runner.pre_annotators + [self._runner.actor] + self._runner.post_annotators
 
-    def start(self):
+    def start_sync(self):
         """
-        Execute pipeline, an alias method for runner.start().
+        Execute pipeline, an alias method for runner.start_sync().
         """
-        self._runner.start()
+        self._runner.start_sync()
+
+    async def start_async(self):
+        """
+        Execute pipeline, an alias method for runner.start_async().
+        """
+        await self._runner.start_async()
 
 
 def create_pipelines(pipeline: TypedDict('ServiceDict', {
