@@ -5,7 +5,7 @@ from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 
-from df_runner import CLIProvider, Service, Pipeline
+from df_runner import CLIProvider, Service, Pipeline, Special
 from df_runner.conditions import service_successful_condition
 
 script = {
@@ -51,6 +51,7 @@ async def postpostprocess(ctx: Context, actor: Actor) -> Any:
 
 
 pipeline = {
+    "actor": actor,
     "provider": CLIProvider(),
     "contex_db": {},
     "services": [
@@ -58,13 +59,13 @@ pipeline = {
             "service": preprocess,
             "timeout": 1000,
         },
-        actor,
+        Special.Actor,
         postprocess,
         Service(
             service=postpostprocess,
             name="postprocess",
             timeout=2,
-            start_condition=service_successful_condition(service="func_preprocess_0")
+            start_condition=service_successful_condition("func_preprocess_0")
         )
     ]
 }
@@ -72,6 +73,6 @@ pipeline = {
 
 if __name__ == "__main__":
     pipe = Pipeline.parse_obj(pipeline)
-    print("It may be not easy to understand what service names were generated for the pipeline.")
-    print(f"Use given code in that case to acquire names: {[service.name for service in pipe.processed_services]}")
+    #print("It may be not easy to understand what service names were generated for the pipeline.")
+    #print(f"Use given code in that case to acquire names: {[service.name for service in pipe.processed_services]}")
     pipe.start_sync()

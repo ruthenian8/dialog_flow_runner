@@ -1,4 +1,4 @@
-from enum import unique, Enum
+from enum import unique, Enum, auto
 from typing import Callable, Any, Union, Awaitable
 
 from df_engine.core import Context, Actor
@@ -37,6 +37,26 @@ class ConditionState(Enum):
     PENDING = 2
 
 
+@unique
+class FrameworkKeys(Enum):
+    """
+    Enum, representing service condition state.
+    The following states are supported:
+        ALLOWED: service can be executed and all its conditions met
+        DENIED: service can not be executed, some services it depends on failed
+        PENDING: service can not be executed right now, some services it depends on are still running
+    """
+
+    RUNNER = auto()
+    SERVICES = auto()
+    SERVICES_META = auto()
+
+
+@unique
+class Special(Enum):
+    Actor = auto()
+
+
 """
 A function type for provider-to-client interaction.
 Accepts string (user input), returns string (answer from runner).
@@ -46,6 +66,12 @@ ProviderFunction = Callable[[Any], Awaitable[Context]]
 """
 A function type for creating annotators (and also for creating services from).
 Accepts context (before processing), returns context (after processing).
+"""
+AnnotatorFunction = Union[Callable[[Context, Actor], Context], Callable[[Context, Actor], Awaitable[Context]]]
+
+"""
+A function type for creating services.
+Accepts context, returns anything (will be written to context).
 """
 ServiceFunction = Union[Callable[[Context, Actor], Any], Callable[[Context, Actor], Awaitable[Any]]]
 

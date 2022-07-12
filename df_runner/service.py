@@ -1,19 +1,19 @@
 import logging
 from asyncio import iscoroutinefunction
-from typing import Optional, Union, Dict, Callable, List, Any
+from typing import Optional, Union, Dict, Callable, List, Literal
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
 from typing_extensions import Self
 
-from df_runner import ServiceFunction, ServiceCondition, ServiceState, ConditionState
+from df_runner import ServiceFunction, ServiceCondition, ServiceState, ConditionState, Wrapper, WrapperType, Runnable
 from df_runner.conditions import always_start_condition
-
+from df_runner.types import FrameworkKeys, Special
 
 logger = logging.getLogger(__name__)
 
 
-class Service(BaseModel):
+class Service(BaseModel, Runnable):
     """
     Extension class for annotation functions, may be created from dict.
 
@@ -25,55 +25,58 @@ class Service(BaseModel):
         start_condition (optionally) - requirement for service to start, service will run only if this returned True, default: always_start_condition
     """
 
-    service: Union[Actor, ServiceFunction]
+    service: Union[Literal[Special.Actor], ServiceFunction]
     name: Optional[str] = None
     timeout: int = -1
     start_condition: ServiceCondition = always_start_condition
+    wrappers: Optional[List[Wrapper]] = None
 
     class Config:
         extra = Extra.allow
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.groups = []
+        self.wrappers = [] if self.wrappers is None else self.wrappers
+        self.asynchronous = False
 
-    def _export_data(self, result: Any, ctx: Context):
-        ctx.framework_states['SERVICES'][self.name] = result
-
-    async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs):
+    async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         """
         Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
         It also sets named variables in context.framework_states for other services start_conditions.
         If execution fails the error is caught here.
         """
-        if not isinstance(self.service, Actor):
-            if actor is None:
-                raise AttributeError(f"For service {self.name} no actor has been provided!")
-        else:
-            ctx = self.service(ctx)
-            ctx.framework_states['RUNNER'][self.name] = ServiceState.FINISHED
+        if self.service is Special.Actor:
+            ctx = actor(ctx)
+            ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.FINISHED
             return ctx
+
+        ctx.framework_states[FrameworkKeys.SERVICES_META][self.name] = dict()
+        for wrapper in self.wrappers:
+            self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx, wrapper.__repr__(), WrapperType.PREPROCESSING)
 
         result = None
         try:
             state = self.start_condition(ctx, actor)
             if state == ConditionState.ALLOWED:
                 if iscoroutinefunction(self.service):
-                    ctx.framework_states['RUNNER'][self.name] = ServiceState.RUNNING
+                    ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.RUNNING
                     result = await self.service(ctx, actor)
                 else:
                     result = self.service(ctx, actor)
-                    ctx.framework_states['RUNNER'][self.name] = ServiceState.FINISHED
+                    ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.FINISHED
             elif state == ConditionState.PENDING:
-                ctx.framework_states['RUNNER'][self.name] = ServiceState.PENDING
+                ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.PENDING
             else:
-                ctx.framework_states['RUNNER'][self.name] = ServiceState.FAILED
+                ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.FAILED
 
         except Exception as e:
-            ctx.framework_states['RUNNER'][self.name] = ServiceState.FAILED
+            ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.FAILED
             logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
 
         self._export_data(result, ctx)
+
+        for wrapper in self.wrappers:
+            self._export_wrapper_data(wrapper.post_func(ctx, actor), ctx, wrapper.__repr__(), WrapperType.POSTPROCESSING)
 
     @staticmethod
     def _get_name(
@@ -118,28 +121,37 @@ class Service(BaseModel):
     @classmethod
     def cast(
         cls,
-        service: Union[Actor, Dict, ServiceFunction, Self],
+        service: Union[Literal[Special.Actor], Dict, ServiceFunction, Self],
         naming: Optional[Dict[str, int]] = None,
-        name: Optional[str] = None,
-        groups: Optional[List[str]] = None,
         **kwargs
-    ):
+    ) -> Self:
         """
         Method for service creation from actor, function or dict.
         No other sources are accepted (yet).
         """
-        groups = groups if groups is not None else []
+        naming = {} if naming is None else naming
         if isinstance(service, Service):
             service.name = cls._get_name(service.service, naming, service.name)
-            service.groups = groups
+            service.asynchronous = iscoroutinefunction(service.service)
             return service
-        elif isinstance(service, Actor) or isinstance(service, Callable):
+        elif service is Special.Actor or isinstance(service, Callable):
             service = cls(
                 service=service,
-                name=cls._get_name(service, naming, name),
+                name=cls._get_name(service, naming),
                 **kwargs
             )
-            service.groups = groups
+            service.asynchronous = iscoroutinefunction(service.service)
             return service
         else:
             raise Exception(f"Unknown type of service {service}")
+
+
+def wrap(*wrappers: Wrapper):
+    """
+    A wrapper wrapping function that creates WrappedService from any service function.
+    Target function will no longer be a function after wrapping; it will become a WrappedService object.
+    :wrappers: - wrappers to surround the function.
+    """
+    def inner(service: ServiceFunction) -> Service:
+        return Service(service=service, wrappers=list(wrappers))
+    return inner

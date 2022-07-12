@@ -1,9 +1,18 @@
-from typing import List, Union, Dict, Optional, Any
+from enum import unique, Enum, auto
 
-from df_engine.core import Actor, Context
 from pydantic import BaseModel
 
-from df_runner import Service, WrapperFunction, ServiceFunction
+from df_runner import WrapperFunction
+
+
+@unique
+class WrapperType(Enum):
+    """
+    Enum, representing wrapper type, pre- or postprocessing.
+    """
+
+    PREPROCESSING = auto()
+    POSTPROCESSING = auto()
 
 
 class Wrapper(BaseModel):
@@ -16,52 +25,3 @@ class Wrapper(BaseModel):
 
     pre_func: WrapperFunction
     post_func: WrapperFunction
-
-
-class WrappedService(Service):
-    """
-    Class that represents a service wrapped by some wrappers.
-    They are executed right before and after the service itself.
-    """
-
-    wrappers: Optional[List[Wrapper]] = None
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.wrappers = [] if self.wrappers is None else self.wrappers
-
-    def _export_wrapper_data(self, result: Any, ctx: Context):
-        ctx.framework_states['SERVICES_META'][self.name] = result
-
-    async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Any:
-        for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx)
-
-        await super().__call__(ctx, actor, *args, **kwargs)
-
-        for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.post_func(ctx, actor), ctx)
-
-    @classmethod
-    def cast(
-        cls,
-        service: Union[Actor, Dict, ServiceFunction, Service],
-        naming: Optional[Dict[str, int]] = None,
-        name: Optional[str] = None,
-        groups: Optional[List[str]] = None,
-        wrappers: Optional[List[Wrapper]] = None,
-        **kwargs
-    ):
-        wrappers = [] if wrappers is None else wrappers
-        return super().cast(service, naming, name, groups, wrappers=wrappers, **kwargs)
-
-
-def wrap(*wrappers: Wrapper):
-    """
-    A wrapper wrapping function that creates WrappedService from any service function.
-    Target function will no longer be a function after wrapping; it will become a WrappedService object.
-    :wrappers: - wrappers to surround the function.
-    """
-    def inner(service: ServiceFunction) -> WrappedService:
-        return WrappedService(service=service, wrappers=list(wrappers))
-    return inner

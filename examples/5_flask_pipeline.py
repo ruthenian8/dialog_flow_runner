@@ -5,7 +5,7 @@ from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 from flask import Flask, request
 
-from df_runner import Pipeline, Service, CallbackProvider
+from df_runner import Pipeline, Service, CallbackProvider, Special
 from df_runner.conditions import service_successful_condition
 
 
@@ -51,6 +51,7 @@ def postprocess(ctx: Context, actor: Actor) -> Any:
 provider = CallbackProvider()
 
 pipeline = {
+    "actor": actor,
     "provider": provider,
     "connector": {},
     "services": [
@@ -59,7 +60,7 @@ pipeline = {
             "timeout": 1000
         },
         {
-            "service": actor,
+            "service": Special.Actor,
             "name": "encapsulated-actor"
         },
         Service(

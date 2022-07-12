@@ -4,8 +4,9 @@ from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 
-from df_runner import CLIProvider, Service, wrap, Wrapper, Pipeline, ServiceGroup
+from df_runner import CLIProvider, Service, Wrapper, Pipeline, ServiceGroup, Special
 from df_runner.conditions import service_successful_condition
+from df_runner.service import wrap
 
 script = {
     "greeting_flow": {
@@ -62,8 +63,8 @@ class ActorWrapper(Wrapper):
         super().__init__(pre_func=pre_func, post_func=post_func, **kwargs)
 
 
-
 pipeline = {
+    "actor": actor,
     "provider": CLIProvider(),
     "connector": dict(),
     "services": [
@@ -72,9 +73,9 @@ pipeline = {
             "timeout": 1000
         },
         ServiceGroup(
-            wrappers=[ActorWrapper],
+            wrappers=[ActorWrapper()],
             services=[
-                actor
+                Special.Actor
             ]
         ),
         wrapped_service,

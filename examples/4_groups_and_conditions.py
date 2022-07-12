@@ -5,7 +5,7 @@ from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 
-from df_runner import CLIProvider, Service, Pipeline, ServiceGroup
+from df_runner import CLIProvider, Service, Pipeline, ServiceGroup, Special
 from df_runner.conditions import service_successful_condition
 
 script = {
@@ -50,6 +50,7 @@ def postpostprocess(ctx: Context, actor: Actor) -> Any:
 
 
 pipeline = {
+    "actor": actor,
     "provider": CLIProvider(),
     "connector": {},
     "services": [
@@ -62,7 +63,7 @@ pipeline = {
         ServiceGroup(
             name="other-group",
             services=[
-                actor,
+                Special.Actor,
                 postprocess
             ]
         ),
@@ -70,7 +71,7 @@ pipeline = {
             service=postpostprocess,
             name="postprocess",
             timeout=2000,
-            start_condition=service_successful_condition(group="other-group")
+            start_condition=service_successful_condition(name="other-group")
         )
     ]
 }
@@ -78,6 +79,6 @@ pipeline = {
 
 if __name__ == "__main__":
     pipe = Pipeline.parse_obj(pipeline)
-    print("It may be not easy to understand what service groups were generated for the pipeline.")
-    print(f"Use given code in that case to acquire groups: {[service.groups for service in pipe.processed_services]}")
+    #print("It may be not easy to understand what service groups were generated for the pipeline.")
+    #print(f"Use given code in that case to acquire groups: {[service.groups for service in pipe.processed_services]}")
     asyncio.run(pipe.start_sync())
