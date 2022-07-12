@@ -52,9 +52,7 @@ class FrameworkKeys(Enum):
     SERVICES_META = auto()
 
 
-@unique
-class Special(Enum):
-    Actor = auto()
+ACTOR = 'ACTOR'
 
 
 """

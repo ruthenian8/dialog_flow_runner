@@ -4,9 +4,8 @@ from typing import Optional, List, Union, Dict, Literal
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
-from typing_extensions import Self
 
-from df_runner import Wrapper, ServiceCondition, Service, ServiceFunction, FrameworkKeys, ServiceState, Runnable, WrapperType, Special
+from df_runner import Wrapper, ServiceCondition, Service, ServiceFunction, FrameworkKeys, ServiceState, Runnable, WrapperType, ACTOR
 from df_runner.conditions import always_start_condition
 
 
@@ -28,7 +27,7 @@ class ServiceGroup(BaseModel, Runnable):
     """
 
     name: Optional[str] = None
-    services: List[Union[_ServiceCallable, List[_ServiceCallable], 'ServiceGroup', Literal[Special.Actor]]]
+    services: List[Union[_ServiceCallable, List[_ServiceCallable], 'ServiceGroup', Literal[ACTOR]]]
     wrappers: Optional[List[Wrapper]] = None
     timeout: int = -1
     start_condition: ServiceCondition = always_start_condition
@@ -141,7 +140,7 @@ class ServiceGroup(BaseModel, Runnable):
         self,
         actor: Actor,
         naming: Optional[Dict[str, int]] = None
-    ) -> List[Union[_ServiceCallable, List[_ServiceCallable], Self, Literal[Special.Actor]]]:
+    ) -> List[Union[_ServiceCallable, List[_ServiceCallable], 'ServiceGroup', Literal[ACTOR]]]:
         annotators = []
         for service in self.services:
             if isinstance(service, List) or isinstance(service, ServiceGroup):
@@ -154,11 +153,11 @@ class ServiceGroup(BaseModel, Runnable):
     @classmethod
     def cast(
         cls,
-        group: Union[List[_ServiceCallable], Self],
+        group: Union[List[_ServiceCallable], 'ServiceGroup'],
         actor: Actor,
         naming: Optional[Dict[str, int]] = None,
         **kwargs
-    ) -> Self:
+    ) -> 'ServiceGroup':
         """
         Method for service creation from actor, function or dict.
         No other sources are accepted (yet).

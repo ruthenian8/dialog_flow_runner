@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa: F401
-from .types import ProviderFunction, ServiceFunction, AnnotatorFunction, ServiceCondition, WrapperFunction, ConditionState, ServiceState, FrameworkKeys, Special
+from .types import ProviderFunction, ServiceFunction, AnnotatorFunction, ServiceCondition, WrapperFunction, ConditionState, ServiceState, FrameworkKeys, ACTOR
 
 from .provider import AbsProvider, PollingProvider, CallbackProvider, CLIProvider
 from .wrapper import Wrapper, WrapperType

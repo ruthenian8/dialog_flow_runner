@@ -4,11 +4,9 @@ from typing import Optional, Union, Dict, Callable, List, Literal
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
-from typing_extensions import Self
 
-from df_runner import ServiceFunction, ServiceCondition, ServiceState, ConditionState, Wrapper, WrapperType, Runnable
+from df_runner import ServiceFunction, ServiceCondition, ServiceState, ConditionState, Wrapper, WrapperType, Runnable, FrameworkKeys, ACTOR
 from df_runner.conditions import always_start_condition
-from df_runner.types import FrameworkKeys, Special
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +23,7 @@ class Service(BaseModel, Runnable):
         start_condition (optionally) - requirement for service to start, service will run only if this returned True, default: always_start_condition
     """
 
-    service: Union[Literal[Special.Actor], ServiceFunction]
+    service: Union[Literal[ACTOR], ServiceFunction]
     name: Optional[str] = None
     timeout: int = -1
     start_condition: ServiceCondition = always_start_condition
@@ -45,7 +43,7 @@ class Service(BaseModel, Runnable):
         It also sets named variables in context.framework_states for other services start_conditions.
         If execution fails the error is caught here.
         """
-        if self.service is Special.Actor:
+        if self.service == ACTOR:
             ctx = actor(ctx)
             ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.FINISHED
             return ctx
@@ -121,10 +119,10 @@ class Service(BaseModel, Runnable):
     @classmethod
     def cast(
         cls,
-        service: Union[Literal[Special.Actor], Dict, ServiceFunction, Self],
+        service: Union[Literal[ACTOR], Dict, ServiceFunction, 'Service'],
         naming: Optional[Dict[str, int]] = None,
         **kwargs
-    ) -> Self:
+    ) -> 'Service':
         """
         Method for service creation from actor, function or dict.
         No other sources are accepted (yet).
@@ -134,7 +132,7 @@ class Service(BaseModel, Runnable):
             service.name = cls._get_name(service.service, naming, service.name)
             service.asynchronous = iscoroutinefunction(service.service)
             return service
-        elif service is Special.Actor or isinstance(service, Callable):
+        elif service == ACTOR or isinstance(service, Callable):
             service = cls(
                 service=service,
                 name=cls._get_name(service, naming),

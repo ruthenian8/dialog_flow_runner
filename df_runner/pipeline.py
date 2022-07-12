@@ -5,7 +5,7 @@ from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor
 from pydantic import BaseModel, Extra
 
-from df_runner import AbsProvider, Service, ServiceFunction, CLIProvider, PipelineRunner, Wrapper, ServiceGroup, Special
+from df_runner import AbsProvider, Service, ServiceFunction, CLIProvider, PipelineRunner, Wrapper, ServiceGroup, ACTOR
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class Pipeline(BaseModel):
     actor: Actor
     provider: Optional[AbsProvider] = CLIProvider()
     contex_db: Optional[Union[DBAbstractConnector, Dict]] = None
-    services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup, Literal[Special.Actor]]] = None
+    services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup, Literal[ACTOR]]] = None
     wrappers: Optional[List[Wrapper]] = None
     timeout: int = -1
 

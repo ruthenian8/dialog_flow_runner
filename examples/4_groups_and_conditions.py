@@ -5,7 +5,7 @@ from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 
-from df_runner import CLIProvider, Service, Pipeline, ServiceGroup, Special
+from df_runner import CLIProvider, Service, Pipeline, ServiceGroup, ACTOR
 from df_runner.conditions import service_successful_condition
 
 script = {
@@ -63,7 +63,7 @@ pipeline = {
         ServiceGroup(
             name="other-group",
             services=[
-                Special.Actor,
+                ACTOR,
                 postprocess
             ]
         ),

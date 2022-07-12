@@ -5,7 +5,7 @@ from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
 
-from df_runner import CLIProvider, Service, Pipeline, Special
+from df_runner import CLIProvider, Service, Pipeline, ACTOR
 from df_runner.conditions import service_successful_condition
 
 script = {
@@ -59,7 +59,7 @@ pipeline = {
             "service": preprocess,
             "timeout": 1000,
         },
-        Special.Actor,
+        ACTOR,
         postprocess,
         Service(
             service=postpostprocess,
