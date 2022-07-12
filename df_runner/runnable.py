@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from df_engine.core import Context
 
@@ -6,7 +6,7 @@ from df_runner import FrameworkKeys, WrapperType
 
 
 class Runnable:
-    name: str
+    name: Optional[str] = None
     asynchronous: bool = False
 
     def _export_data(self, result: Any, ctx: Context):

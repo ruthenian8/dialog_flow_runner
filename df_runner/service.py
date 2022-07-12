@@ -92,7 +92,7 @@ class Service(BaseModel, Runnable):
             service object: 'obj_[NUMBER]'
         If user provided name uses same syntax it will be changed to auto-generated.
         """
-        if given_name is not None and not (given_name.startswith('actor_') or given_name.startswith('func_') or given_name.startswith('obj_')):
+        if given_name is not None and not (given_name.startswith('actor_') or given_name.startswith('func_') or given_name.startswith('obj_') or given_name.startswith('group_')):
             if naming is not None:
                 if given_name in naming:
                     raise Exception(f"User defined service name collision: {given_name}")

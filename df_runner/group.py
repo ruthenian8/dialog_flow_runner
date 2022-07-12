@@ -89,7 +89,7 @@ class ServiceGroup(BaseModel, Runnable):
     async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         ctx.framework_states[FrameworkKeys.SERVICES_META][self.name] = dict()
         for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx, wrapper.__repr__(), WrapperType.PREPROCESSING)
+            self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx, wrapper.name, WrapperType.PREPROCESSING)
 
         timeout = self.timeout if self.timeout > -1 else None
         if self.asynchronous:
@@ -105,7 +105,7 @@ class ServiceGroup(BaseModel, Runnable):
             ctx = await self._run(ctx, actor, *args, **kwargs)
 
         for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.post_func(ctx, actor), ctx, wrapper.__repr__(), WrapperType.POSTPROCESSING)
+            self._export_wrapper_data(wrapper.post_func(ctx, actor), ctx, wrapper.name, WrapperType.POSTPROCESSING)
 
         return ctx
 
@@ -120,7 +120,7 @@ class ServiceGroup(BaseModel, Runnable):
             'group_[NUMBER]'
         If user provided name uses same syntax it will be changed to auto-generated.
         """
-        if given_name is not None and not (given_name.startswith('group_')):
+        if given_name is not None and not (given_name.startswith('actor_') or given_name.startswith('func_') or given_name.startswith('obj_') or given_name.startswith('group_')):
             if naming is not None:
                 if given_name in naming:
                     raise Exception(f"User defined group name collision: {given_name}")
@@ -128,7 +128,7 @@ class ServiceGroup(BaseModel, Runnable):
                     naming[given_name] = True
             return given_name
         elif given_name is not None:
-            logger.warning(f"User defined name for group '{given_name}' violates naming convention, the service will be renamed")
+            logger.warning(f"User defined name for group '{given_name}' violates naming convention, the group will be renamed")
 
         if naming is not None:
             number = naming.get('group', 0)
