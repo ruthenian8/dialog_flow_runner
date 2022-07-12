@@ -1,4 +1,5 @@
 from asyncio import sleep
+from typing import Any
 
 from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
@@ -36,20 +37,17 @@ script = {
 actor = Actor(script, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node"))
 
 
-def preprocess(ctx: Context, actor: Actor) -> Context:
+def preprocess(ctx: Context, actor: Actor) -> Any:
     print(f"    preprocession Service (defined as a dict)")
-    return ctx
 
 
-def postprocess(ctx: Context, actor: Actor) -> Context:
+def postprocess(ctx: Context, actor: Actor) -> Any:
     print(f"    postprocession Service (defined as a callable)")
-    return ctx
 
 
-async def postpostprocess(ctx: Context, actor: Actor) -> Context:
+async def postpostprocess(ctx: Context, actor: Actor) -> Any:
     await sleep(3)
     print(f"    another postprocession Service (defined as a dict)")
-    return ctx
 
 
 pipeline = {

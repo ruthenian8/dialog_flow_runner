@@ -1,5 +1,5 @@
 import logging
-from asyncio import run, wait_for, as_completed, TimeoutError as AsyncTimeoutError, Task
+from asyncio import run, wait_for, as_completed, TimeoutError as AsyncTimeoutError, Task, iscoroutinefunction
 from typing import Any, Optional, Union, List, Dict
 
 from df_engine.core import Context, Actor, Script
@@ -7,7 +7,6 @@ from df_engine.core.types import NodeLabel2Type
 from df_db_connector import DBAbstractConnector
 
 from df_runner import Service, AbsProvider, CLIProvider, ServiceFunction, ServiceState
-from .context import merge
 
 
 logger = logging.getLogger(__name__)
@@ -137,10 +136,10 @@ class PipelineRunner(Runner):
     async def _run_annotators(
         self,
         ctx: Context,
-        actor: Actor,
+        actor: Union[Service, Actor],
         annotators: List[Union[ServiceFunction, Service]],
         cancel_waiting: bool = False
-    ) -> Context:
+    ):
         """
         A method for async services list procession.
         It manages service execution result: runs synchronous methods synchronously and collects asynchronous services tasks into a list.
@@ -154,25 +153,19 @@ class PipelineRunner(Runner):
                 service_result = annotator(ctx, actor)
                 if isinstance(service_result, Task):
                     timeout = annotator.timeout if isinstance(annotator, Service) and annotator.timeout > -1 else None
-                    running.update({service_result.get_name(): wait_for(service_result, timeout=timeout)})
-                else:
-                    ctx = service_result
+                    running.update({annotator.name: wait_for(service_result, timeout=timeout)})
 
-        results = []
         for name, future in zip(running.keys(), as_completed(running.values())):
             try:
-                result = await future
-                results.append(await self._run_annotators(result, actor, annotators))
+                await future
+                await self._run_annotators(ctx, actor, annotators)
             except AsyncTimeoutError as _:
                 logger.warning(f"Service {name} timed out!")
-        ctx = merge(ctx, *results)
 
         if cancel_waiting:
             for annotator in annotators:
                 if ctx.framework_states['RUNNER'].get(annotator.name) == ServiceState.PENDING:
                     ctx.framework_states['RUNNER'][annotator.name] = ServiceState.FAILED
-
-        return ctx
 
     async def _request_handler(
         self,
@@ -187,9 +180,12 @@ class PipelineRunner(Runner):
 
         ctx.add_request(request)
 
-        ctx = await self._run_annotators(ctx, self.actor, self.pre_annotators, True)
-        ctx = self.actor(ctx)
-        ctx = await self._run_annotators(ctx, self.actor, self.post_annotators, True)
+        await self._run_annotators(ctx, self.actor, self.pre_annotators, True)
+        if iscoroutinefunction(self.actor):
+            ctx = await self.actor(ctx, self.actor)
+        else:
+            ctx = self.actor(ctx, self.actor)
+        await self._run_annotators(ctx, self.actor, self.post_annotators, True)
 
         ctx.framework_states['RUNNER'] = dict()
         self.contex_db[ctx_id] = ctx

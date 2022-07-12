@@ -1,4 +1,4 @@
-from typing import List, Union, Dict, Optional
+from typing import List, Union, Dict, Optional, Any
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel
@@ -30,13 +30,17 @@ class WrappedService(Service):
         super().__init__(**kwargs)
         self.wrappers = [] if self.wrappers is None else self.wrappers
 
-    def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Context:
+    def _export_wrapper_data(self, result: Any, ctx: Context):
+        ctx.framework_states['SERVICES_META'][self.name] = result
+
+    async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Any:
         for wrapper in self.wrappers:
-            wrapper.pre_func(ctx, actor)
-        ctx = super(WrappedService, self).__call__(ctx, actor, *args, **kwargs)
+            self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx)
+
+        await super().__call__(ctx, actor, *args, **kwargs)
+
         for wrapper in self.wrappers:
-            wrapper.post_func(ctx, actor)
-        return ctx
+            self._export_wrapper_data(wrapper.post_func(ctx, actor), ctx)
 
     @classmethod
     def cast(

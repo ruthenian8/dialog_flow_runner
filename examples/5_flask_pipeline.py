@@ -1,3 +1,5 @@
+from typing import Any
+
 from df_engine.core import Context, Actor
 from df_engine.core.keywords import RESPONSE, TRANSITIONS
 import df_engine.conditions as cnd
@@ -38,14 +40,12 @@ script = {
 actor = Actor(script, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node"))
 
 
-def preprocess(ctx: Context, actor: Actor) -> Context:
+def preprocess(ctx: Context, actor: Actor) -> Any:
     print(f"    preprocession Service (defined as an dict)")
-    return ctx
 
 
-def postprocess(ctx: Context, actor: Actor) -> Context:
+def postprocess(ctx: Context, actor: Actor) -> Any:
     print(f"    postprocession Service (defined as a dict)")
-    return ctx
 
 
 provider = CallbackProvider()

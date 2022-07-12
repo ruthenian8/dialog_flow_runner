@@ -1,3 +1,5 @@
+from typing import Any
+
 from df_engine.core.keywords import TRANSITIONS, RESPONSE
 from df_engine.core import Context, Actor
 import df_engine.conditions as cnd
@@ -32,19 +34,16 @@ script = {
 }
 
 
-def get_some_intent(ctx: Context, actor: Actor) -> Context:
-    ctx.misc["some_detection"] = {ctx.last_request: "some_intent"}
-    return ctx
+def get_some_intent(ctx: Context, actor: Actor) -> Any:
+    return "some_intent"
 
 
-def get_another_intent(ctx: Context, actor: Actor) -> Context:
-    ctx.misc["another_detection"] = {ctx.last_request: "another_intent"}
-    return ctx
+def get_another_intent(ctx: Context, actor: Actor) -> Any:
+    return "another_intent"
 
 
-def print_misc(ctx: Context, actor: Actor) -> Context:
+def print_misc(ctx: Context, actor: Actor) -> Any:
     print(f"{ctx.misc=}")
-    return ctx
 
 
 runner = ScriptRunner(

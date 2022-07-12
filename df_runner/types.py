@@ -47,7 +47,7 @@ ProviderFunction = Callable[[Any], Awaitable[Context]]
 A function type for creating annotators (and also for creating services from).
 Accepts context (before processing), returns context (after processing).
 """
-ServiceFunction = Union[Callable[[Context, Actor], Context], Callable[[Context, Actor], Awaitable[Context]]]
+ServiceFunction = Union[Callable[[Context, Actor], Any], Callable[[Context, Actor], Awaitable[Any]]]
 
 """
 A function type for creating start_conditions for services.

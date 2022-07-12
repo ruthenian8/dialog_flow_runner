@@ -1,6 +1,6 @@
 import logging
-from asyncio import Future, iscoroutinefunction, create_task
-from typing import Optional, Union, Dict, Callable, List
+from asyncio import iscoroutinefunction
+from typing import Optional, Union, Dict, Callable, List, Any
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
@@ -37,7 +37,10 @@ class Service(BaseModel):
         super().__init__(**kwargs)
         self.groups = []
 
-    def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Union[Future[Context], Context]:
+    def _export_data(self, result: Any, ctx: Context):
+        ctx.framework_states['SERVICES'][self.name] = result
+
+    async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs):
         """
         Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
         It also sets named variables in context.framework_states for other services start_conditions.
@@ -46,17 +49,20 @@ class Service(BaseModel):
         if not isinstance(self.service, Actor):
             if actor is None:
                 raise AttributeError(f"For service {self.name} no actor has been provided!")
-            else:
-                actor = self.service
+        else:
+            ctx = self.service(ctx)
+            ctx.framework_states['RUNNER'][self.name] = ServiceState.FINISHED
+            return ctx
 
+        result = None
         try:
-            state = self.start_condition(ctx, self.service)
+            state = self.start_condition(ctx, actor)
             if state == ConditionState.ALLOWED:
                 if iscoroutinefunction(self.service):
                     ctx.framework_states['RUNNER'][self.name] = ServiceState.RUNNING
-                    ctx = create_task(self.service(ctx, actor), name=self.name)
+                    result = await self.service(ctx, actor)
                 else:
-                    ctx = self.service(ctx, actor)
+                    result = self.service(ctx, actor)
                     ctx.framework_states['RUNNER'][self.name] = ServiceState.FINISHED
             elif state == ConditionState.PENDING:
                 ctx.framework_states['RUNNER'][self.name] = ServiceState.PENDING
@@ -67,7 +73,7 @@ class Service(BaseModel):
             ctx.framework_states['RUNNER'][self.name] = ServiceState.FAILED
             logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
 
-        return ctx
+        self._export_data(result, ctx)
 
     @staticmethod
     def _get_name(
