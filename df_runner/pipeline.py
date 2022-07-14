@@ -5,7 +5,7 @@ from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor
 from pydantic import BaseModel, Extra
 
-from df_runner import AbsProvider, Service, ServiceFunction, CLIProvider, PipelineRunner, Wrapper, ServiceGroup, ACTOR
+from df_runner import AbsProvider, Service, ServiceFunction, CLIProvider, PipelineRunner, Wrapper, ServiceGroup, ACTOR, ClearFunction
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +25,11 @@ class Pipeline(BaseModel):
 
     actor: Actor
     provider: Optional[AbsProvider] = CLIProvider()
-    contex_db: Optional[Union[DBAbstractConnector, Dict]] = None
+    context_db: Optional[Union[DBAbstractConnector, Dict]] = None
+    context_clear: Optional[ClearFunction] = None
     services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup, Literal[ACTOR]]] = None
     wrappers: Optional[List[Wrapper]] = None
+
     timeout: int = -1
 
     class Config:
@@ -36,11 +38,11 @@ class Pipeline(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.contex_db = dict() if self.contex_db is None else self.contex_db
+        self.context_db = dict() if self.context_db is None else self.context_db
         self.wrappers = [] if self.wrappers is None else self.wrappers
 
         self._annotators = ServiceGroup.cast(self.services, self.actor, dict(), wrappers=self.wrappers, timeout=self.timeout)
-        self._runner = PipelineRunner(self.actor, self.contex_db, self.provider, self._annotators)
+        self._runner = PipelineRunner(self.actor, self.context_clear, self.context_db, self.provider, self._annotators)
 
     @property
     def processed_services(self) -> List[Service]:

@@ -7,7 +7,7 @@ from df_engine.core.types import NodeLabel2Type
 from df_db_connector import DBAbstractConnector
 
 from df_runner import Service, AbsProvider, CLIProvider, ServiceFunction, ServiceGroup
-from df_runner.types import FrameworkKeys, AnnotatorFunction
+from df_runner.types import FrameworkKeys, AnnotatorFunction, ClearFunction
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +122,7 @@ class PipelineRunner(Runner):
     def __init__(
         self,
         actor: Union[Actor, Service],
+        clear_function: Optional[ClearFunction] = None,
         connector: Optional[Union[DBAbstractConnector, Dict]] = None,
         provider: AbsProvider = CLIProvider(),
         group: Optional[ServiceGroup] = None,
@@ -129,6 +130,7 @@ class PipelineRunner(Runner):
         **kwargs
     ):
         super().__init__(actor, connector, provider, *args, **kwargs)
+        self._clear_function = clear_function
         self._group = group
 
     async def _request_handler(
@@ -148,7 +150,9 @@ class PipelineRunner(Runner):
         ctx = await self._group(ctx, self.actor)
 
         ctx.framework_states[FrameworkKeys.RUNNER] = dict()
-        ctx.framework_states[FrameworkKeys.SERVICES] = dict()
-        ctx.framework_states[FrameworkKeys.SERVICES_META] = dict()
+        if self._clear_function is not None:
+            services, meta = self._clear_function(ctx.framework_states[FrameworkKeys.SERVICES], ctx.framework_states[FrameworkKeys.SERVICES_META])
+            ctx.framework_states[FrameworkKeys.SERVICES] = services
+            ctx.framework_states[FrameworkKeys.SERVICES_META] = meta
         self.contex_db[ctx_id] = ctx
         return ctx

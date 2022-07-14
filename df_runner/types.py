@@ -1,5 +1,5 @@
 from enum import unique, Enum, auto
-from typing import Callable, Any, Union, Awaitable
+from typing import Callable, Any, Union, Awaitable, Dict, Tuple
 
 from df_engine.core import Context, Actor
 
@@ -84,3 +84,6 @@ A function type for creating wrappers (pre- and postprocessing).
 Accepts context and actor (current pipeline state) and returns nothing.
 """
 WrapperFunction = Callable[[Context, Actor], None]
+
+
+ClearFunction = Callable[[Dict, Dict], Tuple[Dict, Dict]]
