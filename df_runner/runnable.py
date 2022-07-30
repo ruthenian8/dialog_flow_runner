@@ -2,7 +2,8 @@ from typing import Any, Optional
 
 from df_engine.core import Context
 
-from df_runner import FrameworkKeys, WrapperType
+from .types import FrameworkKeys
+from .wrapper import WrapperType
 
 
 class Runnable:

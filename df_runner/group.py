@@ -5,8 +5,11 @@ from typing import Optional, List, Union, Dict, Literal
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
 
-from df_runner import Wrapper, ServiceCondition, Service, ServiceFunction, FrameworkKeys, ServiceState, Runnable, WrapperType, ACTOR
-from df_runner.conditions import always_start_condition
+from .wrapper import Wrapper, WrapperType
+from .runnable import Runnable
+from .types import ServiceFunction, ServiceCondition, ACTOR, FrameworkKeys, ServiceState
+from .service import Service
+from .conditions import always_start_condition
 
 
 _ServiceCallable = Union[Service, ServiceFunction]
@@ -47,7 +50,7 @@ class ServiceGroup(BaseModel, Runnable):
 
             running = dict()
             for annotator in self.annotators:
-                if ctx.framework_states[FrameworkKeys.RUNNER].get(annotator.name, ServiceState.NOT_RUN).value < 2:
+                if ctx.framework_states[FrameworkKeys.RUNNER].get(annotator.name, ServiceState.NOT_RUN) not in (ServiceState.NOT_RUN, ServiceState.PENDING):
                     service_result = create_task(annotator(ctx, actor), name=annotator.name)
                     timeout = annotator.timeout if isinstance(annotator, Service) and annotator.timeout > -1 else None
                     running.update({annotator.name: wait_for(service_result, timeout=timeout)})

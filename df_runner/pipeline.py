@@ -5,7 +5,13 @@ from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor
 from pydantic import BaseModel, Extra
 
-from df_runner import AbsProvider, Service, ServiceFunction, CLIProvider, PipelineRunner, Wrapper, ServiceGroup, ACTOR, ClearFunction
+from .runner import PipelineRunner
+from .wrapper import Wrapper
+from .provider import AbsProvider, CLIProvider
+from .group import ServiceGroup
+from .types import ServiceFunction, ClearFunction, ACTOR
+from .service import Service
+
 
 logger = logging.getLogger(__name__)
 

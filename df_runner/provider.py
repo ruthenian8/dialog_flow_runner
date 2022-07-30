@@ -3,7 +3,7 @@ from abc import abstractmethod, ABC
 from asyncio import sleep, run
 from typing import Optional, Any
 
-from df_runner import ProviderFunction
+from .types import ProviderFunction
 
 
 class AbsProvider(ABC):

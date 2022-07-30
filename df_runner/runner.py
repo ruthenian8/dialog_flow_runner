@@ -6,8 +6,11 @@ from df_engine.core import Context, Actor, Script
 from df_engine.core.types import NodeLabel2Type
 from df_db_connector import DBAbstractConnector
 
-from df_runner import Service, AbsProvider, CLIProvider, ServiceFunction, ServiceGroup
-from df_runner.types import FrameworkKeys, AnnotatorFunction, ClearFunction
+from .group import ServiceGroup
+from .provider import AbsProvider, CLIProvider
+from .service import Service
+from .types import FrameworkKeys, AnnotatorFunction, ClearFunction, ServiceFunction
+
 
 logger = logging.getLogger(__name__)
 

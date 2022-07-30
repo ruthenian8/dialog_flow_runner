@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from df_runner import WrapperFunction
+from .types import WrapperFunction
 
 
 logger = logging.getLogger(__name__)

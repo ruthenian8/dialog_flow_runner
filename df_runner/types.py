@@ -15,11 +15,11 @@ class ServiceState(Enum):
         FAILED: service execution failed for some reason
     """
 
-    NOT_RUN = 0
-    PENDING = 1
-    RUNNING = 2
-    FINISHED = 3
-    FAILED = 4
+    NOT_RUN = auto()
+    PENDING = auto()
+    RUNNING = auto()
+    FINISHED = auto()
+    FAILED = auto()
 
 
 @unique
@@ -32,19 +32,19 @@ class ConditionState(Enum):
         PENDING: service can not be executed right now, some services it depends on are still running
     """
 
-    ALLOWED = 0
-    DENIED = 1
-    PENDING = 2
+    ALLOWED = auto()
+    DENIED = auto()
+    PENDING = auto()
 
 
 @unique
 class FrameworkKeys(Enum):
     """
-    Enum, representing service condition state.
+    Enum, representing place in context.framework_keys to store data.
     The following states are supported:
-        ALLOWED: service can be executed and all its conditions met
-        DENIED: service can not be executed, some services it depends on failed
-        PENDING: service can not be executed right now, some services it depends on are still running
+        RUNNER: storage for services and groups execution status
+        SERVICES: storage for services generated data
+        SERVICES_META: storage for wrappers generated data
     """
 
     RUNNER = auto()

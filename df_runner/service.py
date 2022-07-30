@@ -5,8 +5,11 @@ from typing import Optional, Union, Dict, Callable, List, Literal
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
 
-from df_runner import ServiceFunction, ServiceCondition, ServiceState, ConditionState, Wrapper, WrapperType, Runnable, FrameworkKeys, ACTOR
-from df_runner.conditions import always_start_condition
+from .wrapper import Wrapper, WrapperType
+from .types import ACTOR, ServiceFunction, ServiceCondition, FrameworkKeys, ServiceState, ConditionState
+from .runnable import Runnable
+from .conditions import always_start_condition
+
 
 logger = logging.getLogger(__name__)
 

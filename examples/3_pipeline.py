@@ -57,7 +57,7 @@ pipeline = {
     "services": [
         {
             "service": preprocess,
-            "timeout": 1000,
+            "timeout": 10,
         },
         ACTOR,
         postprocess,
