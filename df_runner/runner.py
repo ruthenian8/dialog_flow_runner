@@ -1,6 +1,6 @@
 import logging
 from asyncio import run
-from typing import Any, Optional, Union, List, Dict
+from typing import Any, Optional, Union, List, Dict, Callable
 
 from df_engine.core import Context, Actor, Script
 from df_engine.core.types import NodeLabel2Type
@@ -129,10 +129,12 @@ class PipelineRunner(Runner):
         connector: Optional[Union[DBAbstractConnector, Dict]] = None,
         provider: AbsProvider = CLIProvider(),
         group: Optional[ServiceGroup] = None,
+        callback: Optional[Callable[[str, FrameworkKeys, Any], None]] = lambda name, key, data: None,
         *args,
         **kwargs
     ):
         super().__init__(actor, connector, provider, *args, **kwargs)
+        self._callback = callback
         self._clear_function = clear_function
         self._group = group
 
@@ -150,7 +152,7 @@ class PipelineRunner(Runner):
 
         ctx.add_request(request)
 
-        ctx = await self._group(ctx, self.actor)
+        ctx = await self._group(ctx, self._callback, self.actor)
 
         ctx.framework_states[FrameworkKeys.RUNNER] = dict()
         if self._clear_function is not None:

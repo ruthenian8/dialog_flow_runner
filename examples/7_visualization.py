@@ -63,13 +63,11 @@ def wrapped_service(ctx: Context, actor: Actor) -> Any:
 
 class ActorWrapper(Wrapper):
     def __init__(self, **kwargs):
-        def pre_func(ctx: Context, actor: Actor) -> Context:
+        def pre_func(ctx: Context, actor: Actor):
             print(f"        actor pre wrapper")
-            return ctx
 
-        def post_func(ctx: Context, actor: Actor) -> Context:
+        def post_func(ctx: Context, actor: Actor):
             print(f"        actor post wrapper")
-            return ctx
 
         super().__init__(pre_func=pre_func, post_func=post_func, **kwargs)
 
@@ -102,7 +100,8 @@ pipeline = {
 
 if __name__ == "__main__":
     try:
-        Pipeline(**pipeline).start_sync()
+        pipe = stats.update_pipeline_handlers(Pipeline(**pipeline), auto_save=False)
+        pipe.start_sync()
     except:
         stats.save()
         print(stats.dataframe)

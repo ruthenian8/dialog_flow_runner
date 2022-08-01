@@ -1,6 +1,6 @@
 import logging
 from asyncio import wait_for, create_task, as_completed, TimeoutError as AsyncTimeoutError
-from typing import Optional, List, Union, Dict, Literal
+from typing import Optional, List, Union, Dict, Literal, Callable, Any
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
@@ -44,14 +44,14 @@ class ServiceGroup(BaseModel, Runnable):
         self.asynchronous = False
         self.annotators = None
 
-    async def _run(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
+    async def _run(self, ctx: Context, callback: Callable[[str, FrameworkKeys, Any], None], actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         if self.asynchronous:
             ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.RUNNING
 
             running = dict()
             for annotator in self.annotators:
                 if ctx.framework_states[FrameworkKeys.RUNNER].get(annotator.name, ServiceState.NOT_RUN) not in (ServiceState.NOT_RUN, ServiceState.PENDING):
-                    service_result = create_task(annotator(ctx, actor), name=annotator.name)
+                    service_result = create_task(annotator(ctx, callback, actor), name=annotator.name)
                     timeout = annotator.timeout if isinstance(annotator, Service) and annotator.timeout > -1 else None
                     running.update({annotator.name: wait_for(service_result, timeout=timeout)})
 
@@ -73,14 +73,14 @@ class ServiceGroup(BaseModel, Runnable):
                 service_result = None
                 if annotator.asynchronous:
                     timeout = annotator.timeout if annotator.timeout > -1 else None
-                    task = create_task(annotator(ctx, actor, *args, **kwargs), name=annotator.name)
+                    task = create_task(annotator(ctx, callback, actor, *args, **kwargs), name=annotator.name)
                     future = wait_for(task, timeout=timeout)
                     try:
                         await future
                     except AsyncTimeoutError as _:
                         logger.warning(f"Group {annotator.name} timed out!")
                 else:
-                    service_result = await annotator(ctx, actor)
+                    service_result = await annotator(ctx, callback, actor)
                 if isinstance(service_result, Context):
                     ctx = service_result
 
@@ -88,14 +88,14 @@ class ServiceGroup(BaseModel, Runnable):
 
         return ctx
 
-    async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
+    async def __call__(self, ctx: Context, callback: Callable[[str, FrameworkKeys, Any], None], actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         ctx.framework_states[FrameworkKeys.SERVICES_META][self.name] = dict()
         for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx, wrapper.name, WrapperType.PREPROCESSING)
+            self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx, wrapper.name, WrapperType.PREPROCESSING, callback)
 
         timeout = self.timeout if self.timeout > -1 else None
         if self.asynchronous:
-            task = create_task(self._run(ctx, actor, *args, **kwargs), name=self.name)
+            task = create_task(self._run(ctx, callback, actor, *args, **kwargs), name=self.name)
             future = wait_for(task, timeout=timeout)
             try:
                 await future
@@ -104,10 +104,10 @@ class ServiceGroup(BaseModel, Runnable):
         else:
             if timeout is not None:
                 logger.warning(f"Timeout can not be applied for group {self.name}: it is not asynchronous !")
-            ctx = await self._run(ctx, actor, *args, **kwargs)
+            ctx = await self._run(ctx, callback, actor, *args, **kwargs)
 
         for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.post_func(ctx, actor), ctx, wrapper.name, WrapperType.POSTPROCESSING)
+            self._export_wrapper_data(wrapper.post_func(ctx, actor), ctx, wrapper.name, WrapperType.POSTPROCESSING, callback)
 
         return ctx
 

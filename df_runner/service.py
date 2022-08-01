@@ -1,6 +1,6 @@
 import logging
 from asyncio import iscoroutinefunction
-from typing import Optional, Union, Dict, Callable, List, Literal
+from typing import Optional, Union, Dict, Callable, List, Literal, Any
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
@@ -40,7 +40,7 @@ class Service(BaseModel, Runnable):
         self.wrappers = [] if self.wrappers is None else self.wrappers
         self.asynchronous = False
 
-    async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
+    async def __call__(self, ctx: Context, callback: Callable[[str, FrameworkKeys, Any], None], actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         """
         Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
         It also sets named variables in context.framework_states for other services start_conditions.
@@ -53,7 +53,7 @@ class Service(BaseModel, Runnable):
 
         ctx.framework_states[FrameworkKeys.SERVICES_META][self.name] = dict()
         for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx, wrapper.__repr__(), WrapperType.PREPROCESSING)
+            self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx, wrapper.name, WrapperType.PREPROCESSING, callback)
 
         result = None
         try:
@@ -74,10 +74,10 @@ class Service(BaseModel, Runnable):
             ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.FAILED
             logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
 
-        self._export_data(result, ctx)
+        self._export_data(result, ctx, callback)
 
         for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.post_func(ctx, actor), ctx, wrapper.__repr__(), WrapperType.POSTPROCESSING)
+            self._export_wrapper_data(wrapper.post_func(ctx, actor), ctx, wrapper.name, WrapperType.POSTPROCESSING, callback)
 
     @staticmethod
     def _get_name(

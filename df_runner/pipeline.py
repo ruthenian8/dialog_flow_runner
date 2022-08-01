@@ -1,5 +1,6 @@
 import logging
-from typing import Union, List, Dict, TypedDict, Optional, Literal
+import uuid
+from typing import Union, List, Dict, TypedDict, Optional, Literal, Callable, Any
 
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor
@@ -9,7 +10,7 @@ from .runner import PipelineRunner
 from .wrapper import Wrapper
 from .provider import AbsProvider, CLIProvider
 from .group import ServiceGroup
-from .types import ServiceFunction, ClearFunction, ACTOR
+from .types import ServiceFunction, ClearFunction, ACTOR, FrameworkKeys
 from .service import Service
 
 
@@ -47,8 +48,17 @@ class Pipeline(BaseModel):
         self.context_db = dict() if self.context_db is None else self.context_db
         self.wrappers = [] if self.wrappers is None else self.wrappers
 
+        self._callbacks: Dict[str, Callable[[str, Any], None]] = dict()
         self._annotators = ServiceGroup.cast(self.services, self.actor, dict(), wrappers=self.wrappers, timeout=self.timeout)
-        self._runner = PipelineRunner(self.actor, self.context_clear, self.context_db, self.provider, self._annotators)
+        self._runner = PipelineRunner(self.actor, self.context_clear, self.context_db, self.provider, self._annotators, self._call_back)
+
+    def _call_back(self, name: str, key: FrameworkKeys, data: Any):
+        for callback in self._callbacks.values():
+            callback('GLOBAL' if key is FrameworkKeys.RUNNER else f"{name}{'_meta' if key is FrameworkKeys.SERVICES_META else '_serv'}", data)
+
+    def add_global_callback(self, callback: Callable[[str, Any], None], name: str = None):
+        name = name if name is not None else uuid.uuid4()
+        self._callbacks.update({name: callback})
 
     @property
     def processed_services(self) -> List[Service]:
