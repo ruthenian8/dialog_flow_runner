@@ -6,7 +6,6 @@ from .provider import PollingProvider, CallbackProvider, CLIProvider
 from .wrapper import Wrapper, WrapperType
 from .service import Service
 from .group import ServiceGroup
-from .runner import Runner, ScriptRunner
 from .pipeline import Pipeline, create_pipelines
 
 

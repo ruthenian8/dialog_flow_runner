@@ -1,7 +1,7 @@
 from df_engine.core.keywords import TRANSITIONS, RESPONSE
 import df_engine.conditions as cnd
 
-from df_runner import ScriptRunner
+from df_runner import Pipeline
 
 
 script = {
@@ -30,7 +30,7 @@ script = {
     }
 }
 
-runner = ScriptRunner(
+pipeline = Pipeline.from_script(
     script,
     start_label=("greeting_flow", "start_node"),
     fallback_label=("greeting_flow", "fallback_node"),
@@ -38,4 +38,4 @@ runner = ScriptRunner(
 
 
 if __name__ == "__main__":
-    runner.start_sync()
+    pipeline.start_sync()

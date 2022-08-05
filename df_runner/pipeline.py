@@ -3,14 +3,15 @@ import uuid
 from typing import Union, List, Dict, TypedDict, Optional, Literal, Callable, Any
 
 from df_db_connector import DBAbstractConnector
-from df_engine.core import Actor
+from df_engine.core import Actor, Script
+from df_engine.core.types import NodeLabel2Type
 from pydantic import BaseModel, Extra
 
-from .runner import PipelineRunner
+from .runner import Runner
 from .wrapper import Wrapper
 from .provider import AbsProvider, CLIProvider
 from .group import ServiceGroup
-from .types import ServiceFunction, ClearFunction, ACTOR, FrameworkKeys
+from .types import ServiceFunction, ClearFunction, ACTOR, FrameworkKeys, AnnotatorFunction
 from .service import Service
 
 
@@ -50,11 +51,11 @@ class Pipeline(BaseModel):
 
         self._callbacks: Dict[str, Callable[[str, Any], None]] = dict()
         self._annotators = ServiceGroup.cast(self.services, self.actor, dict(), wrappers=self.wrappers, timeout=self.timeout)
-        self._runner = PipelineRunner(self.actor, self.context_clear, self.context_db, self.provider, self._annotators, self._call_back)
+        self._runner = Runner(self.actor, self.context_clear, self.context_db, self.provider, self._annotators, self._call_back)
 
     def _call_back(self, name: str, key: FrameworkKeys, data: Any):
         for callback in self._callbacks.values():
-            callback('GLOBAL' if key is FrameworkKeys.RUNNER else f"{name}{'_meta' if key is FrameworkKeys.SERVICES_META else '_serv'}", data)
+            callback(f"{name}{'_meta' if key is FrameworkKeys.SERVICES_META else '_serv'}", data)
 
     def add_global_callback(self, callback: Callable[[str, Any], None], name: str = None):
         name = name if name is not None else uuid.uuid4()
@@ -80,6 +81,28 @@ class Pipeline(BaseModel):
         Execute pipeline, an alias method for runner.start_async().
         """
         await self._runner.start_async()
+
+    @classmethod
+    def from_script(
+        cls,
+        script: Union[Script, Dict],
+        start_label: NodeLabel2Type,
+        fallback_label: Optional[NodeLabel2Type] = None,
+        context_db: Optional[Union[DBAbstractConnector, Dict]] = None,
+        request_provider: AbsProvider = CLIProvider(),
+        pre_annotators: Optional[List[AnnotatorFunction]] = None,
+        post_annotators: Optional[List[AnnotatorFunction]] = None
+    ):
+        actor = Actor(script, start_label, fallback_label)
+        context_db = dict() if context_db is None else context_db
+        pre_annotators = [] if pre_annotators is None else pre_annotators
+        post_annotators = [] if post_annotators is None else post_annotators
+        return cls(
+            actor=actor,
+            provider=request_provider,
+            context_db=context_db,
+            services=pre_annotators + [ACTOR] + post_annotators
+        )
 
 
 def create_pipelines(pipeline: TypedDict('ServiceDict', {

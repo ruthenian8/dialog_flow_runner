@@ -1,10 +1,11 @@
 import logging
 from asyncio import iscoroutinefunction
-from typing import Optional, Union, Dict, Callable, List, Literal, Any
+from typing import Optional, Union, Dict, Callable, List, Literal, Any, Set
 
 from df_engine.core import Actor, Context
 from pydantic import BaseModel, Extra
 
+from .named import Named
 from .wrapper import Wrapper, WrapperType
 from .types import ACTOR, ServiceFunction, ServiceCondition, FrameworkKeys, ServiceState, ConditionState
 from .runnable import Runnable
@@ -14,7 +15,7 @@ from .conditions import always_start_condition
 logger = logging.getLogger(__name__)
 
 
-class Service(BaseModel, Runnable):
+class Service(BaseModel, Runnable, Named):
     """
     Extension class for annotation functions, may be created from dict.
 
@@ -48,10 +49,10 @@ class Service(BaseModel, Runnable):
         """
         if self.service == ACTOR:
             ctx = actor(ctx)
-            ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.FINISHED
+            self._framework_states_runner(ctx, ServiceState.FINISHED)
             return ctx
 
-        ctx.framework_states[FrameworkKeys.SERVICES_META][self.name] = dict()
+        self._framework_states_meta(ctx, dict())
         for wrapper in self.wrappers:
             self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx, wrapper.name, WrapperType.PREPROCESSING, callback)
 
@@ -60,18 +61,18 @@ class Service(BaseModel, Runnable):
             state = self.start_condition(ctx, actor)
             if state == ConditionState.ALLOWED:
                 if iscoroutinefunction(self.service):
-                    ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.RUNNING
+                    self._framework_states_runner(ctx, ServiceState.RUNNING)
                     result = await self.service(ctx, actor)
                 else:
                     result = self.service(ctx, actor)
-                    ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.FINISHED
+                    self._framework_states_runner(ctx, ServiceState.FINISHED)
             elif state == ConditionState.PENDING:
-                ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.PENDING
+                self._framework_states_runner(ctx, ServiceState.PENDING)
             else:
-                ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.FAILED
+                self._framework_states_runner(ctx, ServiceState.FAILED)
 
         except Exception as e:
-            ctx.framework_states[FrameworkKeys.RUNNER][self.name] = ServiceState.FAILED
+            self._framework_states_runner(ctx, ServiceState.FAILED)
             logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
 
         self._export_data(result, ctx, callback)
@@ -82,42 +83,24 @@ class Service(BaseModel, Runnable):
     @staticmethod
     def _get_name(
         service: Union[Actor, Dict, ServiceFunction],
+        forbidden_names: Optional[Set[str]] = None,
+        name_rule: Optional[Callable[[Any], str]] = None,
         naming: Optional[Dict[str, int]] = None,
         given_name: Optional[str] = None
     ) -> str:
-        """
-        Method for name generation.
-        Name is generated using following convention:
-            actor: 'actor_[NUMBER]'
-            function: 'func_[REPR]_[NUMBER]'
-            service object: 'obj_[NUMBER]'
-        If user provided name uses same syntax it will be changed to auto-generated.
-        """
-        if given_name is not None and not (given_name.startswith('actor_') or given_name.startswith('func_') or given_name.startswith('obj_') or given_name.startswith('group_')):
-            if naming is not None:
-                if given_name in naming:
-                    raise Exception(f"User defined service name collision: {given_name}")
-                else:
-                    naming[given_name] = True
-            return given_name
-        elif given_name is not None:
-            logger.warning(f"User defined name for service '{given_name}' violates naming convention, the service will be renamed")
+        def default_name_rule(this: Union[Actor, Dict, ServiceFunction]) -> str:
+            if isinstance(this, Actor):
+                return 'actor'
+            elif isinstance(this, Service):
+                return 'serv'
+            elif isinstance(this, Callable):
+                return f'func_{this.__name__}'
+            else:
+                return 'unknown'
 
-        if isinstance(service, Actor):
-            name = 'actor'
-        elif isinstance(service, Service):
-            name = 'serv'
-        elif isinstance(service, Callable):
-            name = f'func_{service.__name__}'
-        else:
-            name = 'unknown'
-
-        if naming is not None:
-            number = naming.get(name, 0)
-            naming[name] = number + 1
-            return f'{name}_{number}'
-        else:
-            return name
+        forbidden_names = forbidden_names if forbidden_names is not None else {'actor_', 'func_', 'obj_', 'group_'}
+        name_rule = name_rule if name_rule is not None else default_name_rule
+        return super(Service, Service)._get_name(service, name_rule, forbidden_names, naming, given_name)
 
     @classmethod
     def cast(
@@ -132,13 +115,13 @@ class Service(BaseModel, Runnable):
         """
         naming = {} if naming is None else naming
         if isinstance(service, Service):
-            service.name = cls._get_name(service.service, naming, service.name)
+            service.name = cls._get_name(service.service, naming=naming, given_name=service.name)
             service.asynchronous = iscoroutinefunction(service.service)
             return service
         elif service == ACTOR or isinstance(service, Callable):
             service = cls(
                 service=service,
-                name=cls._get_name(service, naming),
+                name=cls._get_name(service, naming=naming),
                 **kwargs
             )
             service.asynchronous = iscoroutinefunction(service.service)

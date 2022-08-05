@@ -1,9 +1,10 @@
 import logging
 from enum import unique, Enum, auto
-from typing import Optional
+from typing import Optional, Set, Callable, Any, Dict
 
 from pydantic import BaseModel
 
+from .named import Named
 from .types import WrapperFunction
 
 
@@ -20,7 +21,7 @@ class WrapperType(Enum):
     POSTPROCESSING = auto()
 
 
-class Wrapper(BaseModel):
+class Wrapper(BaseModel, Named):
     """
     Class, representing a wrapper.
     A wrapper is a set of two functions, one run before and one after service.
@@ -34,23 +35,16 @@ class Wrapper(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.name = self._get_name(self.name)
+        self.name = self._get_name(self, given_name=self.name)
 
+    @staticmethod
     def _get_name(
-        self,
+        wrapper: 'Wrapper',
+        forbidden_names: Optional[Set[str]] = None,
+        name_rule: Optional[Callable[[Any], str]] = None,
+        naming: Optional[Dict[str, int]] = None,
         given_name: Optional[str] = None
     ) -> str:
-        """
-        Method for name generation.
-        Name is generated using following convention:
-            actor: 'actor_[NUMBER]'
-            function: 'func_[REPR]_[NUMBER]'
-            service object: 'obj_[NUMBER]'
-        If user provided name uses same syntax it will be changed to auto-generated.
-        """
-        if given_name is not None and not (given_name.startswith('wrapper_')):
-            return given_name
-        elif given_name is not None:
-            logger.warning(f"User defined name for service '{given_name}' violates naming convention, the service will be renamed")
-
-        return f'wrapper_{type(self).__name__.lower()}'
+        forbidden_names = forbidden_names if forbidden_names is not None else {'wrapper_'}
+        name_rule = name_rule if name_rule is not None else lambda this: f'wrapper_{type(this).__name__.lower()}'
+        return super(Wrapper, Wrapper)._get_name(wrapper, name_rule, forbidden_names, naming, given_name)
