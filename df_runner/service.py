@@ -7,7 +7,7 @@ from pydantic import BaseModel, Extra
 
 from .named import Named
 from .wrapper import Wrapper, WrapperType
-from .types import ACTOR, ServiceFunction, ServiceCondition, FrameworkKeys, ServiceState, ConditionState
+from .types import ACTOR, ServiceFunction, ServiceCondition, FrameworkKeys, ServiceState, ConditionState, CallbackInternalFunction, CallbackType
 from .runnable import Runnable
 from .conditions import always_start_condition
 
@@ -41,7 +41,7 @@ class Service(BaseModel, Runnable, Named):
         self.wrappers = [] if self.wrappers is None else self.wrappers
         self.asynchronous = False
 
-    async def __call__(self, ctx: Context, callback: Callable[[str, FrameworkKeys, Any], None], actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
+    async def __call__(self, ctx: Context, callback: CallbackInternalFunction, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         """
         Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
         It also sets named variables in context.framework_states for other services start_conditions.
@@ -54,9 +54,10 @@ class Service(BaseModel, Runnable, Named):
 
         self._framework_states_meta(ctx, dict())
         for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx, wrapper.name, WrapperType.PREPROCESSING, callback)
+            self._export_wrapper_data(wrapper, ctx, actor, WrapperType.PREPROCESSING, callback)
 
         result = None
+        self._export_data(result, ctx, CallbackType.BEFORE, callback)
         try:
             state = self.start_condition(ctx, actor)
             if state == ConditionState.ALLOWED:
@@ -75,10 +76,10 @@ class Service(BaseModel, Runnable, Named):
             self._framework_states_runner(ctx, ServiceState.FAILED)
             logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
 
-        self._export_data(result, ctx, callback)
+        self._export_data(result, ctx, CallbackType.AFTER, callback)
 
         for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.post_func(ctx, actor), ctx, wrapper.name, WrapperType.POSTPROCESSING, callback)
+            self._export_wrapper_data(wrapper, ctx, actor, WrapperType.POSTPROCESSING, callback)
 
     @staticmethod
     def _get_name(

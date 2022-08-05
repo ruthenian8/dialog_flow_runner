@@ -8,7 +8,7 @@ from pydantic import BaseModel, Extra
 from .named import Named
 from .wrapper import Wrapper, WrapperType
 from .runnable import Runnable
-from .types import ServiceFunction, ServiceCondition, ACTOR, FrameworkKeys, ServiceState
+from .types import ServiceFunction, ServiceCondition, ACTOR, ServiceState, CallbackInternalFunction, CallbackType
 from .service import Service
 from .conditions import always_start_condition
 
@@ -45,7 +45,7 @@ class ServiceGroup(BaseModel, Runnable, Named):
         self.asynchronous = False
         self.annotators: List[Union[Service, 'ServiceGroup']] = []
 
-    async def _run(self, ctx: Context, callback: Callable[[str, FrameworkKeys, Any], None], actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
+    async def _run(self, ctx: Context, callback: CallbackInternalFunction, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         if self.asynchronous:
             self._framework_states_runner(ctx, ServiceState.RUNNING)
 
@@ -89,10 +89,10 @@ class ServiceGroup(BaseModel, Runnable, Named):
 
         return ctx
 
-    async def __call__(self, ctx: Context, callback: Callable[[str, FrameworkKeys, Any], None], actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
+    async def __call__(self, ctx: Context, callback: CallbackInternalFunction, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         self._framework_states_runner(ctx, dict())
         for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.pre_func(ctx, actor), ctx, wrapper.name, WrapperType.PREPROCESSING, callback)
+            self._export_wrapper_data(wrapper, ctx, actor, WrapperType.PREPROCESSING, callback)
 
         timeout = self.timeout if self.timeout > -1 else None
         if self.asynchronous:
@@ -108,7 +108,7 @@ class ServiceGroup(BaseModel, Runnable, Named):
             ctx = await self._run(ctx, callback, actor, *args, **kwargs)
 
         for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper.post_func(ctx, actor), ctx, wrapper.name, WrapperType.POSTPROCESSING, callback)
+            self._export_wrapper_data(wrapper, ctx, actor, WrapperType.POSTPROCESSING, callback)
 
         return ctx
 

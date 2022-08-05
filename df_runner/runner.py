@@ -1,6 +1,6 @@
 import logging
 from asyncio import run
-from typing import Any, Optional, Union, Dict, Callable
+from typing import Any, Optional, Union, Dict
 
 from df_engine.core import Context, Actor
 from df_db_connector import DBAbstractConnector
@@ -8,8 +8,7 @@ from df_db_connector import DBAbstractConnector
 from .group import ServiceGroup
 from .provider import AbsProvider, CLIProvider
 from .service import Service
-from .types import FrameworkKeys, ClearFunction
-
+from .types import FrameworkKeys, ClearFunction, CallbackInternalFunction, CallbackType
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ class Runner:
         contex_db: Optional[Union[DBAbstractConnector, Dict]] = None,
         provider: AbsProvider = CLIProvider(),
         group: Optional[ServiceGroup] = None,
-        callback: Optional[Callable[[str, FrameworkKeys, Any], None]] = lambda name, key, data: None
+        callback: Optional[CallbackInternalFunction] = lambda name, key, data: None
     ):
         self.contex_db = dict() if contex_db is None else contex_db
         self.provider = provider
@@ -69,6 +68,7 @@ class Runner:
             ctx.framework_states[FrameworkKeys.SERVICES] = dict()
             ctx.framework_states[FrameworkKeys.SERVICES_META] = dict()
 
+        self._callback('ALL', CallbackType.BEFORE_ALL, FrameworkKeys.RUNNER, None)
         ctx.add_request(request)
 
         ctx = await self._group(ctx, self._callback, self.actor)
@@ -79,4 +79,6 @@ class Runner:
             ctx.framework_states[FrameworkKeys.SERVICES] = services
             ctx.framework_states[FrameworkKeys.SERVICES_META] = meta
         self.contex_db[ctx_id] = ctx
+
+        self._callback('ALL', CallbackType.AFTER_ALL, FrameworkKeys.RUNNER, None)
         return ctx

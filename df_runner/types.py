@@ -1,5 +1,5 @@
 from enum import unique, Enum, auto
-from typing import Callable, Any, Union, Awaitable, Dict, Tuple
+from typing import Callable, Any, Union, Awaitable, Dict, Tuple, Optional
 
 from df_engine.core import Context, Actor
 
@@ -38,6 +38,23 @@ class ConditionState(Enum):
 
 
 @unique
+class CallbackType(Enum):
+    """
+    Enum, representing types of callbacks, that can be set applied for a pipeline.
+    The following types are supported:
+        BEFORE_ALL: function called before each turn
+        BEFORE: function called before each service
+        AFTER: function called after each service
+        AFTER_ALL: function called after each turn
+    """
+
+    BEFORE_ALL = auto()
+    BEFORE = auto()
+    AFTER = auto()
+    AFTER_ALL = auto()
+
+
+@unique
 class FrameworkKeys(Enum):
     """
     Enum, representing place in context.framework_keys to store data.
@@ -54,6 +71,18 @@ class FrameworkKeys(Enum):
 
 ACTOR = 'ACTOR'
 
+
+"""
+A function type for attaching to different stages of pipeline execution.
+Accepts string (service name) and any (service result, if any by that point).
+"""
+CallbackFunction = Callable[[str, Any], None]
+
+"""
+A function type for invoking callback from different parts of the pipeline.
+Accepts string (service name), callback type (type of callback to invoke), key (callback type indicator) and any (service result, if any by that point).
+"""
+CallbackInternalFunction = Callable[[str, CallbackType, FrameworkKeys, Optional[Any]], None]
 
 """
 A function type for provider-to-client interaction.
