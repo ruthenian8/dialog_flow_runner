@@ -1,10 +1,11 @@
 import logging
-from typing import Union, List, Dict, TypedDict, Optional, Literal
+from typing import Union, List, Dict, TypedDict, Optional, Literal, Tuple
 
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor, Script
 from df_engine.core.types import NodeLabel2Type
 from pydantic import BaseModel, Extra
+from typing_extensions import NotRequired
 
 from .runner import Runner
 from .wrapper import Wrapper
@@ -16,7 +17,16 @@ from .service import Service
 
 logger = logging.getLogger(__name__)
 
-_ServiceCallable = Union[Service, ServiceFunction]
+_ServiceCallable = Union[Service, ServiceFunction, ServiceGroup, Literal[ACTOR]]
+
+PipelineDict = TypedDict('PipelineDict', {
+    'actor': Actor,
+    'provider': NotRequired[Optional[AbsProvider]],
+    'contex_db': NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
+    'context_clear': NotRequired[Optional[ClearFunction]],
+    'services': Union[List[_ServiceCallable], ServiceGroup],
+    'wrappers': NotRequired[Optional[List[Wrapper]]]
+})
 
 
 class Pipeline(BaseModel):
@@ -34,7 +44,7 @@ class Pipeline(BaseModel):
     provider: Optional[AbsProvider] = CLIProvider()
     context_db: Optional[Union[DBAbstractConnector, Dict]] = None
     context_clear: Optional[ClearFunction] = None
-    services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup, Literal[ACTOR]]] = None
+    services: Union[List[_ServiceCallable], ServiceGroup] = None
     wrappers: Optional[List[Wrapper]] = None
 
     timeout: int = -1
@@ -58,13 +68,23 @@ class Pipeline(BaseModel):
         self._annotators.add_callback_wrapper(callback_type, callback, condition)
 
     @property
-    def processed_services(self) -> List[Service]:
+    def processed_services(self) -> List[Tuple[str, Service]]:
         """
         Returns a copy of created inner services flat array used during actual pipeline running.
         Might be used for debugging purposes.
-        FIXME: runtime flattening
         """
-        return self._annotators
+
+        def iterate_group(group: ServiceGroup, prefix: str) -> List[Tuple[str, Service]]:
+            services = list()
+            prefix = f'{prefix}.{group.name}'
+            for service in group.annotators:
+                if isinstance(service, Service):
+                    services += [(prefix, service)]
+                else:
+                    services += iterate_group(service, prefix)
+            return services
+
+        return iterate_group(self._annotators, '')
 
     def start_sync(self):
         """
@@ -99,6 +119,10 @@ class Pipeline(BaseModel):
             context_db=context_db,
             services=pre_annotators + [ACTOR] + post_annotators
         )
+
+    @classmethod
+    def parse_dict(cls, d: PipelineDict) -> 'Pipeline':
+        return cls.parse_obj(d)
 
 
 def create_pipelines(pipeline: TypedDict('ServiceDict', {

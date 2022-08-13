@@ -67,14 +67,14 @@ class Service(Runnable, Named):
 
     @staticmethod
     def _get_name(
-        service: Union[Actor, Dict, ServiceFunction],
+        service: Union[Literal[ACTOR], Dict, ServiceFunction],
         forbidden_names: Optional[Set[str]] = None,
         name_rule: Optional[Callable[[Any], str]] = None,
         naming: Optional[Dict[str, int]] = None,
         given_name: Optional[str] = None
     ) -> str:
         def default_name_rule(this: Union[Actor, Dict, ServiceFunction]) -> str:
-            if isinstance(this, Actor):
+            if isinstance(this, str) and this == ACTOR:
                 return 'actor'
             elif isinstance(this, Service):
                 return 'serv'

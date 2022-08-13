@@ -9,7 +9,7 @@ class Named:
     name: Optional[str] = None
 
     @staticmethod
-    def _get_name_base(
+    def _get_name(
         this: Any,
         name_rule: Callable[[Any], str],
         forbidden_names: Set[str],
@@ -24,17 +24,17 @@ class Named:
             service object: 'obj_[NUMBER]'
         If user provided name uses same syntax it will be changed to auto-generated.
         """
-        forbidden = [given_name.startswith(name) for name in forbidden_names]
-
-        if given_name is not None and not any(forbidden):
-            if naming is not None:
-                if given_name in naming:
-                    raise Exception(f"User defined service name collision: {given_name}")
-                else:
-                    naming[given_name] = True
-            return given_name
-        elif given_name is not None:
-            logger.warning(f"User defined name for {type(this).__name__} '{given_name}' violates naming convention, the {type(this).__name__} will be renamed")
+        if given_name is not None:
+            forbidden = [given_name.startswith(name) for name in forbidden_names]
+            if not any(forbidden):
+                if naming is not None:
+                    if given_name in naming:
+                        raise Exception(f"User defined service name collision: {given_name}")
+                    else:
+                        naming[given_name] = True
+                return given_name
+            else:
+                logger.warning(f"User defined name for {type(this).__name__} '{given_name}' violates naming convention, the {type(this).__name__} will be renamed")
 
         name = name_rule(this)
 
@@ -44,13 +44,3 @@ class Named:
             return f'{name}_{number}'
         else:
             return name
-
-    @staticmethod
-    def _get_name(
-        this: Any,
-        name_rule: Callable[[Any], str],
-        forbidden_names: Set[str],
-        naming: Optional[Dict[str, int]] = None,
-        given_name: Optional[str] = None
-    ) -> str:
-        return Named._get_name_base(this, name_rule, set(), dict())

@@ -72,7 +72,7 @@ pipeline = {
 
 
 if __name__ == "__main__":
-    pipe = Pipeline.parse_obj(pipeline)
-    #print("It may be not easy to understand what service names were generated for the pipeline.")
-    #print(f"Use given code in that case to acquire names: {[service.name for service in pipe.processed_services]}")
+    pipe = Pipeline.parse_dict(Pipeline)
+    print("It may be not easy to understand what service names were generated for the pipeline.")
+    print(f"Use given code in that case to acquire names: {[service.name for path, service in pipe.processed_services]}")
     pipe.start_sync()
