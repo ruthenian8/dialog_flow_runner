@@ -3,12 +3,12 @@ from asyncio import wait_for, create_task, as_completed, TimeoutError as AsyncTi
 from typing import Optional, List, Union, Dict, Literal, Callable, Any, Set
 
 from df_engine.core import Actor, Context
-from pydantic import BaseModel, Extra
+from pydantic import Extra
 
 from .named import Named
-from .wrapper import Wrapper, WrapperType
+from .wrapper import WrapperType
 from .runnable import Runnable
-from .types import ServiceFunction, ServiceCondition, ACTOR, ServiceState, CallbackInternalFunction, CallbackType
+from .types import ServiceFunction, ServiceCondition, ACTOR, ServiceState, CallbackType, WrapperFunction, CallbackFunction
 from .service import Service
 from .conditions import always_start_condition
 
@@ -18,7 +18,7 @@ _ServiceCallable = Union[Service, ServiceFunction]
 logger = logging.getLogger(__name__)
 
 
-class ServiceGroup(BaseModel, Runnable, Named):
+class ServiceGroup(Runnable, Named):
     """
     An instance that represents a service group.
     Group can be also defined in pipeline dict as a nested service list.
@@ -30,9 +30,7 @@ class ServiceGroup(BaseModel, Runnable, Named):
         wrappers (optionally) - Wrapper classes array to add to all group services
     """
 
-    name: Optional[str] = None
     services: List[Union[_ServiceCallable, List[_ServiceCallable], 'ServiceGroup', Literal[ACTOR]]]
-    wrappers: Optional[List[Wrapper]] = None
     timeout: int = -1
     start_condition: ServiceCondition = always_start_condition
 
@@ -41,18 +39,22 @@ class ServiceGroup(BaseModel, Runnable, Named):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.wrappers = [] if self.wrappers is None else self.wrappers
-        self.asynchronous = False
         self.annotators: List[Union[Service, 'ServiceGroup']] = []
 
-    async def _run(self, ctx: Context, callback: CallbackInternalFunction, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
+    def add_callback_wrapper(self, callback_type: CallbackType, callback: CallbackFunction, condition: Callable[[str], bool] = lambda _: True):
+        super().add_callback_wrapper(callback_type, callback, condition)
+        for service in self.services:
+            if condition(service.name):
+                service.add_callback_wrapper(callback_type, callback, condition)
+
+    async def _run(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         if self.asynchronous:
             self._framework_states_runner(ctx, ServiceState.RUNNING)
 
             running = dict()
             for annotator in self.annotators:
                 if annotator._framework_states_runner(ctx, default=ServiceState.NOT_RUN) not in (ServiceState.NOT_RUN, ServiceState.PENDING):
-                    service_result = create_task(annotator(ctx, callback, actor), name=annotator.name)
+                    service_result = create_task(annotator(ctx, actor), name=annotator.name)
                     timeout = annotator.timeout if isinstance(annotator, Service) and annotator.timeout > -1 else None
                     running.update({annotator.name: wait_for(service_result, timeout=timeout)})
 
@@ -74,14 +76,14 @@ class ServiceGroup(BaseModel, Runnable, Named):
                 service_result = None
                 if annotator.asynchronous:
                     timeout = annotator.timeout if annotator.timeout > -1 else None
-                    task = create_task(annotator(ctx, callback, actor, *args, **kwargs), name=annotator.name)
+                    task = create_task(annotator(ctx, actor, *args, **kwargs), name=annotator.name)
                     future = wait_for(task, timeout=timeout)
                     try:
                         await future
                     except AsyncTimeoutError as _:
                         logger.warning(f"Group {annotator.name} timed out!")
                 else:
-                    service_result = await annotator(ctx, callback, actor)
+                    service_result = await annotator(ctx, actor)
                 if isinstance(service_result, Context):
                     ctx = service_result
 
@@ -89,14 +91,13 @@ class ServiceGroup(BaseModel, Runnable, Named):
 
         return ctx
 
-    async def __call__(self, ctx: Context, callback: CallbackInternalFunction, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
+    async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         self._framework_states_runner(ctx, dict())
-        for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper, ctx, actor, WrapperType.PREPROCESSING, callback)
+        self._export_data(ctx, actor, WrapperType.PREPROCESSING)
 
         timeout = self.timeout if self.timeout > -1 else None
         if self.asynchronous:
-            task = create_task(self._run(ctx, callback, actor, *args, **kwargs), name=self.name)
+            task = create_task(self._run(ctx, actor, *args, **kwargs), name=self.name)
             future = wait_for(task, timeout=timeout)
             try:
                 await future
@@ -105,11 +106,9 @@ class ServiceGroup(BaseModel, Runnable, Named):
         else:
             if timeout is not None:
                 logger.warning(f"Timeout can not be applied for group {self.name}: it is not asynchronous !")
-            ctx = await self._run(ctx, callback, actor, *args, **kwargs)
+            ctx = await self._run(ctx, actor, *args, **kwargs)
 
-        for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper, ctx, actor, WrapperType.POSTPROCESSING, callback)
-
+        self._export_data(ctx, actor, WrapperType.POSTPROCESSING)
         return ctx
 
     @staticmethod

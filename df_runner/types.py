@@ -1,5 +1,5 @@
 from enum import unique, Enum, auto
-from typing import Callable, Any, Union, Awaitable, Dict, Tuple, Optional
+from typing import Callable, Any, Union, Awaitable, Dict, Tuple
 
 from df_engine.core import Context, Actor
 
@@ -79,12 +79,6 @@ Accepts string (service name) and any (service result, if any by that point).
 CallbackFunction = Callable[[str, Any], None]
 
 """
-A function type for invoking callback from different parts of the pipeline.
-Accepts string (service name), callback type (type of callback to invoke), key (callback type indicator) and any (service result, if any by that point).
-"""
-CallbackInternalFunction = Callable[[str, CallbackType, FrameworkKeys, Optional[Any]], None]
-
-"""
 A function type for provider-to-client interaction.
 Accepts string (user input), returns string (answer from runner).
 """
@@ -110,9 +104,9 @@ ServiceCondition = Callable[[Context, Actor], ConditionState]
 
 """
 A function type for creating wrappers (pre- and postprocessing).
-Accepts context and actor (current pipeline state) and returns nothing.
+Accepts context, actor (current pipeline state), name of the wrapped service and returns anything.
 """
-WrapperFunction = Callable[[Context, Actor], None]
+WrapperFunction = Callable[[Context, Actor, str], Any]
 
 
 ClearFunction = Callable[[Dict, Dict], Tuple[Dict, Dict]]

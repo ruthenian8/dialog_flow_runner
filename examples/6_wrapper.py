@@ -41,22 +41,22 @@ def preprocess(ctx: Context, actor: Actor) -> Any:
     print(f"    preprocession Service")
 
 
-def postprocess(ctx: Context, actor: Actor) -> Any:
+def postprocess(ctx: Context, actor: Actor, name: str) -> Any:
     print(f"    postprocession Service")
 
 
-@wrap(Wrapper(pre_func=lambda ctx, act: print("        pre-wrapper"), post_func=lambda ctx, act: print("        post-wrapper")))
+@wrap(Wrapper(pre_func=lambda ctx, act, _: print("        pre-wrapper"), post_func=lambda ctx, act, _: print("        post-wrapper")))
 def wrapped_service(ctx: Context, actor: Actor) -> Any:
     print(f"            the Service, that was wrapped")
 
 
 class ActorWrapper(Wrapper):
     def __init__(self, **kwargs):
-        def pre_func(ctx: Context, actor: Actor) -> Context:
+        def pre_func(ctx: Context, actor: Actor, _: str) -> Context:
             print(f"        actor pre wrapper")
             return ctx
 
-        def post_func(ctx: Context, actor: Actor) -> Context:
+        def post_func(ctx: Context, actor: Actor, _: str) -> Context:
             print(f"        actor post wrapper")
             return ctx
 

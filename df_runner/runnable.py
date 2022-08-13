@@ -1,14 +1,24 @@
-from typing import Any, Optional
+import uuid
+from typing import Any, Optional, List, Callable
 
 from df_engine.core import Context, Actor
+from pydantic import BaseModel
 
-from .types import FrameworkKeys, CallbackInternalFunction, CallbackType
+from .types import FrameworkKeys, CallbackType, CallbackFunction
 from .wrapper import WrapperType, Wrapper
 
 
-class Runnable:
+class Runnable(BaseModel):
     name: Optional[str] = None
     asynchronous: bool = False
+    wrappers: Optional[List[Wrapper]] = None
+
+    def __init__(self, **kwargs):
+        kwargs.update({'wrappers': kwargs.get('wrappers', [])})
+        super().__init__(**kwargs)
+
+    def retrieve_data(self, ctx: Context) -> Any:
+        return ctx.framework_states[FrameworkKeys.SERVICES].get(self.name, None)
 
     def save_data(self, result: Any, ctx: Context):
         ctx.framework_states[FrameworkKeys.SERVICES][self.name] = result
@@ -16,15 +26,22 @@ class Runnable:
     def save_wrapper_data(self, result: Any, ctx: Context, wrapper_name: str, wrapper_type: WrapperType):
         ctx.framework_states[FrameworkKeys.SERVICES_META][self.name] = result
 
-    def _export_data(self, result: Any, ctx: Context, call_type: CallbackType, callback: CallbackInternalFunction):
-        self.save_data(result, ctx)
-        callback(self.name, call_type, FrameworkKeys.SERVICES, result)
+    def add_callback_wrapper(self, callback_type: CallbackType, callback: CallbackFunction, condition: Callable[[str], bool] = lambda _: True):
+        before = callback_type is CallbackType.BEFORE_ALL or callback_type is CallbackType.BEFORE
+        for_all = callback_type is CallbackType.BEFORE_ALL or callback_type is CallbackType.AFTER_ALL
+        self.wrappers += [Wrapper.parse_obj({
+            'name': f'{uuid.uuid4()}_{"before" if before else "after"}{"_all" if for_all else ""}_stats_wrapper',
+            f'{"pre" if before else "post"}_func': lambda c, _, n: callback(n, self.retrieve_data(c)),
+            f'{"post" if before else "pre"}_func': lambda _, __, ___: None
+        })]
 
-    def _export_wrapper_data(self, wrapper: Wrapper, ctx: Context, actor: Actor, wrapper_type: WrapperType, callback: CallbackInternalFunction):
-        callback(wrapper.name, CallbackType.BEFORE, FrameworkKeys.SERVICES_META, None)
-        result = wrapper.pre_func(ctx, actor) if WrapperType.PREPROCESSING else wrapper.post_func(ctx, actor)
-        self.save_wrapper_data(result, ctx, wrapper.name, wrapper_type)
-        callback(wrapper.name, CallbackType.AFTER, FrameworkKeys.SERVICES_META, result)
+    def _export_data(self, ctx: Context, actor: Actor, wrapper_type: WrapperType, result: Optional[Any] = None):
+        if result is not None:
+            self.save_data(result, ctx)
+        for wrapper in self.wrappers:
+            result = wrapper.pre_func(ctx, actor, self.name) if WrapperType.PREPROCESSING else wrapper.post_func(ctx, actor, self.name)
+            if result is not None:
+                self.save_wrapper_data(result, ctx, wrapper.name, wrapper_type)
 
     def _framework_states_base(self, ctx: Context, key: FrameworkKeys, value: Any = None, default: Any = None) -> Any:
         if value is None:

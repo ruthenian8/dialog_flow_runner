@@ -1,6 +1,5 @@
 import logging
-import uuid
-from typing import Union, List, Dict, TypedDict, Optional, Literal, Callable, Any, Tuple
+from typing import Union, List, Dict, TypedDict, Optional, Literal
 
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor, Script
@@ -11,7 +10,7 @@ from .runner import Runner
 from .wrapper import Wrapper
 from .provider import AbsProvider, CLIProvider
 from .group import ServiceGroup
-from .types import ServiceFunction, ClearFunction, ACTOR, FrameworkKeys, AnnotatorFunction, CallbackFunction, CallbackType
+from .types import ServiceFunction, ClearFunction, ACTOR, AnnotatorFunction, CallbackType, CallbackFunction
 from .service import Service
 
 
@@ -49,17 +48,14 @@ class Pipeline(BaseModel):
         self.context_db = dict() if self.context_db is None else self.context_db
         self.wrappers = [] if self.wrappers is None else self.wrappers
 
-        self._callbacks: Dict[str, Tuple[CallbackType, CallbackFunction]] = dict()
         self._annotators = ServiceGroup.cast(self.services, self.actor, dict(), wrappers=self.wrappers, timeout=self.timeout)
-        self._runner = Runner(self.actor, self.context_clear, self.context_db, self.provider, self._annotators, self._call_back)
+        self._runner = Runner(self.actor, self.context_clear, self.context_db, self.provider, self._annotators)
 
-    def _call_back(self, name: str, call_type: CallbackType, key: FrameworkKeys, data: Any = None):
-        for callback in [callback for callback_type, callback in self._callbacks.values() if callback_type == call_type]:
-            callback(f"{name}{'_meta' if key is FrameworkKeys.SERVICES_META else '_serv'}", data)
+    def add_callback(self, callback_type: CallbackType, callback: CallbackFunction, whitelist: Optional[List[str]] = None, blacklist: Optional[List[str]] = None):
+        def condition(name: str) -> bool:
+            return (whitelist is not None and name in whitelist) and (blacklist is not None and name not in blacklist)
 
-    def add_global_callback(self, callback_type: CallbackType, callback: CallbackFunction, name: str = None):
-        name = name if name is not None else uuid.uuid4()
-        self._callbacks.update({name: (callback_type, callback)})
+        self._annotators.add_callback_wrapper(callback_type, callback, condition)
 
     @property
     def processed_services(self) -> List[Service]:

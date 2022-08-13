@@ -1,13 +1,12 @@
 import logging
 from asyncio import iscoroutinefunction
-from typing import Optional, Union, Dict, Callable, List, Literal, Any, Set
+from typing import Optional, Union, Dict, Callable, Literal, Any, Set
 
 from df_engine.core import Actor, Context
-from pydantic import BaseModel, Extra
 
 from .named import Named
 from .wrapper import Wrapper, WrapperType
-from .types import ACTOR, ServiceFunction, ServiceCondition, FrameworkKeys, ServiceState, ConditionState, CallbackInternalFunction, CallbackType
+from .types import ACTOR, ServiceFunction, ServiceCondition, ServiceState, ConditionState
 from .runnable import Runnable
 from .conditions import always_start_condition
 
@@ -15,7 +14,7 @@ from .conditions import always_start_condition
 logger = logging.getLogger(__name__)
 
 
-class Service(BaseModel, Runnable, Named):
+class Service(Runnable, Named):
     """
     Extension class for annotation functions, may be created from dict.
 
@@ -28,20 +27,10 @@ class Service(BaseModel, Runnable, Named):
     """
 
     service: Union[Literal[ACTOR], ServiceFunction]
-    name: Optional[str] = None
     timeout: int = -1
     start_condition: ServiceCondition = always_start_condition
-    wrappers: Optional[List[Wrapper]] = None
 
-    class Config:
-        extra = Extra.allow
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.wrappers = [] if self.wrappers is None else self.wrappers
-        self.asynchronous = False
-
-    async def __call__(self, ctx: Context, callback: CallbackInternalFunction, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
+    async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         """
         Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
         It also sets named variables in context.framework_states for other services start_conditions.
@@ -53,11 +42,9 @@ class Service(BaseModel, Runnable, Named):
             return ctx
 
         self._framework_states_meta(ctx, dict())
-        for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper, ctx, actor, WrapperType.PREPROCESSING, callback)
+        self._export_data(ctx, actor, WrapperType.PREPROCESSING)
 
         result = None
-        self._export_data(result, ctx, CallbackType.BEFORE, callback)
         try:
             state = self.start_condition(ctx, actor)
             if state == ConditionState.ALLOWED:
@@ -76,10 +63,7 @@ class Service(BaseModel, Runnable, Named):
             self._framework_states_runner(ctx, ServiceState.FAILED)
             logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
 
-        self._export_data(result, ctx, CallbackType.AFTER, callback)
-
-        for wrapper in self.wrappers:
-            self._export_wrapper_data(wrapper, ctx, actor, WrapperType.POSTPROCESSING, callback)
+        self._export_data(ctx, actor, WrapperType.POSTPROCESSING, result)
 
     @staticmethod
     def _get_name(
