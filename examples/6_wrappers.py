@@ -37,30 +37,24 @@ script = {
 actor = Actor(script, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node"))
 
 
-def preprocess(ctx: Context, actor: Actor) -> Any:
-    print(f"    preprocession Service")
-
-
-def postprocess(ctx: Context, actor: Actor, name: str) -> Any:
-    print(f"    postprocession Service")
-
-
-@wrap(Wrapper(pre_func=lambda ctx, act, _: print("        pre-wrapper"), post_func=lambda ctx, act, _: print("        post-wrapper")))
+@wrap(
+    Wrapper(
+        pre_func=lambda ctx, act, _: print("\t\tpre-wrapper"),
+        post_func=lambda ctx, act, _: print("\t\tpost-wrapper"),
+    )
+)
 def wrapped_service(ctx: Context, actor: Actor) -> Any:
-    print(f"            the Service, that was wrapped")
+    print(f"\t\t\tthe Service, that was wrapped")
 
 
 class ActorWrapper(Wrapper):
     def __init__(self, **kwargs):
-        def pre_func(ctx: Context, actor: Actor, _: str) -> Context:
-            print(f"        actor pre wrapper")
-            return ctx
+        def pre_func(ctx: Context, actor: Actor, _: str) -> Any:
+            print(f"\t\tactor pre wrapper")
+            last_request = str(ctx.last_request)
+            ctx.requests[list(ctx.requests)[-1]] = last_request[:1].lower() + last_request[1:]
 
-        def post_func(ctx: Context, actor: Actor, _: str) -> Context:
-            print(f"        actor post wrapper")
-            return ctx
-
-        super().__init__(pre_func=pre_func, post_func=post_func, **kwargs)
+        super().__init__(pre_func=pre_func, post_func=lambda ctx, act, _: None, **kwargs)
 
 
 pipeline = {
@@ -68,24 +62,9 @@ pipeline = {
     "provider": CLIProvider(),
     "connector": dict(),
     "services": [
-        {
-            "service": preprocess,
-            "timeout": 1000
-        },
-        ServiceGroup(
-            wrappers=[ActorWrapper()],
-            services=[
-                ACTOR
-            ]
-        ),
+        ServiceGroup(wrappers=[ActorWrapper()], services=[ACTOR]),
         wrapped_service,
-        Service(
-            service=postprocess,
-            name="postprocess",
-            timeout=2000,
-            start_condition=service_successful_condition("func_preprocess_0")
-        )
-    ]
+    ],
 }
 
 

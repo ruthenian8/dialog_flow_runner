@@ -69,7 +69,7 @@ class FrameworkKeys(Enum):
     SERVICES_META = auto()
 
 
-ACTOR = 'ACTOR'
+ACTOR = "ACTOR"
 
 
 """

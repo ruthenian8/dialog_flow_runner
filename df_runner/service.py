@@ -22,8 +22,8 @@ class Service(Runnable, Named):
         service - an annotation function or an actor
         name (optionally) - custom service name (used for identification)
             NB! if name is not provided, it will be generated from Actor, Function or dict.
-        timeout (optionally) - the time period the service is allowed to run, it will be killed on exception, default: 1000 ms
-        start_condition (optionally) - requirement for service to start, service will run only if this returned True, default: always_start_condition
+        timeout (optionally) - the time period after that the service will be killed on exception, default: 1000 ms
+        start_condition (optionally) - requirement for service to start, default: always_start_condition
     """
 
     service: Union[Literal[ACTOR], ServiceFunction]
@@ -51,6 +51,7 @@ class Service(Runnable, Named):
                 if iscoroutinefunction(self.service):
                     self._framework_states_runner(ctx, ServiceState.RUNNING)
                     result = await self.service(ctx, actor)
+                    self._framework_states_runner(ctx, ServiceState.FINISHED)
                 else:
                     result = self.service(ctx, actor)
                     self._framework_states_runner(ctx, ServiceState.FINISHED)
@@ -71,29 +72,29 @@ class Service(Runnable, Named):
         forbidden_names: Optional[Set[str]] = None,
         name_rule: Optional[Callable[[Any], str]] = None,
         naming: Optional[Dict[str, int]] = None,
-        given_name: Optional[str] = None
+        given_name: Optional[str] = None,
     ) -> str:
         def default_name_rule(this: Union[Actor, Dict, ServiceFunction]) -> str:
             if isinstance(this, str) and this == ACTOR:
-                return 'actor'
+                return "actor"
             elif isinstance(this, Service):
-                return 'serv'
+                return "serv"
             elif isinstance(this, Callable):
-                return f'func_{this.__name__}'
+                return f"func_{this.__name__}"
             else:
-                return 'unknown'
+                return "unknown"
 
-        forbidden_names = forbidden_names if forbidden_names is not None else {'actor_', 'func_', 'obj_', 'group_'}
+        forbidden_names = forbidden_names if forbidden_names is not None else {"actor_", "func_", "obj_", "group_"}
         name_rule = name_rule if name_rule is not None else default_name_rule
         return super(Service, Service)._get_name(service, name_rule, forbidden_names, naming, given_name)
 
     @classmethod
     def cast(
         cls,
-        service: Union[Literal[ACTOR], Dict, ServiceFunction, 'Service'],
+        service: Union[Literal[ACTOR], Dict, ServiceFunction, "Service"],
         naming: Optional[Dict[str, int]] = None,
-        **kwargs
-    ) -> 'Service':
+        **kwargs,
+    ) -> "Service":
         """
         Method for service creation from actor, function or dict.
         No other sources are accepted (yet).
@@ -104,11 +105,7 @@ class Service(Runnable, Named):
             service.asynchronous = iscoroutinefunction(service.service)
             return service
         elif service == ACTOR or isinstance(service, Callable):
-            service = cls(
-                service=service,
-                name=cls._get_name(service, naming=naming),
-                **kwargs
-            )
+            service = cls(service=service, name=cls._get_name(service, naming=naming), **kwargs)
             service.asynchronous = iscoroutinefunction(service.service)
             return service
         else:
@@ -121,6 +118,8 @@ def wrap(*wrappers: Wrapper):
     Target function will no longer be a function after wrapping; it will become a WrappedService object.
     :wrappers: - wrappers to surround the function.
     """
+
     def inner(service: ServiceFunction) -> Service:
         return Service(service=service, wrappers=list(wrappers))
+
     return inner

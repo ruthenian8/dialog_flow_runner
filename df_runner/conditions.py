@@ -24,7 +24,7 @@ def service_successful_condition(name: Optional[str] = None) -> ServiceCondition
         """
 
         state = ctx.framework_states[FrameworkKeys.RUNNER].get(name, ServiceState.NOT_RUN)
-        if state not in (ConditionState.ALLOWED, ConditionState.DENIED):
+        if state not in (ServiceState.FINISHED, ServiceState.FAILED):
             return ConditionState.PENDING
         elif state == ServiceState.FINISHED:
             return ConditionState.ALLOWED

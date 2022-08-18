@@ -14,7 +14,7 @@ class Named:
         name_rule: Callable[[Any], str],
         forbidden_names: Set[str],
         naming: Optional[Dict[str, int]] = None,
-        given_name: Optional[str] = None
+        given_name: Optional[str] = None,
     ) -> str:
         """
         Method for name generation.
@@ -34,13 +34,16 @@ class Named:
                         naming[given_name] = True
                 return given_name
             else:
-                logger.warning(f"User defined name for {type(this).__name__} '{given_name}' violates naming convention, the {type(this).__name__} will be renamed")
+                type_name = type(this).__name__
+                logger.warning(
+                    f"User defined name for {type_name} '{given_name}' violates naming convention, the {type_name} will be renamed"
+                )
 
         name = name_rule(this)
 
         if naming is not None:
             number = naming.get(name, 0)
             naming[name] = number + 1
-            return f'{name}_{number}'
+            return f"{name}_{number}"
         else:
             return name

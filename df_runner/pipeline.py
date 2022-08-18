@@ -17,16 +17,19 @@ from .service import Service
 
 logger = logging.getLogger(__name__)
 
-_ServiceCallable = Union[Service, ServiceFunction, ServiceGroup, Literal[ACTOR]]
+_ServiceCallable = Union[Service, ServiceFunction, Literal[ACTOR]]
 
-PipelineDict = TypedDict('PipelineDict', {
-    'actor': Actor,
-    'provider': NotRequired[Optional[AbsProvider]],
-    'contex_db': NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
-    'context_clear': NotRequired[Optional[ClearFunction]],
-    'services': Union[List[_ServiceCallable], ServiceGroup],
-    'wrappers': NotRequired[Optional[List[Wrapper]]]
-})
+PipelineDict = TypedDict(
+    "PipelineDict",
+    {
+        "actor": Actor,
+        "provider": NotRequired[Optional[AbsProvider]],
+        "context_db": NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
+        "context_clear": NotRequired[Optional[ClearFunction]],
+        "services": List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup]],
+        "wrappers": NotRequired[Optional[List[Wrapper]]],
+    },
+)
 
 
 class Pipeline(BaseModel):
@@ -44,7 +47,7 @@ class Pipeline(BaseModel):
     provider: Optional[AbsProvider] = CLIProvider()
     context_db: Optional[Union[DBAbstractConnector, Dict]] = None
     context_clear: Optional[ClearFunction] = None
-    services: Union[List[_ServiceCallable], ServiceGroup] = None
+    services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup]] = None
     wrappers: Optional[List[Wrapper]] = None
 
     timeout: int = -1
@@ -58,10 +61,18 @@ class Pipeline(BaseModel):
         self.context_db = dict() if self.context_db is None else self.context_db
         self.wrappers = [] if self.wrappers is None else self.wrappers
 
-        self._annotators = ServiceGroup.cast(self.services, self.actor, dict(), wrappers=self.wrappers, timeout=self.timeout)
+        self._annotators = ServiceGroup.cast(
+            self.services, self.actor, dict(), wrappers=self.wrappers, timeout=self.timeout
+        )
         self._runner = Runner(self.actor, self.context_clear, self.context_db, self.provider, self._annotators)
 
-    def add_callback(self, callback_type: CallbackType, callback: CallbackFunction, whitelist: Optional[List[str]] = None, blacklist: Optional[List[str]] = None):
+    def add_callback(
+        self,
+        callback_type: CallbackType,
+        callback: CallbackFunction,
+        whitelist: Optional[List[str]] = None,
+        blacklist: Optional[List[str]] = None,
+    ):
         def condition(name: str) -> bool:
             return (whitelist is not None and name in whitelist) and (blacklist is not None and name not in blacklist)
 
@@ -76,7 +87,7 @@ class Pipeline(BaseModel):
 
         def iterate_group(group: ServiceGroup, prefix: str) -> List[Tuple[str, Service]]:
             services = list()
-            prefix = f'{prefix}.{group.name}'
+            prefix = f"{prefix}.{group.name}"
             for service in group.annotators:
                 if isinstance(service, Service):
                     services += [(prefix, service)]
@@ -84,7 +95,7 @@ class Pipeline(BaseModel):
                     services += iterate_group(service, prefix)
             return services
 
-        return iterate_group(self._annotators, '')
+        return iterate_group(self._annotators, "")
 
     def start_sync(self):
         """
@@ -107,7 +118,7 @@ class Pipeline(BaseModel):
         context_db: Optional[Union[DBAbstractConnector, Dict]] = None,
         request_provider: AbsProvider = CLIProvider(),
         pre_annotators: Optional[List[AnnotatorFunction]] = None,
-        post_annotators: Optional[List[AnnotatorFunction]] = None
+        post_annotators: Optional[List[AnnotatorFunction]] = None,
     ):
         actor = Actor(script, start_label, fallback_label)
         context_db = dict() if context_db is None else context_db
@@ -117,23 +128,9 @@ class Pipeline(BaseModel):
             actor=actor,
             provider=request_provider,
             context_db=context_db,
-            services=pre_annotators + [ACTOR] + post_annotators
+            services=pre_annotators + [ACTOR] + post_annotators,
         )
 
     @classmethod
-    def parse_dict(cls, d: PipelineDict) -> 'Pipeline':
+    def parse_dict(cls, d: PipelineDict) -> "Pipeline":
         return cls.parse_obj(d)
-
-
-def create_pipelines(pipeline: TypedDict('ServiceDict', {
-    'provider': Union[AbsProvider, List[AbsProvider]],
-    'contex_db': Optional[DBAbstractConnector],
-    'services': List[Union[Service, Actor, Dict, ServiceFunction]]
-})):
-    """
-    TODO: requires refactoring, maybe add multiple providers support for one Pipeline (with async)
-    TODO: ... needed anymore?
-    """
-    connector = pipeline['contex_db']
-    providers = pipeline['provider'] if isinstance(pipeline['provider'], list) else [pipeline['provider']]
-    return [Pipeline(provider=provider, services=pipeline['services'], connector=connector) for provider in providers]

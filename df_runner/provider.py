@@ -30,10 +30,7 @@ class PollingProvider(AbsProvider):
     Polling provider runs in a loop, constantly asking user for a new input.
     """
 
-    def __init__(
-        self,
-        timeout: int = 0
-    ):
+    def __init__(self, timeout: int = 0):
         super().__init__()
         self._timeout = timeout
 
@@ -91,10 +88,7 @@ class CLIProvider(PollingProvider):
     """
 
     def __init__(
-        self,
-        intro: Optional[str] = None,
-        prompt_request: str = "request: ",
-        prompt_response: str = "response: "
+        self, intro: Optional[str] = None, prompt_request: str = "request: ", prompt_response: str = "response: "
     ):
         super().__init__()
         self._intro: Optional[str] = intro

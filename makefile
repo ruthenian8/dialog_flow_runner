@@ -47,11 +47,11 @@ test: venv
 test_all: venv test lint
 .PHONY: test_all
 
-doc: venv
+build_doc: venv
 	$(VENV_PATH)/bin/sphinx-apidoc -e -f -o docs/source/apiref df_runner
 	$(VENV_PATH)/bin/sphinx-build -M clean docs/source docs/build
 	$(VENV_PATH)/bin/sphinx-build -M html docs/source docs/build
-.PHONY: doc
+.PHONY: build_doc
 
 pre_commit: venv
 	echo -e "#!/bin/sh\n\nmake test_all" > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit

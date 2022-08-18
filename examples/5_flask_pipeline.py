@@ -40,12 +40,12 @@ script = {
 actor = Actor(script, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node"))
 
 
-def preprocess(ctx: Context, actor: Actor) -> Any:
-    print(f"    preprocession Service (defined as an dict)")
+async def preprocess(ctx: Context, actor: Actor) -> Any:
+    print(f"\tpreprocession Service")
 
 
 def postprocess(ctx: Context, actor: Actor) -> Any:
-    print(f"    postprocession Service (defined as a dict)")
+    print(f"\tpostprocession Service")
 
 
 provider = CallbackProvider()
@@ -55,31 +55,23 @@ pipeline = {
     "provider": provider,
     "connector": {},
     "services": [
-        {
-            "service": preprocess,
-            "timeout": 1000
-        },
-        {
-            "service": ACTOR,
-            "name": "encapsulated-actor"
-        },
+        {"service": preprocess},
+        {"service": ACTOR, "name": "encapsulated-actor"},
         Service(
             service=postprocess,
             name="postprocess",
-            timeout=2000,
-            start_condition=service_successful_condition("preprocess")
-        )
-    ]
+        ),
+    ],
 }
 
 
-@app.route('/df_provider')
+@app.route("/df_provider")
 async def route():
-    req = request.args.get('request')
+    req = request.args.get("request")
     return await provider.on_request_async(req)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     Pipeline(**pipeline).start_sync()
     app.run()
     # Navigate to http://127.0.0.1:5000/df_provider?request=Hi

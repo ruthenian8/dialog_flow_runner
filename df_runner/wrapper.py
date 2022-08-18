@@ -39,12 +39,12 @@ class Wrapper(BaseModel, Named):
 
     @staticmethod
     def _get_name(
-        wrapper: 'Wrapper',
+        wrapper: "Wrapper",
         forbidden_names: Optional[Set[str]] = None,
         name_rule: Optional[Callable[[Any], str]] = None,
         naming: Optional[Dict[str, int]] = None,
-        given_name: Optional[str] = None
+        given_name: Optional[str] = None,
     ) -> str:
-        forbidden_names = forbidden_names if forbidden_names is not None else {'wrapper_'}
-        name_rule = name_rule if name_rule is not None else lambda this: f'wrapper_{type(this).__name__.lower()}'
+        forbidden_names = forbidden_names if forbidden_names is not None else {"wrapper_"}
+        name_rule = name_rule if name_rule is not None else lambda this: f"wrapper_{type(this).__name__.lower()}"
         return super(Wrapper, Wrapper)._get_name(wrapper, name_rule, forbidden_names, naming, given_name)
