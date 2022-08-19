@@ -18,4 +18,7 @@ def test_examples(module_path):
     if module_path.stem in "__init__":
         return
     module = importlib.import_module(f"examples.{module_path.stem}")
-    basic_example.test_pipeline(module.pipeline)
+    try:
+        basic_example.test_pipeline(module.pipeline)
+    except Exception as exc:
+        raise Exception(f"model_name={module_path.stem}") from exc

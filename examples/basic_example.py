@@ -12,13 +12,6 @@ TURNS = [
     ("Let's talk about music.", "Sorry, I can not talk about music now."),
     ("Ok, goodbye.", "bye"),
     ("Hi", "Hi, how are you?"),
-    ("i'm fine, how are you?", "Good. What do you want to talk about?"),
-    ("Let's talk about music.", "Sorry, I can not talk about music now."),
-    ("Ok, goodbye.", "bye"),
-    ("Hi", "Hi, how are you?"),
-    ("i'm fine, how are you?", "Good. What do you want to talk about?"),
-    ("Let's talk about music.", "Sorry, I can not talk about music now."),
-    ("Ok, goodbye.", "bye"),
 ]
 
 SCRIPT = {
