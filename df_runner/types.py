@@ -54,8 +54,7 @@ class CallbackType(Enum):
     AFTER_ALL = auto()
 
 
-@unique
-class FrameworkKeys(Enum):
+class FrameworkKeys:
     """
     Enum, representing place in context.framework_keys to store data.
     The following states are supported:
@@ -64,9 +63,9 @@ class FrameworkKeys(Enum):
         SERVICES_META: storage for wrappers generated data
     """
 
-    RUNNER = auto()
-    SERVICES = auto()
-    SERVICES_META = auto()
+    RUNNER = "RUNNER"
+    SERVICES = "SERVICES"
+    SERVICES_META = "SERVICES_META"
 
 
 ACTOR = "ACTOR"
