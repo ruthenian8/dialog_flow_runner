@@ -139,7 +139,7 @@ class Pipeline(BaseModel):
         return cls.parse_obj(d)
 
     def __call__(self, request, ctx_id=uuid.uuid4()) -> Context:
-        return run(self._runner._request_handler(request, ctx_id)) 
+        return run(self._runner._request_handler(request, ctx_id))
 
     async def async_call(self, request, ctx_id=uuid.uuid4()) -> Context:
         return await self._runner._request_handler(request, ctx_id)

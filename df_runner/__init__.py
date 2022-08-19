@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa: F401
+
+import nest_asyncio
+nest_asyncio.apply() # to fix asyncio.run into jupyter 
+
 from .types import (
     ProviderFunction,
     ServiceFunction,
