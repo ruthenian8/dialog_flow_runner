@@ -55,6 +55,6 @@ turns = [
 
 
 if __name__ == "__main__":
-    for request, resopnse in turns:
+    for request, true_resopnse in turns:
         ctx: Context = pipeline(request)
-        assert resopnse == ctx.last_response
+        assert true_resopnse == ctx.last_response
