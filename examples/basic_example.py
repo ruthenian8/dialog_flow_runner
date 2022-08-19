@@ -2,6 +2,7 @@ from asyncio import run
 
 from df_engine.core.keywords import TRANSITIONS, RESPONSE
 import df_engine.conditions as cnd
+from df_engine.core import Context
 
 
 from df_runner import Pipeline
@@ -41,4 +42,6 @@ pipeline = Pipeline.from_script(
 
 
 if __name__ == "__main__":
-    run(pipeline.start_sync())
+    while True:
+            ctx: Context = pipeline(input())
+            print(ctx.last_response)
