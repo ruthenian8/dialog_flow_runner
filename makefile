@@ -2,10 +2,10 @@ SHELL = /bin/bash
 
 VENV_PATH = venv
 VERSIONING_FILES =  setup.py makefile docs/source/conf.py df_runner/__init__.py
-CURRENT_VERSION = 0.1.0 
+CURRENT_VERSION = 0.2.0 
 
 help:
-	@echo "Thanks for your interest in Dialog Flow My Addon!"
+	@echo "Thanks for your interest in Dialog Flow Framework!"
 	@echo
 	@echo "make lint: Run linters"
 	@echo "make test: Run basic tests (not testing most integrations)"
@@ -19,11 +19,8 @@ help:
 	@echo
 
 venv:
-	@if [ "`which python`" != "venv/bin/python" ] ; 	then \
-		echo "Start creating virtual environment";\
-		python3 -m venv $(VENV_PATH);\
-	fi
-
+	echo "Start creating virtual environment";\
+	python3 -m venv $(VENV_PATH);\
 	$(VENV_PATH)/bin/pip install -e . ;
 	$(VENV_PATH)/bin/pip install -r requirements_dev.txt ;
 	$(VENV_PATH)/bin/pip install -r requirements_test.txt ;
@@ -50,11 +47,11 @@ test: venv
 test_all: venv test lint
 .PHONY: test_all
 
-doc: venv
+build_doc: venv
 	$(VENV_PATH)/bin/sphinx-apidoc -e -f -o docs/source/apiref df_runner
 	$(VENV_PATH)/bin/sphinx-build -M clean docs/source docs/build
 	$(VENV_PATH)/bin/sphinx-build -M html docs/source docs/build
-.PHONY: doc
+.PHONY: build_doc
 
 pre_commit: venv
 	echo -e "#!/bin/sh\n\nmake test_all" > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
