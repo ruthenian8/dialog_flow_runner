@@ -1,4 +1,3 @@
-import enum
 from df_engine.core.keywords import TRANSITIONS, RESPONSE
 import df_engine.conditions as cnd
 from df_engine.core import Context
