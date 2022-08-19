@@ -136,6 +136,9 @@ class Pipeline(BaseModel):
 
     @classmethod
     def from_dict(cls, d: PipelineDict) -> "Pipeline":
+        if "actor" not in d:
+            d["actor"] = [serv for serv in d["services"] if isinstance(serv, Actor)][0]
+            d["services"] = [ACTOR if isinstance(serv, Actor) else serv for serv in d["services"]]
         return cls.parse_obj(d)
 
     def __call__(self, request, ctx_id=uuid.uuid4()) -> Context:

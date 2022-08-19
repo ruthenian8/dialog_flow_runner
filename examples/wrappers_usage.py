@@ -6,7 +6,9 @@ from df_runner import CLIProvider, Wrapper, Pipeline, ServiceGroup, ACTOR
 from df_runner.service import wrap
 from examples import basic_example
 
-actor = Actor(basic_example.SCRIPT, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node"))
+actor = Actor(
+    basic_example.SCRIPT, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node")
+)
 
 
 @wrap(

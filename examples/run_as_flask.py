@@ -8,7 +8,9 @@ from examples import basic_example
 
 
 app = Flask(__name__)
-actor = Actor(basic_example.SCRIPT, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node"))
+actor = Actor(
+    basic_example.SCRIPT, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node")
+)
 
 
 async def preprocess(ctx: Context, actor: Actor) -> Any:
@@ -40,6 +42,7 @@ pipeline = {
 async def route():
     req = request.args.get("request")
     return await provider.on_request_async(req)
+
 
 pipeline = Pipeline(**pipeline)
 
