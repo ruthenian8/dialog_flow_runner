@@ -1,3 +1,4 @@
+import enum
 from df_engine.core.keywords import TRANSITIONS, RESPONSE
 import df_engine.conditions as cnd
 from df_engine.core import Context
@@ -6,7 +7,22 @@ from df_engine.core import Context
 from df_runner import Pipeline
 
 
-script = {
+TURNS = [
+    ("Hi", "Hi, how are you?"),
+    ("i'm fine, how are you?", "Good. What do you want to talk about?"),
+    ("Let's talk about music.", "Sorry, I can not talk about music now."),
+    ("Ok, goodbye.", "bye"),
+    ("Hi", "Hi, how are you?"),
+    ("i'm fine, how are you?", "Good. What do you want to talk about?"),
+    ("Let's talk about music.", "Sorry, I can not talk about music now."),
+    ("Ok, goodbye.", "bye"),
+    ("Hi", "Hi, how are you?"),
+    ("i'm fine, how are you?", "Good. What do you want to talk about?"),
+    ("Let's talk about music.", "Sorry, I can not talk about music now."),
+    ("Ok, goodbye.", "bye"),
+]
+
+SCRIPT = {
     "greeting_flow": {
         "start_node": {
             RESPONSE: "",
@@ -33,28 +49,22 @@ script = {
 }
 
 pipeline = Pipeline.from_script(
-    script,
+    SCRIPT,
     start_label=("greeting_flow", "start_node"),
     fallback_label=("greeting_flow", "fallback_node"),
 )
 
-turns = [
-    ("Hi", "Hi, how are you?"),
-    ("i'm fine, how are you?", "Good. What do you want to talk about?"),
-    ("Let's talk about music.", "Sorry, I can not talk about music now."),
-    ("Ok, goodbye.", "bye"),
-    ("Hi", "Hi, how are you?"),
-    ("i'm fine, how are you?", "Good. What do you want to talk about?"),
-    ("Let's talk about music.", "Sorry, I can not talk about music now."),
-    ("Ok, goodbye.", "bye"),
-    ("Hi", "Hi, how are you?"),
-    ("i'm fine, how are you?", "Good. What do you want to talk about?"),
-    ("Let's talk about music.", "Sorry, I can not talk about music now."),
-    ("Ok, goodbye.", "bye"),
-]
+
+def test_pipeline(pipeline):
+    for turn_id, (request, true_resopnse )in enumerate(TURNS):
+        ctx: Context = pipeline(request)
+        if true_resopnse != ctx.last_response:
+            msg = f" turn_id={turn_id}"
+            msg += f" request={request} "
+            msg += f"\ntrue_response != out_response: "
+            msg += f"\n{true_resopnse} != {ctx.last_response}"
+            raise Exception(msg)
 
 
 if __name__ == "__main__":
-    for request, true_resopnse in turns:
-        ctx: Context = pipeline(request)
-        assert true_resopnse == ctx.last_response
+    test_pipeline(pipeline)
