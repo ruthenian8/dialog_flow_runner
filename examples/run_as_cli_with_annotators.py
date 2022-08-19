@@ -30,5 +30,4 @@ pipeline = Pipeline.from_script(
 
 
 if __name__ == "__main__":
-    basic_example.test_pipeline(pipeline)
     pipeline.start_sync()

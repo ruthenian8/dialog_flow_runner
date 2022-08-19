@@ -44,7 +44,6 @@ async def route():
 pipeline = Pipeline(**pipeline)
 
 if __name__ == "__main__":
-    basic_example.test_pipeline(pipeline)
     pipeline.start_sync()
     app.run()
     # Navigate to http://127.0.0.1:5000/df_provider?request=Hi

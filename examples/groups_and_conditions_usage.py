@@ -80,5 +80,4 @@ if __name__ == "__main__":
         "Use given code in that case to acquire services "
         f"with their full path: {[f'{path}.{service.name}' for path, service in pipeline.processed_services]}"
     )
-    basic_example.test_pipeline(pipeline)
     run(pipeline.start_sync())

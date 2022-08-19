@@ -41,5 +41,4 @@ pipeline = {
 
 pipeline = Pipeline(**pipeline)
 if __name__ == "__main__":
-    basic_example.test_pipeline(pipeline)
     pipeline.start_sync()
