@@ -135,7 +135,7 @@ class Pipeline(BaseModel):
         )
 
     @classmethod
-    def parse_dict(cls, d: PipelineDict) -> "Pipeline":
+    def from_dict(cls, d: PipelineDict) -> "Pipeline":
         return cls.parse_obj(d)
 
     def __call__(self, request, ctx_id=uuid.uuid4()) -> Context:

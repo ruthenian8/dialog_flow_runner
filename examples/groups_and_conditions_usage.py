@@ -73,7 +73,7 @@ pipeline = {
 }
 
 
-pipeline = Pipeline.parse_dict(pipeline)
+pipeline = Pipeline.from_dict(pipeline)
 if __name__ == "__main__":
     print("It may be not easy to understand what service belong to which group in pipeline.")
     print(

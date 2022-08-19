@@ -52,7 +52,7 @@ pipeline = {
 }
 
 
-pipeline = Pipeline.parse_dict(pipeline)
+pipeline = Pipeline.from_dict(pipeline)
 if __name__ == "__main__":
     basic_example.test_pipeline(pipeline)
     print("It may be not easy to understand what service names were generated for the pipeline.")
