@@ -48,9 +48,9 @@ pipeline = Pipeline.from_script(
 
 
 def test_pipeline(pipeline):
-    for turn_id, (request, true_resopnse )in enumerate(TURNS):
+    for turn_id, (request, true_response) in enumerate(TURNS):
         ctx: Context = pipeline(request)
-        if true_resopnse != ctx.last_response:
+        if true_response != ctx.last_response:
             msg = f" turn_id={turn_id}"
             msg += f" request={request} "
             msg += f"\ntrue_response != out_response: "

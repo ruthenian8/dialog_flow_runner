@@ -16,7 +16,7 @@ actor = Actor(
 
 
 def preprocess(ctx: Context, actor: Actor) -> Any:
-    gen = randint(0, 2)
+    gen = randint(0, 2) / 2
     print(f"\tpreprocession Service, generated {gen}")
     return gen
 
@@ -50,7 +50,7 @@ pipeline = {
         ACTOR,
         {
             "service": postprocess,
-            "timeout": 2,
+            "timeout": 1,
             "start_condition": service_successful_condition(name="group_1"),
         },
         ServiceGroup(

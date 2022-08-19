@@ -1,12 +1,9 @@
 from typing import Any
 
 from df_engine.core import Context, Actor
-from df_engine.core.keywords import RESPONSE, TRANSITIONS
-import df_engine.conditions as cnd
 from flask import Flask, request
 
 from df_runner import Pipeline, Service, CallbackProvider, ACTOR
-from df_runner.conditions import service_successful_condition
 from examples import basic_example
 
 

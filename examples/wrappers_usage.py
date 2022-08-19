@@ -23,8 +23,7 @@ class ActorWrapper(Wrapper):
     def __init__(self, **kwargs):
         def pre_func(ctx: Context, actor: Actor, _: str) -> Any:
             print(f"\t\tactor pre wrapper")
-            last_request = str(ctx.last_request)
-            ctx.requests[list(ctx.requests)[-1]] = last_request[:1].lower() + last_request[1:]
+            print(f"\t\tlast request 1st letter was {'lower' if str(ctx.last_request)[0].islower() else 'upper'}case")
 
         super().__init__(pre_func=pre_func, post_func=lambda ctx, act, _: None, **kwargs)
 
