@@ -21,7 +21,7 @@ def preprocess(ctx: Context, actor: Actor) -> Any:
 
 def postprocess(ctx: Context, actor: Actor) -> Any:
     print(f"\tpostprocession Service (defined as a callable)")
-    # return ctx.last_response == "Ooops"
+    return ctx.last_response == "Ooops"
 
 
 async def postpostprocess(ctx: Context, actor: Actor) -> Any:

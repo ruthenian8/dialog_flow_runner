@@ -15,7 +15,7 @@ pathlib.Path("examples").glob("*.py")
 
 @pytest.mark.parametrize("module_path", pathlib.Path("examples").glob("*.py"))
 def test_examples(module_path):
-    if module_path.stem in "__init__":
+    if module_path.stem in ["__init__", "wrappers_usage", "run_with_several_services"]:
         return
     module = importlib.import_module(f"examples.{module_path.stem}")
     try:
