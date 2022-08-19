@@ -1,5 +1,8 @@
+from contextvars import Context
 import logging
 from typing import Union, List, Dict, TypedDict, Optional, Literal, Tuple
+import uuid
+from asyncio import run
 
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor, Script
@@ -134,3 +137,9 @@ class Pipeline(BaseModel):
     @classmethod
     def parse_dict(cls, d: PipelineDict) -> "Pipeline":
         return cls.parse_obj(d)
+
+    def __call__(self, request, ctx_id=uuid.uuid4()) -> Context:
+        return run(self._runner._request_handler(request, ctx_id)) 
+
+    async def async_call(self, request, ctx_id=uuid.uuid4()) -> Context:
+        return await self._runner._request_handler(request, ctx_id)
