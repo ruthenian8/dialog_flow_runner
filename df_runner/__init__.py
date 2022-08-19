@@ -2,7 +2,8 @@
 # flake8: noqa: F401
 
 import nest_asyncio
-nest_asyncio.apply() # to fix asyncio.run into jupyter 
+
+nest_asyncio.apply()  # to fix asyncio.run into jupyter
 
 from .types import (
     ProviderFunction,
@@ -27,4 +28,4 @@ from .pipeline import Pipeline
 
 __author__ = "Denis Kuznetsov"
 __email__ = "kuznetsov.den.p@gmail.com"
-__version__ = "0.1.1"
+__version__ = "0.2.0"
