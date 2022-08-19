@@ -34,7 +34,8 @@ class Runnable(BaseModel):
         self.wrappers += [
             Wrapper.parse_obj(
                 {
-                    "name": f'{uuid.uuid4()}_{"before" if before else "after"}{"_all" if for_all else ""}_stats_wrapper',
+                    "name": f'{uuid.uuid4()}_{"before" if before else "after"}'
+                    f'{"_all" if for_all else ""}_stats_wrapper',
                     f'{"pre" if before else "post"}_func': lambda c, _, n: callback(n, self.retrieve_data(c)),
                     f'{"post" if before else "pre"}_func': lambda _, __, ___: None,
                 }

@@ -36,7 +36,8 @@ class Named:
             else:
                 type_name = type(this).__name__
                 logger.warning(
-                    f"User defined name for {type_name} '{given_name}' violates naming convention, the {type_name} will be renamed"
+                    f"User defined name for {type_name} '{given_name}' "
+                    f"violates naming convention, the {type_name} will be renamed"
                 )
 
         name = name_rule(this)

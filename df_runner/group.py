@@ -50,7 +50,10 @@ class ServiceGroup(Runnable, Named):
         self.annotators: List[Union[Service, "ServiceGroup"]] = []
 
     def add_callback_wrapper(
-        self, callback_type: CallbackType, callback: CallbackFunction, condition: Callable[[str], bool] = lambda _: True
+        self,
+        callback_type: CallbackType,
+        callback: CallbackFunction,
+        condition: Callable[[str], bool] = lambda _: True,
     ):
         super().add_callback_wrapper(callback_type, callback, condition)
         for service in self.services:
@@ -78,7 +81,7 @@ class ServiceGroup(Runnable, Named):
                     for name, future in zip(running.keys(), as_completed(running.values())):
                         try:
                             await future
-                        except AsyncTimeoutError as _:
+                        except AsyncTimeoutError:
                             logger.warning(f"Service {name} timed out!")
 
                     failed = False
@@ -97,7 +100,7 @@ class ServiceGroup(Runnable, Named):
                             future = wait_for(task, timeout=timeout)
                             try:
                                 await future
-                            except AsyncTimeoutError as _:
+                            except AsyncTimeoutError:
                                 logger.warning(f"{type(annotator).__name__} {annotator.name} timed out!")
                         else:
                             service_result = await annotator(ctx, actor)
@@ -127,7 +130,7 @@ class ServiceGroup(Runnable, Named):
             future = wait_for(task, timeout=timeout)
             try:
                 await future
-            except AsyncTimeoutError as _:
+            except AsyncTimeoutError:
                 logger.warning(f"Group {self.name} timed out!")
         else:
             if timeout is not None:
