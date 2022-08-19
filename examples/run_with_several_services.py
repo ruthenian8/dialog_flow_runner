@@ -15,8 +15,7 @@ actor = Actor(
 
 def preprocess(ctx: Context, actor: Actor) -> Any:
     print(f"\tpreprocession Service running (defined as a dict)")
-    last_request = str(ctx.last_request)
-    ctx.requests[list(ctx.requests)[-1]] = last_request[:1].lower() + last_request[1:]
+    print(f"\t\tlast request 1st letter was {'lower' if str(ctx.last_request)[0].islower() else 'upper'}case")
 
 
 def postprocess(ctx: Context, actor: Actor) -> Any:
@@ -53,9 +52,8 @@ pipeline = {
 }
 
 
-pipeline = Pipeline.parse_dict(pipeline)
+pipeline = Pipeline.from_dict(pipeline)
 if __name__ == "__main__":
-    basic_example.test_pipeline(pipeline)
     print("It may be not easy to understand what service names were generated for the pipeline.")
     print(
         "Use given code in that case to acquire "

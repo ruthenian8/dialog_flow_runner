@@ -1,12 +1,9 @@
 from typing import Any
 
 from df_engine.core import Context, Actor
-from df_engine.core.keywords import RESPONSE, TRANSITIONS
-import df_engine.conditions as cnd
 from flask import Flask, request
 
 from df_runner import Pipeline, Service, CallbackProvider, ACTOR
-from df_runner.conditions import service_successful_condition
 from examples import basic_example
 
 
@@ -47,7 +44,6 @@ async def route():
 pipeline = Pipeline(**pipeline)
 
 if __name__ == "__main__":
-    basic_example.test_pipeline(pipeline)
     pipeline.start_sync()
     app.run()
     # Navigate to http://127.0.0.1:5000/df_provider?request=Hi

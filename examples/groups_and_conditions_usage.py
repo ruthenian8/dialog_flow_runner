@@ -16,7 +16,7 @@ actor = Actor(
 
 
 def preprocess(ctx: Context, actor: Actor) -> Any:
-    gen = randint(0, 2)
+    gen = randint(0, 2) / 2
     print(f"\tpreprocession Service, generated {gen}")
     return gen
 
@@ -50,7 +50,7 @@ pipeline = {
         ACTOR,
         {
             "service": postprocess,
-            "timeout": 2,
+            "timeout": 1,
             "start_condition": service_successful_condition(name="group_1"),
         },
         ServiceGroup(
@@ -73,12 +73,11 @@ pipeline = {
 }
 
 
-pipeline = Pipeline.parse_dict(pipeline)
+pipeline = Pipeline.from_dict(pipeline)
 if __name__ == "__main__":
     print("It may be not easy to understand what service belong to which group in pipeline.")
     print(
         "Use given code in that case to acquire services "
         f"with their full path: {[f'{path}.{service.name}' for path, service in pipeline.processed_services]}"
     )
-    basic_example.test_pipeline(pipeline)
     run(pipeline.start_sync())
