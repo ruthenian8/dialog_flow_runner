@@ -1,6 +1,7 @@
 import logging
 from asyncio import wait_for, create_task, as_completed, TimeoutError as AsyncTimeoutError
-from typing import Optional, List, Union, Dict, Literal, Callable, Any, Set
+from typing_extensions import Literal
+from typing import Optional, List, Union, Dict, Callable, Any, Set
 
 from df_engine.core import Actor, Context
 from pydantic import Extra

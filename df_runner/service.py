@@ -1,6 +1,7 @@
 import logging
 from asyncio import iscoroutinefunction
-from typing import Optional, Union, Dict, Callable, Literal, Any, Set
+from typing_extensions import Literal
+from typing import Optional, Union, Dict, Callable, Any, Set
 
 from df_engine.core import Actor, Context
 
