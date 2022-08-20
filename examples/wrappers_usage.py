@@ -2,7 +2,7 @@ from typing import Any
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIProvider, Wrapper, Pipeline, ServiceGroup, ACTOR
+from df_runner import CLIProvider, Wrapper, Pipeline, ServiceGroup
 from df_runner.service import wrap
 from examples import basic_example
 
@@ -20,13 +20,16 @@ actor = Actor(
 def wrapped_service(ctx: Context, actor: Actor) -> Any:
     print(f"\t\t\tthe Service, that was wrapped")
 
-wrap1 =  Wrapper(
-        pre_func=lambda ctx, act, _: print("\t\tpre-wrapper1"),
-        post_func=lambda ctx, act, _: print("\t\tpost-wrapper1"),
-    )
+
+wrap1 = Wrapper(
+    pre_func=lambda ctx, act, _: print("\t\tpre-wrapper1"),
+    post_func=lambda ctx, act, _: print("\t\tpost-wrapper1"),
+)
+
 
 def wrapped_service1(ctx: Context, actor: Actor) -> Any:
     print(f"\t\t\tthe Service, that was wrapped")
+
 
 class ActorWrapper(Wrapper):
     def __init__(self, **kwargs):
@@ -38,12 +41,11 @@ class ActorWrapper(Wrapper):
 
 
 pipeline = {
-    "actor": actor,
     "provider": CLIProvider(),
     "connector": dict(),
     "services": [
         ServiceGroup(wrappers=[wrap1], services=[wrapped_service1]),
-        ServiceGroup(wrappers=[ActorWrapper()], services=[ACTOR]),
+        ServiceGroup(wrappers=[ActorWrapper()], services=[actor]),
         wrapped_service,
     ],
 }

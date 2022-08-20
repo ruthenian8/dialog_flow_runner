@@ -1,6 +1,6 @@
 import logging
 from asyncio import wait_for, create_task, as_completed, TimeoutError as AsyncTimeoutError
-from typing import Optional, List, Union, Dict, Literal, Callable, Any, Set
+from typing import Optional, List, Union, Dict, Callable, Any, Set
 
 from df_engine.core import Actor, Context
 from pydantic import Extra
@@ -11,7 +11,6 @@ from .state_tracker import StateTracker
 from .types import (
     ServiceFunction,
     ServiceCondition,
-    ACTOR,
     ServiceState,
     ConditionState,
 )
@@ -19,7 +18,7 @@ from .service import Service
 from .conditions import always_start_condition
 
 
-_ServiceCallable = Union[Service, ServiceFunction, Literal[ACTOR]]
+_ServiceCallable = Union[Service, ServiceFunction]
 
 logger = logging.getLogger(__name__)
 
@@ -139,12 +138,12 @@ class ServiceGroup(StateTracker, Named, WrapperHandler):
         return super(ServiceGroup, ServiceGroup)._get_name(group, name_rule, forbidden_names, naming, given_name)
 
     def _recur_annotators(
-        self, actor: Actor, naming: Optional[Dict[str, int]] = None
-    ) -> List[Union[_ServiceCallable, List[_ServiceCallable], "ServiceGroup", Literal[ACTOR]]]:
+        self, naming: Optional[Dict[str, int]] = None
+    ) -> List[Union[_ServiceCallable, List[_ServiceCallable], "ServiceGroup"]]:
         annotators = []
         for service in self.services:
             if isinstance(service, List) or isinstance(service, ServiceGroup):
-                annotators.append(ServiceGroup.cast(service, actor, naming))
+                annotators.append(ServiceGroup.cast(service, naming))
             else:
                 annotators.append(Service.cast(service, naming))
         self.asynchronous = all([service.asynchronous for service in annotators])
@@ -154,7 +153,6 @@ class ServiceGroup(StateTracker, Named, WrapperHandler):
     def cast(
         cls,
         group: Union[List[_ServiceCallable], "ServiceGroup"],
-        actor: Actor,
         naming: Optional[Dict[str, int]] = None,
         **kwargs,
     ) -> "ServiceGroup":
@@ -165,11 +163,11 @@ class ServiceGroup(StateTracker, Named, WrapperHandler):
         naming = {} if naming is None else naming
         if isinstance(group, ServiceGroup):
             group.name = cls._get_name(group, naming=naming, given_name=group.name)
-            group.annotators = group._recur_annotators(actor, naming)
+            group.annotators = group._recur_annotators(naming)
             return group
         elif isinstance(group, List):
             group = cls(services=group, name=cls._get_name(group, naming=naming), **kwargs)
-            group.annotators = group._recur_annotators(actor, naming)
+            group.annotators = group._recur_annotators(naming)
             return group
         else:
             raise Exception(f"Unknown type of group {group}")

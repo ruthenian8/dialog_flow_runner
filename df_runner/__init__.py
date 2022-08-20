@@ -15,7 +15,6 @@ from .types import (
     ConditionState,
     ServiceState,
     RUNNER_STATE_KEY,
-    ACTOR,
     CallbackType,
 )
 

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Union, List, Dict, TypedDict, Optional, Literal
+from typing import Any, Union, List, Dict, TypedDict, Optional
 import uuid
 from asyncio import run
 
@@ -12,14 +12,15 @@ from typing_extensions import NotRequired
 from .service_wrapper import Wrapper
 from .provider import AbsProvider, CLIProvider
 from .service_group import ServiceGroup
-from .types import ServiceFunction, ClearFunction, ACTOR, AnnotatorFunction
+from .types import ServiceFunction, ClearFunction, AnnotatorFunction
 from .service import Service
 from .types import RUNNER_STATE_KEY
+from .utils import get_flat_services_list
 
 
 logger = logging.getLogger(__name__)
 
-_ServiceCallable = Union[Service, ServiceFunction, Literal[ACTOR]]
+_ServiceCallable = Union[Service, ServiceFunction]
 
 PipelineDict = TypedDict(
     "PipelineDict",
@@ -45,7 +46,6 @@ class Pipeline(BaseModel):
         wrappers (optionally) - Wrapper classes array to add to all pipeline services
     """
 
-    actor: Actor
     provider: Optional[AbsProvider] = CLIProvider()
     context_db: Optional[Union[DBAbstractConnector, Dict]] = None
     services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup]] = None
@@ -62,9 +62,13 @@ class Pipeline(BaseModel):
         self.context_db = dict() if self.context_db is None else self.context_db
         self.wrappers = [] if self.wrappers is None else self.wrappers
 
-        self._pipeline = ServiceGroup.cast(
-            self.services, self.actor, dict(), wrappers=self.wrappers, timeout=self.timeout
-        )
+        self._pipeline = ServiceGroup.cast(self.services, dict(), wrappers=self.wrappers, timeout=self.timeout)
+
+        flat_services = get_flat_services_list(self._pipeline)
+        actor = [serv.service for _, serv in flat_services if isinstance(serv.service, Actor)]
+        self.actor = actor and actor[0]
+        if not isinstance(self.actor, Actor):
+            raise Exception("Actor not found.")
 
     async def _run_pipeline(self, request: Any, ctx_id: Optional[Any] = None) -> Context:
         ctx = self.context_db.get(ctx_id)
@@ -86,27 +90,20 @@ class Pipeline(BaseModel):
         script: Union[Script, Dict],
         start_label: NodeLabel2Type,
         fallback_label: Optional[NodeLabel2Type] = None,
-        context_db: Optional[Union[DBAbstractConnector, Dict]] = None,
+        context_db: Optional[Union[DBAbstractConnector, Dict]] = {},
         request_provider: AbsProvider = CLIProvider(),
-        pre_annotators: Optional[List[AnnotatorFunction]] = None,
-        post_annotators: Optional[List[AnnotatorFunction]] = None,
+        pre_annotators: Optional[List[AnnotatorFunction]] = [],
+        post_annotators: Optional[List[AnnotatorFunction]] = [],
     ):
         actor = Actor(script, start_label, fallback_label)
-        context_db = dict() if context_db is None else context_db
-        pre_annotators = [] if pre_annotators is None else pre_annotators
-        post_annotators = [] if post_annotators is None else post_annotators
         return cls(
-            actor=actor,
             provider=request_provider,
             context_db=context_db,
-            services=pre_annotators + [ACTOR] + post_annotators,
+            services=pre_annotators + [actor] + post_annotators,
         )
 
     @classmethod
     def from_dict(cls, dictionary: PipelineDict) -> "Pipeline":
-        if "actor" not in dictionary:
-            dictionary["actor"] = [serv for serv in dictionary["services"] if isinstance(serv, Actor)][0]
-            dictionary["services"] = [ACTOR if isinstance(serv, Actor) else serv for serv in dictionary["services"]]
         return cls.parse_obj(dictionary)
 
     def start_sync(self) -> None:

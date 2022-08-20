@@ -1,12 +1,12 @@
 import logging
 from asyncio import iscoroutinefunction
-from typing import Optional, Union, Dict, Callable, Literal, Any, Set
+from typing import Optional, Union, Dict, Callable, Any, Set
 
 from df_engine.core import Actor, Context
 
 from .named import Named
 from .service_wrapper import Wrapper, WrapperType, WrapperHandler
-from .types import ACTOR, ServiceFunction, ServiceCondition, ServiceState, ConditionState
+from .types import ServiceFunction, ServiceCondition, ServiceState, ConditionState
 from .state_tracker import StateTracker
 from .conditions import always_start_condition
 
@@ -26,7 +26,7 @@ class Service(StateTracker, Named, WrapperHandler):
         start_condition (optionally) - requirement for service to start, default: always_start_condition
     """
 
-    service: Union[Literal[ACTOR], ServiceFunction]
+    service: ServiceFunction
     timeout: int = -1
     start_condition: ServiceCondition = always_start_condition
 
@@ -36,9 +36,15 @@ class Service(StateTracker, Named, WrapperHandler):
         It also sets named variables in context.framework_states for other services start_conditions.
         If execution fails the error is caught here.
         """
-        if self.service == ACTOR:
-            ctx = actor(ctx)
-            self._set_state(ctx, ServiceState.FINISHED)
+        if isinstance(self.service, Actor):
+            self._execute_wrappers(ctx, actor, WrapperType.PREPROCESSING)
+            try:
+                ctx = self.service(ctx)
+                self._set_state(ctx, ServiceState.FINISHED)
+            except Exception as e:
+                self._set_state(ctx, ServiceState.FAILED)
+                logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
+            self._execute_wrappers(ctx, actor, WrapperType.POSTPROCESSING)
             return ctx
 
         self._execute_wrappers(ctx, actor, WrapperType.PREPROCESSING)
@@ -57,7 +63,6 @@ class Service(StateTracker, Named, WrapperHandler):
                 self._set_state(ctx, ServiceState.PENDING)
             else:
                 self._set_state(ctx, ServiceState.FAILED)
-
         except Exception as e:
             self._set_state(ctx, ServiceState.FAILED)
             logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
@@ -66,14 +71,14 @@ class Service(StateTracker, Named, WrapperHandler):
 
     @staticmethod
     def _get_name(
-        service: Union[Literal[ACTOR], Dict, ServiceFunction],
+        service: Union[Dict, ServiceFunction],
         forbidden_names: Optional[Set[str]] = None,
         name_rule: Optional[Callable[[Any], str]] = None,
         naming: Optional[Dict[str, int]] = None,
         given_name: Optional[str] = None,
     ) -> str:
         def default_name_rule(this: Union[Actor, Dict, ServiceFunction]) -> str:
-            if isinstance(this, str) and this == ACTOR:
+            if isinstance(this, Actor):
                 return "actor"
             elif isinstance(this, Service):
                 return "serv"
@@ -89,7 +94,7 @@ class Service(StateTracker, Named, WrapperHandler):
     @classmethod
     def cast(
         cls,
-        service: Union[Literal[ACTOR], Dict, ServiceFunction, "Service"],
+        service: Union[Dict, ServiceFunction, "Service"],
         naming: Optional[Dict[str, int]] = None,
         **kwargs,
     ) -> "Service":
@@ -102,7 +107,7 @@ class Service(StateTracker, Named, WrapperHandler):
             service.name = cls._get_name(service.service, naming=naming, given_name=service.name)
             service.asynchronous = iscoroutinefunction(service.service)
             return service
-        elif service == ACTOR or isinstance(service, Callable):
+        elif isinstance(service, Callable):
             service = cls(service=service, name=cls._get_name(service, naming=naming), **kwargs)
             service.asynchronous = iscoroutinefunction(service.service)
             return service

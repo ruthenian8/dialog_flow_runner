@@ -58,7 +58,6 @@ class CallbackType(Enum):
 RUNNER: storage for services and groups execution status
 """
 RUNNER_STATE_KEY = "RUNNER"
-ACTOR = "ACTOR"
 
 
 """

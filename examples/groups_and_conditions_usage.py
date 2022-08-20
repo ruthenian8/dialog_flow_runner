@@ -4,7 +4,7 @@ from typing import Any
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIProvider, Service, Pipeline, ServiceGroup, ACTOR, RUNNER_STATE_KEY
+from df_runner import CLIProvider, Service, Pipeline, ServiceGroup
 from df_runner.conditions import service_successful_condition
 from examples import basic_example
 
@@ -36,7 +36,6 @@ async def postpostprocess(ctx: Context, actor: Actor) -> Any:
 
 
 pipeline = {
-    "actor": actor,
     "provider": CLIProvider(),
     "context_db": {},
     "services": [
@@ -50,7 +49,7 @@ pipeline = {
                 "timeout": 1,
             },
         ],
-        ACTOR,
+        actor,
         {
             "service": postprocess,
             "timeout": 1,
