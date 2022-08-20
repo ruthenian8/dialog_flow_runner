@@ -20,9 +20,9 @@ from .types import (
 )
 
 from .provider import PollingProvider, CallbackProvider, CLIProvider
-from .wrapper import Wrapper, WrapperType
+from .service_wrapper import Wrapper, WrapperType
 from .service import Service
-from .group import ServiceGroup
+from .service_group import ServiceGroup
 from .pipeline import Pipeline
 
 

@@ -6,7 +6,7 @@ from df_engine.core import Actor, Context
 from pydantic import Extra
 
 from .named import Named
-from .wrapper import WrapperType
+from .service_wrapper import WrapperType
 from .runnable import Runnable
 from .types import (
     ServiceFunction,

@@ -5,7 +5,7 @@ from df_engine.core import Context, Actor
 from pydantic import BaseModel
 
 from .types import FrameworkKeys, CallbackType, CallbackFunction
-from .wrapper import WrapperType, Wrapper
+from .service_wrapper import WrapperType, Wrapper
 
 
 class Runnable(BaseModel):

@@ -5,7 +5,7 @@ from typing import Optional, Union, Dict, Callable, Literal, Any, Set
 from df_engine.core import Actor, Context
 
 from .named import Named
-from .wrapper import Wrapper, WrapperType
+from .service_wrapper import Wrapper, WrapperType
 from .types import ACTOR, ServiceFunction, ServiceCondition, ServiceState, ConditionState
 from .runnable import Runnable
 from .conditions import always_start_condition

@@ -5,7 +5,7 @@ from typing import Any, Optional, Union, Dict
 from df_engine.core import Context, Actor
 from df_db_connector import DBAbstractConnector
 
-from .group import ServiceGroup
+from .service_group import ServiceGroup
 from .provider import AbsProvider, CLIProvider
 from .service import Service
 from .types import FrameworkKeys, ClearFunction

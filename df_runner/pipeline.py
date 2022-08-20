@@ -11,10 +11,10 @@ from pydantic import BaseModel, Extra
 from typing_extensions import NotRequired
 
 from .runner import Runner
-from .wrapper import Wrapper
+from .service_wrapper import Wrapper
 from .provider import AbsProvider, CLIProvider
-from .group import ServiceGroup
-from .types import ServiceFunction, ClearFunction, ACTOR, AnnotatorFunction, CallbackType, CallbackFunction
+from .service_group import ServiceGroup
+from .types import ServiceFunction, ClearFunction, ACTOR, AnnotatorFunction
 from .service import Service
 
 
@@ -69,36 +69,24 @@ class Pipeline(BaseModel):
         )
         self._runner = Runner(self.actor, self.context_clear, self.context_db, self.provider, self._annotators)
 
-    def add_callback(
-        self,
-        callback_type: CallbackType,
-        callback: CallbackFunction,
-        whitelist: Optional[List[str]] = None,
-        blacklist: Optional[List[str]] = None,
-    ):
-        def condition(name: str) -> bool:
-            return (whitelist is not None and name in whitelist) and (blacklist is not None and name not in blacklist)
-
-        self._annotators.add_callback_wrapper(callback_type, callback, condition)
-
     @property
-    def processed_services(self) -> List[Tuple[str, Service]]:
+    def flat_services_list(self) -> List[Tuple[str, Service]]:
         """
         Returns a copy of created inner services flat array used during actual pipeline running.
         Might be used for debugging purposes.
         """
 
-        def iterate_group(group: ServiceGroup, prefix: str) -> List[Tuple[str, Service]]:
+        def get_flat_services_list(group: ServiceGroup, prefix: str) -> List[Tuple[str, Service]]:
             services = list()
             prefix = f"{prefix}.{group.name}"
             for service in group.annotators:
                 if isinstance(service, Service):
                     services += [(prefix, service)]
                 else:
-                    services += iterate_group(service, prefix)
+                    services += get_flat_services_list(service, prefix)
             return services
 
-        return iterate_group(self._annotators, "")
+        return get_flat_services_list(self._annotators, "")
 
     def start_sync(self):
         """
@@ -135,11 +123,11 @@ class Pipeline(BaseModel):
         )
 
     @classmethod
-    def from_dict(cls, d: PipelineDict) -> "Pipeline":
-        if "actor" not in d:
-            d["actor"] = [serv for serv in d["services"] if isinstance(serv, Actor)][0]
-            d["services"] = [ACTOR if isinstance(serv, Actor) else serv for serv in d["services"]]
-        return cls.parse_obj(d)
+    def from_dict(cls, dictionary: PipelineDict) -> "Pipeline":
+        if "actor" not in dictionary:
+            dictionary["actor"] = [serv for serv in dictionary["services"] if isinstance(serv, Actor)][0]
+            dictionary["services"] = [ACTOR if isinstance(serv, Actor) else serv for serv in dictionary["services"]]
+        return cls.parse_obj(dictionary)
 
     def __call__(self, request, ctx_id=uuid.uuid4()) -> Context:
         return run(self._runner._request_handler(request, ctx_id))
