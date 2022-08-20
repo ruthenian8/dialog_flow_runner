@@ -23,15 +23,13 @@ class Runner:
     def __init__(
         self,
         actor: Union[Actor, Service],
-        clear_function: Optional[ClearFunction] = None,
-        contex_db: Optional[Union[DBAbstractConnector, Dict]] = None,
+        context_db: Optional[Union[DBAbstractConnector, Dict]] = None,
         provider: AbsProvider = CLIProvider(),
         group: Optional[ServiceGroup] = None,
     ):
-        self.contex_db = dict() if contex_db is None else contex_db
+        self.context_db = dict() if context_db is None else context_db
         self.provider = provider
         self.actor = actor
-        self._clear_function = clear_function
         self._group = group
 
     def start_sync(self) -> None:
@@ -59,7 +57,7 @@ class Runner:
         await self.provider.run(run_async_request_handler)
 
     async def _request_handler(self, request: Any, ctx_id: Optional[Any] = None) -> Context:
-        ctx = self.contex_db.get(ctx_id)
+        ctx = self.context_db.get(ctx_id)
         if ctx is None:
             ctx = Context()
 
@@ -68,6 +66,6 @@ class Runner:
         ctx = await self._group(ctx, self.actor)
         del ctx.framework_states[RUNNER_STATE_KEY]
 
-        self.contex_db[ctx_id] = ctx
+        self.context_db[ctx_id] = ctx
 
         return ctx

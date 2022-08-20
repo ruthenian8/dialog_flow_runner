@@ -64,10 +64,10 @@ class Pipeline(BaseModel):
         self.context_db = dict() if self.context_db is None else self.context_db
         self.wrappers = [] if self.wrappers is None else self.wrappers
 
-        self._annotators = ServiceGroup.cast(
+        self.services = ServiceGroup.cast(
             self.services, self.actor, dict(), wrappers=self.wrappers, timeout=self.timeout
         )
-        self._runner = Runner(self.actor, self.context_clear, self.context_db, self.provider, self._annotators)
+        self._runner = Runner(self.actor, self.context_clear, self.context_db, self.provider, self.services)
 
     @property
     def flat_services_list(self) -> List[Tuple[str, Service]]:
@@ -86,7 +86,7 @@ class Pipeline(BaseModel):
                     services += get_flat_services_list(service, prefix)
             return services
 
-        return get_flat_services_list(self._annotators, "")
+        return get_flat_services_list(self.services, "")
 
     def start_sync(self):
         """
