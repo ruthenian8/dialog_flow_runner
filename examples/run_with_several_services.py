@@ -34,7 +34,6 @@ async def postpostprocess(ctx: Context, actor: Actor) -> Any:
 
 
 pipeline = {
-    "actor": actor,
     "provider": CLIProvider(),
     "context_db": {},
     "services": [
@@ -42,7 +41,7 @@ pipeline = {
             "service": preprocess,
             "timeout": 3,
         },
-        ACTOR,
+        actor,
         postprocess,
         Service(
             service=postpostprocess,
