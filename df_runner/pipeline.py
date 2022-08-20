@@ -1,21 +1,20 @@
-from contextvars import Context
 import logging
-from typing import Union, List, Dict, TypedDict, Optional, Literal, Tuple
+from typing import Any, Union, List, Dict, TypedDict, Optional, Literal
 import uuid
 from asyncio import run
 
 from df_db_connector import DBAbstractConnector
-from df_engine.core import Actor, Script
+from df_engine.core import Actor, Script, Context
 from df_engine.core.types import NodeLabel2Type
 from pydantic import BaseModel, Extra
 from typing_extensions import NotRequired
 
-from .runner import Runner
 from .service_wrapper import Wrapper
 from .provider import AbsProvider, CLIProvider
 from .service_group import ServiceGroup
 from .types import ServiceFunction, ClearFunction, ACTOR, AnnotatorFunction
 from .service import Service
+from .types import RUNNER_STATE_KEY
 
 
 logger = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ PipelineDict = TypedDict(
 
 class Pipeline(BaseModel):
     """
-    Class that automates runner creation from dict and execution.
+    Class that automates service execution and creates pipeline from dict and execution.
     It also allows actor and annotators wrapping with special services, which enables more control over execution.
     It accepts:
         services - a Service list for this pipeline, should include Actor
@@ -49,7 +48,6 @@ class Pipeline(BaseModel):
     actor: Actor
     provider: Optional[AbsProvider] = CLIProvider()
     context_db: Optional[Union[DBAbstractConnector, Dict]] = None
-    context_clear: Optional[ClearFunction] = None
     services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup]] = None
     wrappers: Optional[List[Wrapper]] = None
 
@@ -64,41 +62,23 @@ class Pipeline(BaseModel):
         self.context_db = dict() if self.context_db is None else self.context_db
         self.wrappers = [] if self.wrappers is None else self.wrappers
 
-        self.services = ServiceGroup.cast(
+        self._pipeline = ServiceGroup.cast(
             self.services, self.actor, dict(), wrappers=self.wrappers, timeout=self.timeout
         )
-        self._runner = Runner(self.actor, self.context_clear, self.context_db, self.provider, self.services)
 
-    @property
-    def flat_services_list(self) -> List[Tuple[str, Service]]:
-        """
-        Returns a copy of created inner services flat array used during actual pipeline running.
-        Might be used for debugging purposes.
-        """
+    async def _run_pipeline(self, request: Any, ctx_id: Optional[Any] = None) -> Context:
+        ctx = self.context_db.get(ctx_id)
+        if ctx is None:
+            ctx = Context()
 
-        def get_flat_services_list(group: ServiceGroup, prefix: str) -> List[Tuple[str, Service]]:
-            services = list()
-            prefix = f"{prefix}.{group.name}"
-            for service in group.annotators:
-                if isinstance(service, Service):
-                    services += [(prefix, service)]
-                else:
-                    services += get_flat_services_list(service, prefix)
-            return services
+        ctx.framework_states[RUNNER_STATE_KEY] = {}
+        ctx.add_request(request)
+        ctx = await self._pipeline(ctx, self.actor)
+        del ctx.framework_states[RUNNER_STATE_KEY]
 
-        return get_flat_services_list(self.services, "")
+        self.context_db[ctx_id] = ctx
 
-    def start_sync(self):
-        """
-        Execute pipeline, an alias method for runner.start_sync().
-        """
-        self._runner.start_sync()
-
-    async def start_async(self):
-        """
-        Execute pipeline, an alias method for runner.start_async().
-        """
-        await self._runner.start_async()
+        return ctx
 
     @classmethod
     def from_script(
@@ -129,8 +109,32 @@ class Pipeline(BaseModel):
             dictionary["services"] = [ACTOR if isinstance(serv, Actor) else serv for serv in dictionary["services"]]
         return cls.parse_obj(dictionary)
 
+    def start_sync(self) -> None:
+        """
+        Method for starting a pipeline, sets up corresponding provider callback.
+        Since one pipeline always has only one provider, there is no need for thread management here.
+        Use this in async context, await will not work in sync.
+        """
+
+        def run_sync_run_pipeline(request: Any) -> Context:
+            return run(self._run_pipeline(request, self.provider.ctx_id))
+
+        self.provider.run(run_sync_run_pipeline)
+
+    async def start_async(self) -> None:
+        """
+        Method for starting a pipeline, sets up corresponding provider callback.
+        Since one pipeline always has only one provider, there is no need for thread management here.
+        Use this in sync context, asyncio.run() will produce error in async.
+        """
+
+        async def run_async_run_pipeline(request: Any) -> Context:
+            return await self._run_pipeline(request, self.provider.ctx_id)
+
+        await self.provider.run(run_async_run_pipeline)
+
     def __call__(self, request, ctx_id=uuid.uuid4()) -> Context:
-        return run(self._runner._request_handler(request, ctx_id))
+        return run(self._run_pipeline(request, ctx_id))
 
     async def async_call(self, request, ctx_id=uuid.uuid4()) -> Context:
-        return await self._runner._request_handler(request, ctx_id)
+        return await self._run_pipeline(request, ctx_id)

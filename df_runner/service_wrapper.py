@@ -53,13 +53,6 @@ class Wrapper(BaseModel, Named):
 
 
 class WrapperHandler(BaseModel):
-    """
-    Class, representing a wrapper.
-    A wrapper is a set of two functions, one run before and one after service.
-    Wrappers should execute supportive tasks (like time or resources measurement).
-    Wrappers should NOT edit context or actor, use services for that purpose instead.
-    """
-
     asynchronous: bool = False
     wrappers: Optional[List[Wrapper]] = None
 
@@ -67,7 +60,7 @@ class WrapperHandler(BaseModel):
         kwargs.update({"wrappers": kwargs.get("wrappers", [])})
         super().__init__(**kwargs)
 
-    def _execute_service_wrappers(self, ctx: Context, actor: Actor, wrapper_type: WrapperType):
+    def _execute_wrappers(self, ctx: Context, actor: Actor, wrapper_type: WrapperType):
         for wrapper in self.wrappers:
             if wrapper_type is WrapperType.PREPROCESSING:
                 wrapper.pre_func(ctx, actor, self.name)

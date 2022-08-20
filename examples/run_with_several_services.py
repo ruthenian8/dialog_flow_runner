@@ -3,7 +3,7 @@ from typing import Any
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIProvider, Service, Pipeline, ACTOR, RUNNER_STATE_KEY
+from df_runner import CLIProvider, Service, Pipeline, get_flat_services_list
 from examples import basic_example
 
 actor = Actor(
@@ -56,6 +56,6 @@ if __name__ == "__main__":
     print("It may be not easy to understand what service names were generated for the pipeline.")
     print(
         "Use given code in that case to acquire "
-        f"names: {[service.name for path, service in pipeline.processed_services]}"
+        f"names: {[service.name for _, service in get_flat_services_list(pipeline.services)]}"
     )
     pipeline.start_sync()

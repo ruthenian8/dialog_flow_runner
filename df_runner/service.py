@@ -7,7 +7,7 @@ from df_engine.core import Actor, Context
 from .named import Named
 from .service_wrapper import Wrapper, WrapperType, WrapperHandler
 from .types import ACTOR, ServiceFunction, ServiceCondition, ServiceState, ConditionState
-from .runnable import StateTracker
+from .state_tracker import StateTracker
 from .conditions import always_start_condition
 
 
@@ -41,7 +41,7 @@ class Service(StateTracker, Named, WrapperHandler):
             self._set_state(ctx, ServiceState.FINISHED)
             return ctx
 
-        self._execute_service_wrappers(ctx, actor, WrapperType.PREPROCESSING)
+        self._execute_wrappers(ctx, actor, WrapperType.PREPROCESSING)
 
         try:
             state = self.start_condition(ctx, actor)
@@ -62,7 +62,7 @@ class Service(StateTracker, Named, WrapperHandler):
             self._set_state(ctx, ServiceState.FAILED)
             logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
 
-        self._execute_service_wrappers(ctx, actor, WrapperType.POSTPROCESSING)
+        self._execute_wrappers(ctx, actor, WrapperType.POSTPROCESSING)
 
     @staticmethod
     def _get_name(

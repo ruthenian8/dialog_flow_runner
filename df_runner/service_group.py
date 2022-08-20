@@ -7,14 +7,12 @@ from pydantic import Extra
 
 from .named import Named
 from .service_wrapper import WrapperType, WrapperHandler
-from .runnable import StateTracker
+from .state_tracker import StateTracker
 from .types import (
     ServiceFunction,
     ServiceCondition,
     ACTOR,
     ServiceState,
-    CallbackType,
-    CallbackFunction,
     ConditionState,
 )
 from .service import Service
@@ -110,7 +108,7 @@ class ServiceGroup(StateTracker, Named, WrapperHandler):
 
     async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         self._set_state(ctx, dict())
-        self._execute_service_wrappers(ctx, actor, WrapperType.PREPROCESSING)
+        self._execute_wrappers(ctx, actor, WrapperType.PREPROCESSING)
 
         timeout = self.timeout if self.timeout > -1 else None
         if self.asynchronous:
@@ -125,7 +123,7 @@ class ServiceGroup(StateTracker, Named, WrapperHandler):
                 logger.warning(f"Timeout can not be applied for group {self.name}: it is not asynchronous !")
             ctx = await self._run(ctx, actor, *args, **kwargs)
 
-        self._execute_service_wrappers(ctx, actor, WrapperType.POSTPROCESSING)
+        self._execute_wrappers(ctx, actor, WrapperType.POSTPROCESSING)
         return ctx
 
     @staticmethod

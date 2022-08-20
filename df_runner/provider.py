@@ -8,7 +8,7 @@ from .types import ProviderFunction
 
 class AbsProvider(ABC):
     """
-    Class that represents a provider used for communication between runner and user.
+    Class that represents a provider used for communication between pipeline and user.
     """
 
     def __init__(self):
@@ -17,10 +17,10 @@ class AbsProvider(ABC):
 
     async def run(self, callback: ProviderFunction):
         """
-        Method invoked when user first interacts with the runner and dialog starts.
+        Method invoked when user first interacts with the pipeline and dialog starts.
         A good place to generate self.ctx_id - a unique ID of the dialog.
         May be used for sending self._intro - an introduction message.
-        :callback: - a function that is run every time user provider an input, returns runner answer.
+        :callback: - a function that is run every time user provider an input, returns pipeline answer.
         """
         self._callback = callback
 
@@ -84,7 +84,7 @@ class CallbackProvider(AbsProvider):
 
 class CLIProvider(PollingProvider):
     """
-    Command line provider - the default provider for each runner.
+    Command line provider - the default provider for each pipeline.
     """
 
     def __init__(

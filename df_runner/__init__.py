@@ -24,6 +24,7 @@ from .service_wrapper import Wrapper, WrapperType
 from .service import Service
 from .service_group import ServiceGroup
 from .pipeline import Pipeline
+from .utils import get_flat_services_list
 
 
 __author__ = "Denis Kuznetsov"

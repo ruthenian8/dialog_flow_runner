@@ -69,7 +69,7 @@ CallbackFunction = Callable[[str, Any], None]
 
 """
 A function type for provider-to-client interaction.
-Accepts string (user input), returns string (answer from runner).
+Accepts string (user input), returns string (answer from pipeline).
 """
 ProviderFunction = Callable[[Any], Awaitable[Context]]
 
