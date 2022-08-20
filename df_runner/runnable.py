@@ -17,7 +17,7 @@ class Runnable(BaseModel):
         kwargs.update({"wrappers": kwargs.get("wrappers", [])})
         super().__init__(**kwargs)
 
-    def _execure_service_wrapper(self, ctx: Context, actor: Actor, wrapper_type: WrapperType, result: Optional[Any] = None):
+    def _execute_service_wrapper(self, ctx: Context, actor: Actor, wrapper_type: WrapperType, result: Optional[Any] = None):
         for wrapper in self.wrappers:
             if wrapper_type is WrapperType.PREPROCESSING:
                 wrapper.pre_func(ctx, actor, self.name)

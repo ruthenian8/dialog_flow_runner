@@ -41,7 +41,7 @@ class Service(Runnable, Named):
             self._framework_states_runner(ctx, ServiceState.FINISHED)
             return ctx
 
-        self._execure_service_wrapper(ctx, actor, WrapperType.PREPROCESSING)
+        self._execute_service_wrapper(ctx, actor, WrapperType.PREPROCESSING)
 
         result = None
         try:
@@ -63,7 +63,7 @@ class Service(Runnable, Named):
             self._framework_states_runner(ctx, ServiceState.FAILED)
             logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
 
-        self._execure_service_wrapper(ctx, actor, WrapperType.POSTPROCESSING, result)
+        self._execute_service_wrapper(ctx, actor, WrapperType.POSTPROCESSING, result)
 
     @staticmethod
     def _get_name(

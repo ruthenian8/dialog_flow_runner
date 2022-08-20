@@ -122,7 +122,7 @@ class ServiceGroup(Runnable, Named):
 
     async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         self._framework_states_runner(ctx, dict())
-        self._execure_service_wrapper(ctx, actor, WrapperType.PREPROCESSING)
+        self._execute_service_wrapper(ctx, actor, WrapperType.PREPROCESSING)
 
         timeout = self.timeout if self.timeout > -1 else None
         if self.asynchronous:
@@ -137,7 +137,7 @@ class ServiceGroup(Runnable, Named):
                 logger.warning(f"Timeout can not be applied for group {self.name}: it is not asynchronous !")
             ctx = await self._run(ctx, actor, *args, **kwargs)
 
-        self._execure_service_wrapper(ctx, actor, WrapperType.POSTPROCESSING)
+        self._execute_service_wrapper(ctx, actor, WrapperType.POSTPROCESSING)
         return ctx
 
     @staticmethod
