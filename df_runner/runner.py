@@ -41,10 +41,10 @@ class Runner:
         Use this in async context, await will not work in sync.
         """
 
-        async def callback(request: Any) -> Context:
-            return await self._request_handler(request, self.provider.ctx_id)
+        def run_sync_request_handler(request: Any) -> Context:
+            return run(self._request_handler(request, self.provider.ctx_id))
 
-        run(self.provider.run(callback))
+        self.provider.run(run_sync_request_handler)
 
     async def start_async(self) -> None:
         """
@@ -53,29 +53,21 @@ class Runner:
         Use this in sync context, asyncio.run() will produce error in async.
         """
 
-        async def callback(request: Any) -> Context:
+        async def run_async_request_handler(request: Any) -> Context:
             return await self._request_handler(request, self.provider.ctx_id)
 
-        await self.provider.run(callback)
+        await self.provider.run(run_async_request_handler)
 
     async def _request_handler(self, request: Any, ctx_id: Optional[Any] = None) -> Context:
         ctx = self.contex_db.get(ctx_id)
         if ctx is None:
             ctx = Context()
-            ctx.framework_states[FrameworkKeys.RUNNER] = dict()
-            ctx.framework_states[FrameworkKeys.SERVICES] = dict()
-            ctx.framework_states[FrameworkKeys.SERVICES_META] = dict()
-
-        ctx.add_request(request)
-        ctx = await self._group(ctx, self.actor)
 
         ctx.framework_states[FrameworkKeys.RUNNER] = dict()
-        if self._clear_function is not None:
-            services, meta = self._clear_function(
-                ctx.framework_states[FrameworkKeys.SERVICES], ctx.framework_states[FrameworkKeys.SERVICES_META]
-            )
-            ctx.framework_states[FrameworkKeys.SERVICES] = services
-            ctx.framework_states[FrameworkKeys.SERVICES_META] = meta
+        ctx.add_request(request)
+        ctx = await self._group(ctx, self.actor)
+        del ctx.framework_states[FrameworkKeys.RUNNER]
+
         self.contex_db[ctx_id] = ctx
 
         return ctx

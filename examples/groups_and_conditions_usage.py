@@ -16,16 +16,19 @@ actor = Actor(
 
 
 def preprocess(ctx: Context, actor: Actor) -> Any:
-    gen = randint(0, 2) / 2
-    print(f"\tpreprocession Service, generated {gen}")
-    return gen
+    step = ctx.misc.get("step", 0) + 1
+    ctx.misc["step"] = step
+    if step % 2:
+        ctx.misc["ping"] = (ctx.misc.get("ping", 0) + 1) % 2
+    else:
+        ctx.misc["pong"] = (ctx.misc.get("pong", 0) + 1) % 2
 
 
 async def postprocess(ctx: Context, actor: Actor) -> Any:
-    pre0 = ctx.framework_states[FrameworkKeys.SERVICES]["func_preprocess_0"]
-    pre1 = ctx.framework_states[FrameworkKeys.SERVICES]["func_preprocess_1"]
-    print(f"\tpostprocession Service, will sleep for {pre0 + pre1}")
-    await sleep(pre0 + pre1)
+    ping = ctx.misc["ping"]
+    ping = ctx.misc["pong"]
+    print(f"\tpostprocession Service, will sleep for {ping + ping}")
+    await sleep(ping + ping)
 
 
 async def postpostprocess(ctx: Context, actor: Actor) -> Any:
@@ -81,3 +84,7 @@ if __name__ == "__main__":
         f"with their full path: {[f'{path}.{service.name}' for path, service in pipeline.processed_services]}"
     )
     run(pipeline.start_sync())
+
+# %%
+
+# %%

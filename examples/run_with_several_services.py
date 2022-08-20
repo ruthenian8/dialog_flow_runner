@@ -20,14 +20,14 @@ def preprocess(ctx: Context, actor: Actor) -> Any:
 
 def postprocess(ctx: Context, actor: Actor) -> Any:
     print(f"\tpostprocession Service (defined as a callable)")
-    return ctx.last_response == "Ooops"
+    ctx.misc["is_oops"] = ctx.last_response == "Ooops"
 
 
 async def postpostprocess(ctx: Context, actor: Actor) -> Any:
     print(f"\tanother postprocession Service (defined as a dict)")
     await sleep(1)
     print(f"\t\tThanks for waiting!")
-    if ctx.framework_states[FrameworkKeys.SERVICES]["func_postprocess_0"]:
+    if ctx.misc["is_oops"]:
         print(f"\t\tI'm sorry, but after certain calculations, we assure you that you appear to be in fallback node!")
     else:
         print(f"\t\tCongratulations, you are not in fallback node now!")
