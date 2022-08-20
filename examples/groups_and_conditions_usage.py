@@ -82,7 +82,3 @@ if __name__ == "__main__":
         f"with their full path: {[f'{path}.{service.name}' for path, service in pipeline.processed_services]}"
     )
     run(pipeline.start_sync())
-
-# %%
-
-# %%
