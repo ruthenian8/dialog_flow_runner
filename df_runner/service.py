@@ -5,16 +5,16 @@ from typing import Optional, Union, Dict, Callable, Literal, Any, Set
 from df_engine.core import Actor, Context
 
 from .named import Named
-from .service_wrapper import Wrapper, WrapperType
+from .service_wrapper import Wrapper, WrapperType, WrapperHandler
 from .types import ACTOR, ServiceFunction, ServiceCondition, ServiceState, ConditionState
-from .runnable import Runnable
+from .runnable import StateTracker
 from .conditions import always_start_condition
 
 
 logger = logging.getLogger(__name__)
 
 
-class Service(Runnable, Named):
+class Service(StateTracker, Named, WrapperHandler):
     """
     Extension class for annotation functions, may be created from dict.
 
@@ -38,32 +38,31 @@ class Service(Runnable, Named):
         """
         if self.service == ACTOR:
             ctx = actor(ctx)
-            self._framework_states_runner(ctx, ServiceState.FINISHED)
+            self._set_state(ctx, ServiceState.FINISHED)
             return ctx
 
-        self._execute_service_wrapper(ctx, actor, WrapperType.PREPROCESSING)
+        self._execute_service_wrappers(ctx, actor, WrapperType.PREPROCESSING)
 
-        result = None
         try:
             state = self.start_condition(ctx, actor)
             if state == ConditionState.ALLOWED:
                 if iscoroutinefunction(self.service):
-                    self._framework_states_runner(ctx, ServiceState.RUNNING)
-                    result = await self.service(ctx, actor)
-                    self._framework_states_runner(ctx, ServiceState.FINISHED)
+                    self._set_state(ctx, ServiceState.RUNNING)
+                    await self.service(ctx, actor)
+                    self._set_state(ctx, ServiceState.FINISHED)
                 else:
-                    result = self.service(ctx, actor)
-                    self._framework_states_runner(ctx, ServiceState.FINISHED)
+                    self.service(ctx, actor)
+                    self._set_state(ctx, ServiceState.FINISHED)
             elif state == ConditionState.PENDING:
-                self._framework_states_runner(ctx, ServiceState.PENDING)
+                self._set_state(ctx, ServiceState.PENDING)
             else:
-                self._framework_states_runner(ctx, ServiceState.FAILED)
+                self._set_state(ctx, ServiceState.FAILED)
 
         except Exception as e:
-            self._framework_states_runner(ctx, ServiceState.FAILED)
+            self._set_state(ctx, ServiceState.FAILED)
             logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
 
-        self._execute_service_wrapper(ctx, actor, WrapperType.POSTPROCESSING, result)
+        self._execute_service_wrappers(ctx, actor, WrapperType.POSTPROCESSING)
 
     @staticmethod
     def _get_name(

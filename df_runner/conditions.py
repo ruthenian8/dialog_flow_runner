@@ -2,7 +2,7 @@ from typing import Optional
 
 from df_engine.core import Actor, Context
 
-from .types import FrameworkKeys, ConditionState, ServiceCondition, ServiceState
+from .types import RUNNER_STATE_KEY, ConditionState, ServiceCondition, ServiceState
 
 
 def always_start_condition(ctx: Context, actor: Actor) -> ConditionState:
@@ -23,7 +23,7 @@ def service_successful_condition(name: Optional[str] = None) -> ServiceCondition
         Function that checks single service ServiceState and returns ConditionState for this service.
         """
 
-        state = ctx.framework_states[FrameworkKeys.RUNNER].get(name, ServiceState.NOT_RUN)
+        state = ctx.framework_states[RUNNER_STATE_KEY].get(name, ServiceState.NOT_RUN)
         if state not in (ServiceState.FINISHED, ServiceState.FAILED):
             return ConditionState.PENDING
         elif state == ServiceState.FINISHED:

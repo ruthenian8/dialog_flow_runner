@@ -3,7 +3,7 @@ from typing import Any
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIProvider, Service, Pipeline, ACTOR, FrameworkKeys
+from df_runner import CLIProvider, Service, Pipeline, ACTOR, RUNNER_STATE_KEY
 from examples import basic_example
 
 actor = Actor(

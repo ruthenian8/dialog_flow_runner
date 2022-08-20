@@ -8,7 +8,7 @@ from df_db_connector import DBAbstractConnector
 from .service_group import ServiceGroup
 from .provider import AbsProvider, CLIProvider
 from .service import Service
-from .types import FrameworkKeys, ClearFunction
+from .types import RUNNER_STATE_KEY, ClearFunction
 
 logger = logging.getLogger(__name__)
 
@@ -63,10 +63,10 @@ class Runner:
         if ctx is None:
             ctx = Context()
 
-        ctx.framework_states[FrameworkKeys.RUNNER] = dict()
+        ctx.framework_states[RUNNER_STATE_KEY] = {}
         ctx.add_request(request)
         ctx = await self._group(ctx, self.actor)
-        del ctx.framework_states[FrameworkKeys.RUNNER]
+        del ctx.framework_states[RUNNER_STATE_KEY]
 
         self.contex_db[ctx_id] = ctx
 

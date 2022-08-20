@@ -6,8 +6,8 @@ from df_engine.core import Actor, Context
 from pydantic import Extra
 
 from .named import Named
-from .service_wrapper import WrapperType
-from .runnable import Runnable
+from .service_wrapper import WrapperType, WrapperHandler
+from .runnable import StateTracker
 from .types import (
     ServiceFunction,
     ServiceCondition,
@@ -26,7 +26,7 @@ _ServiceCallable = Union[Service, ServiceFunction, Literal[ACTOR]]
 logger = logging.getLogger(__name__)
 
 
-class ServiceGroup(Runnable, Named):
+class ServiceGroup(StateTracker, Named, WrapperHandler):
     """
     An instance that represents a service group.
     Group can be also defined in pipeline dict as a nested service list.
@@ -49,34 +49,21 @@ class ServiceGroup(Runnable, Named):
         super().__init__(**kwargs)
         self.annotators: List[Union[Service, "ServiceGroup"]] = []
 
-    def add_callback_wrapper(
-        self,
-        callback_type: CallbackType,
-        callback: CallbackFunction,
-        condition: Callable[[str], bool] = lambda _: True,
-    ):
-        super().add_callback_wrapper(callback_type, callback, condition)
-        for service in self.services:
-            if condition(service.name):
-                service.add_callback_wrapper(callback_type, callback, condition)
-
     async def _run(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         try:
             state = self.start_condition(ctx, actor)
             if state == ConditionState.ALLOWED:
 
                 if self.asynchronous:
-                    self._framework_states_runner(ctx, ServiceState.RUNNING)
+                    self._set_state(ctx, ServiceState.RUNNING)
 
                     running = dict()
                     for annotator in self.annotators:
-                        if (
-                            annotator._framework_states_runner(ctx, default=ServiceState.NOT_RUN)
-                            is ServiceState.NOT_RUN
-                        ):
+                        if annotator._get_state(ctx, default=ServiceState.NOT_RUN) is ServiceState.NOT_RUN:
                             service_result = create_task(annotator(ctx, actor), name=annotator.name)
                             timeout = annotator.timeout if annotator.timeout > -1 else None
                             running.update({annotator.name: wait_for(service_result, timeout=timeout)})
+                        self._set_state(ctx, None)
 
                     for name, future in zip(running.keys(), as_completed(running.values())):
                         try:
@@ -86,10 +73,11 @@ class ServiceGroup(Runnable, Named):
 
                     failed = False
                     for annotator in self.annotators:
-                        if annotator._framework_states_runner(ctx) == ServiceState.PENDING:
-                            annotator._framework_states_runner(ctx, ServiceState.FAILED)
+                        if annotator._get_state(ctx) == ServiceState.PENDING:
+                            annotator._set_state(ctx, ServiceState.FAILED)
                             failed = True
-                    self._framework_states_runner(ctx, ServiceState.FAILED if failed else ServiceState.FINISHED)
+                        self._set_state(ctx, None)
+                    self._set_state(ctx, ServiceState.FAILED if failed else ServiceState.FINISHED)
 
                 else:
                     for annotator in self.annotators:
@@ -107,22 +95,22 @@ class ServiceGroup(Runnable, Named):
                         if isinstance(service_result, Context):
                             ctx = service_result
 
-                    self._framework_states_runner(ctx, ServiceState.FINISHED)
+                    self._set_state(ctx, ServiceState.FINISHED)
 
             elif state == ConditionState.PENDING:
-                self._framework_states_runner(ctx, ServiceState.PENDING)
+                self._set_state(ctx, ServiceState.PENDING)
             else:
-                self._framework_states_runner(ctx, ServiceState.FAILED)
+                self._set_state(ctx, ServiceState.FAILED)
 
         except Exception as e:
-            self._framework_states_runner(ctx, ServiceState.FAILED)
+            self._set_state(ctx, ServiceState.FAILED)
             logger.error(f"Group {self.name} execution failed for unknown reason!\n{e}")
 
         return ctx
 
     async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
-        self._framework_states_runner(ctx, dict())
-        self._execute_service_wrapper(ctx, actor, WrapperType.PREPROCESSING)
+        self._set_state(ctx, dict())
+        self._execute_service_wrappers(ctx, actor, WrapperType.PREPROCESSING)
 
         timeout = self.timeout if self.timeout > -1 else None
         if self.asynchronous:
@@ -137,7 +125,7 @@ class ServiceGroup(Runnable, Named):
                 logger.warning(f"Timeout can not be applied for group {self.name}: it is not asynchronous !")
             ctx = await self._run(ctx, actor, *args, **kwargs)
 
-        self._execute_service_wrapper(ctx, actor, WrapperType.POSTPROCESSING)
+        self._execute_service_wrappers(ctx, actor, WrapperType.POSTPROCESSING)
         return ctx
 
     @staticmethod

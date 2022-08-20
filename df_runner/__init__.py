@@ -14,7 +14,7 @@ from .types import (
     ClearFunction,
     ConditionState,
     ServiceState,
-    FrameworkKeys,
+    RUNNER_STATE_KEY,
     ACTOR,
     CallbackType,
 )
