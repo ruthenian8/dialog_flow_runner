@@ -5,19 +5,16 @@ from df_runner import Pipeline
 from examples import basic_example
 
 
-def get_some_intent(ctx: Context, actor: Actor) -> Context:
+def get_some_intent(ctx: Context, actor: Actor):
     ctx.misc["some_detection"] = {ctx.last_request: "some_intent"}
-    return ctx
 
 
-def get_another_intent(ctx: Context, actor: Actor) -> Context:
+def get_another_intent(ctx: Context, actor: Actor):
     ctx.misc["another_detection"] = {ctx.last_request: "another_intent"}
-    return ctx
 
 
-def print_misc(ctx: Context, actor: Actor) -> Context:
+def print_misc(ctx: Context, actor: Actor):
     print(f"{ctx.misc=}")
-    return ctx
 
 
 pipeline = Pipeline.from_script(

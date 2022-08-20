@@ -12,7 +12,7 @@ from typing_extensions import NotRequired
 from .service_wrapper import Wrapper
 from .provider import AbsProvider, CLIProvider
 from .service_group import ServiceGroup
-from .types import ServiceFunction, ClearFunction, AnnotatorFunction
+from .types import ServiceFunction, AnnotatorFunction
 from .service import Service
 from .types import RUNNER_STATE_KEY
 from .utils import get_flat_services_list
@@ -25,10 +25,8 @@ _ServiceCallable = Union[Service, ServiceFunction]
 PipelineDict = TypedDict(
     "PipelineDict",
     {
-        "actor": Actor,
         "provider": NotRequired[Optional[AbsProvider]],
         "context_db": NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
-        "context_clear": NotRequired[Optional[ClearFunction]],
         "services": List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup]],
         "wrappers": NotRequired[Optional[List[Wrapper]]],
     },
@@ -70,7 +68,7 @@ class Pipeline(BaseModel):
         if not isinstance(self.actor, Actor):
             raise Exception("Actor not found.")
 
-    async def _run_pipeline(self, request: Any, ctx_id: Optional[Any] = None) -> Context:
+    async def _async_run_pipeline(self, request: Any, ctx_id: Optional[Any] = None) -> Context:
         ctx = self.context_db.get(ctx_id)
         if ctx is None:
             ctx = Context()
@@ -83,6 +81,13 @@ class Pipeline(BaseModel):
         self.context_db[ctx_id] = ctx
 
         return ctx
+
+    async def _async_run_provider(self) -> Context:
+        # callback for pipeline with provided ctx id
+        async def run_with_ctx_pipeline(request: Any) -> Context:
+            return await self._async_run_pipeline(request, self.provider.ctx_id)
+
+        return await self.provider.run(run_with_ctx_pipeline)
 
     @classmethod
     def from_script(
@@ -112,11 +117,7 @@ class Pipeline(BaseModel):
         Since one pipeline always has only one provider, there is no need for thread management here.
         Use this in async context, await will not work in sync.
         """
-
-        def run_sync_run_pipeline(request: Any) -> Context:
-            return run(self._run_pipeline(request, self.provider.ctx_id))
-
-        self.provider.run(run_sync_run_pipeline)
+        run(self._async_run_provider())
 
     async def start_async(self) -> None:
         """
@@ -124,14 +125,10 @@ class Pipeline(BaseModel):
         Since one pipeline always has only one provider, there is no need for thread management here.
         Use this in sync context, asyncio.run() will produce error in async.
         """
-
-        async def run_async_run_pipeline(request: Any) -> Context:
-            return await self._run_pipeline(request, self.provider.ctx_id)
-
-        await self.provider.run(run_async_run_pipeline)
+        await self._async_run_provider()
 
     def __call__(self, request, ctx_id=uuid.uuid4()) -> Context:
-        return run(self._run_pipeline(request, ctx_id))
+        return run(self._async_run_pipeline(request, ctx_id))
 
     async def async_call(self, request, ctx_id=uuid.uuid4()) -> Context:
-        return await self._run_pipeline(request, ctx_id)
+        return await self._async_run_pipeline(request, ctx_id)
