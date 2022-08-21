@@ -79,9 +79,15 @@ CallbackFunction = Callable[[str, Any], None]
 
 """
 A function type for provider-to-client interaction.
-Accepts string (user input), returns string (answer from runner).
+Accepts any (user input) and any (context id), returns string (answer from runner).
 """
-ProviderFunction = Callable[[Any], Awaitable[Context]]
+ProviderFunction = Callable[[Any, Any], Awaitable[Context]]
+
+"""
+A function type for polling provider loop polling.
+Returns True to continue polling and False to stop.
+"""
+LoopFunction = Callable[[], bool]
 
 """
 A function type for creating annotators (and also for creating services from).

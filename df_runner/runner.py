@@ -41,8 +41,8 @@ class Runner:
         Use this in async context, await will not work in sync.
         """
 
-        async def callback(request: Any) -> Context:
-            return await self._request_handler(request, self.provider.ctx_id)
+        async def callback(request: Any, ctx_id: Any) -> Context:
+            return await self._request_handler(request, ctx_id)
 
         run(self.provider.run(callback))
 
@@ -53,8 +53,8 @@ class Runner:
         Use this in sync context, asyncio.run() will produce error in async.
         """
 
-        async def callback(request: Any) -> Context:
-            return await self._request_handler(request, self.provider.ctx_id)
+        async def callback(request: Any, ctx_id: Any) -> Context:
+            return await self._request_handler(request, ctx_id)
 
         await self.provider.run(callback)
 
