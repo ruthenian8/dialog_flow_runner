@@ -24,11 +24,6 @@ def name_service_handler(service_handler: Union[Actor, "Service", Dict, Handler]
     else:
         return "noname"
 
-
-def is_service(service_handler):
-    return isinstance(service_handler, Service)
-
-
 class Service(StateTracker):
     """
     Extension class for annotation functions, may be created from dict.
@@ -77,9 +72,9 @@ class Service(StateTracker):
             try:
                 ctx = self.service_handler(ctx)
                 self._set_state(ctx, ServiceState.FINISHED)
-            except Exception as e:
+            except Exception as exc:
                 self._set_state(ctx, ServiceState.FAILED)
-                logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
+                logger.error(f"Service {self.name} execution failed for unknown reason!\n{exc}")
             execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
             return ctx
 
