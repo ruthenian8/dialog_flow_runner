@@ -82,7 +82,7 @@ AnnotatorFunction = Union[Callable[[Context, Actor], Context], Callable[[Context
 A function type for creating services.
 Accepts context, returns anything (will be written to context).
 """
-ServiceFunction = Union[Callable[[Context, Actor], Any], Callable[[Context, Actor], Awaitable[Any]]]
+Handler = Union[Callable[[Context, Actor], Any], Callable[[Context, Actor], Awaitable[Any]]]
 
 """
 A function type for creating start_conditions for services.

@@ -1,20 +1,18 @@
 import logging
 from enum import unique, Enum, auto
-from typing import Optional, Set, Callable, Any, Dict, List
+from typing import Optional, List
 
-from pydantic import BaseModel
-
-from .named import Named
-from .types import WrapperFunction
 
 from df_engine.core import Context, Actor
+
+from .types import WrapperFunction
 
 
 logger = logging.getLogger(__name__)
 
 
 @unique
-class WrapperType(Enum):
+class WrapperStage(Enum):
     """
     Enum, representing wrapper type, pre- or postprocessing.
     """
@@ -23,7 +21,7 @@ class WrapperType(Enum):
     POSTPROCESSING = auto()
 
 
-class Wrapper(BaseModel, Named):
+class Wrapper:
     """
     Class, representing a wrapper.
     A wrapper is a set of two functions, one run before and one after service.
@@ -31,38 +29,20 @@ class Wrapper(BaseModel, Named):
     Wrappers should NOT edit context or actor, use services for that purpose instead.
     """
 
-    pre_func: WrapperFunction
-    post_func: WrapperFunction
-    name: Optional[str] = None
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.name = self._get_name(self, given_name=self.name)
-
-    @staticmethod
-    def _get_name(
-        wrapper: "Wrapper",
-        forbidden_names: Optional[Set[str]] = None,
-        name_rule: Optional[Callable[[Any], str]] = None,
-        naming: Optional[Dict[str, int]] = None,
-        given_name: Optional[str] = None,
-    ) -> str:
-        forbidden_names = forbidden_names if forbidden_names is not None else {"wrapper_"}
-        name_rule = name_rule if name_rule is not None else lambda this: f"wrapper_{type(this).__name__.lower()}"
-        return super(Wrapper, Wrapper)._get_name(wrapper, name_rule, forbidden_names, naming, given_name)
+    def __init__(
+        self,
+        pre_func: WrapperFunction,
+        post_func: WrapperFunction,
+        name: Optional[str] = None,
+    ):
+        self.pre_func = pre_func
+        self.post_func = post_func
+        self.name = name
 
 
-class WrapperHandler(BaseModel):
-    asynchronous: bool = False
-    wrappers: Optional[List[Wrapper]] = None
-
-    def __init__(self, **kwargs):
-        kwargs.update({"wrappers": kwargs.get("wrappers", [])})
-        super().__init__(**kwargs)
-
-    def _execute_wrappers(self, ctx: Context, actor: Actor, wrapper_type: WrapperType):
-        for wrapper in self.wrappers:
-            if wrapper_type is WrapperType.PREPROCESSING:
-                wrapper.pre_func(ctx, actor, self.name)
-            else:
-                wrapper.post_func(ctx, actor, self.name)
+def execute_wrappers(ctx: Context, actor: Actor, wrappers: List[Wrapper], wrapper_type: WrapperStage, name):
+    for wrapper in wrappers:
+        if wrapper_type is WrapperStage.PREPROCESSING:
+            wrapper.pre_func(ctx, actor, name)
+        else:
+            wrapper.post_func(ctx, actor, name)

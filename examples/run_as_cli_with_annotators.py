@@ -21,8 +21,8 @@ pipeline = Pipeline.from_script(
     basic_example.SCRIPT,
     start_label=("greeting_flow", "start_node"),
     fallback_label=("greeting_flow", "fallback_node"),
-    pre_annotators=[get_some_intent, get_another_intent],
-    post_annotators=[print_misc],
+    pre_services=[get_some_intent, get_another_intent],
+    post_services=[print_misc],
 )
 
 

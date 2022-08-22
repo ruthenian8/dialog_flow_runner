@@ -27,10 +27,10 @@ pipeline = {
     "provider": provider,
     "connector": {},
     "services": [
-        {"service": preprocess},
-        {"service": actor, "name": "encapsulated-actor"},
+        {"service_handler": preprocess},
+        {"service_handler": actor, "name": "encapsulated-actor"},
         Service(
-            service=postprocess,
+            service_handler=postprocess,
             name="postprocess",
         ),
     ],

@@ -3,7 +3,7 @@ from typing import Any
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIProvider, Service, Pipeline, get_flat_services_list
+from df_runner import CLIProvider, Service, Pipeline, get_subgroups_and_services_from_service_group
 from examples import basic_example
 
 actor = Actor(
@@ -38,13 +38,13 @@ pipeline = {
     "context_db": {},
     "services": [
         {
-            "service": preprocess,
+            "service_handler": preprocess,
             "timeout": 3,
         },
         actor,
         postprocess,
         Service(
-            service=postpostprocess,
+            service_handler=postpostprocess,
             name="postprocess",
         ),
     ],
@@ -56,6 +56,6 @@ if __name__ == "__main__":
     print("It may be not easy to understand what service names were generated for the pipeline.")
     print(
         "Use given code in that case to acquire "
-        f"names: {[service.name for _, service in get_flat_services_list(pipeline.services)]}"
+        f"names: {[(prefix, service.name) for prefix, service in get_subgroups_and_services_from_service_group(pipeline.services_pipeline)]}"
     )
     pipeline.start_sync()

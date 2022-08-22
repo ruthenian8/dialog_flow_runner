@@ -40,17 +40,17 @@ pipeline = {
     "services": [
         [
             {
-                "service": preprocess,
+                "service_handler": preprocess,
                 "timeout": 1,
             },
             {
-                "service": preprocess,
+                "service_handler": preprocess,
                 "timeout": 1,
             },
         ],
         actor,
         {
-            "service": postprocess,
+            "service_handler": postprocess,
             "timeout": 1,
             "start_condition": service_successful_condition(name="group_1"),
         },
@@ -59,12 +59,12 @@ pipeline = {
             timeout=4,
             services=[
                 {
-                    "service": postprocess,
+                    "service_handler": postprocess,
                     "timeout": 3,
                     "start_condition": service_successful_condition(name="group_1"),
                 },
                 Service(
-                    service=postpostprocess,
+                    service_handler=postpostprocess,
                     name="postprocess",
                     start_condition=service_successful_condition(name="func_postprocess_0"),
                 ),

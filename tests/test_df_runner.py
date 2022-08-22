@@ -24,10 +24,11 @@ TURNS = [
 ]
 
 
-def t_pipeline(pipeline: Pipeline):
+def run_pipeline_test(pipeline: Pipeline):
     for turn_id, (request, true_response) in enumerate(TURNS):
         ctx: Context = pipeline(request)
         if true_response != ctx.last_response:
+            msg = f" pipeline={pipeline}"
             msg = f" turn_id={turn_id}"
             msg += f" request={request} "
             msg += f"\ntrue_response != out_response: "
@@ -35,12 +36,12 @@ def t_pipeline(pipeline: Pipeline):
             raise Exception(msg)
 
 
-@pytest.mark.parametrize("module_path", pathlib.Path("examples").glob("*.py"))
+@pytest.mark.parametrize(
+    "module_path", [file for file in pathlib.Path("examples").glob("*.py") if file.stem != "__init__"]
+)
 def test_examples(module_path):
-    if module_path.stem == "__init__":
-        return
     module = importlib.import_module(f"examples.{module_path.stem}")
     try:
-        t_pipeline(module.pipeline)
+        run_pipeline_test(module.pipeline)
     except Exception as exc:
         raise Exception(f"model_name={module_path.stem}") from exc

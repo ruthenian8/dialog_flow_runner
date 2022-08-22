@@ -7,7 +7,7 @@ nest_asyncio.apply()  # to fix asyncio.run into jupyter
 
 from .types import (
     ProviderFunction,
-    ServiceFunction,
+    Handler,
     AnnotatorFunction,
     ServiceCondition,
     WrapperFunction,
@@ -19,11 +19,10 @@ from .types import (
 )
 
 from .provider import PollingProvider, CallbackProvider, CLIProvider
-from .service_wrapper import Wrapper, WrapperType
+from .service_wrapper import Wrapper, WrapperStage
 from .service import Service
 from .service_group import ServiceGroup
-from .pipeline import Pipeline
-from .utils import get_flat_services_list
+from .pipeline import Pipeline, get_subgroups_and_services_from_service_group
 
 
 __author__ = "Denis Kuznetsov"
