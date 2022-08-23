@@ -16,7 +16,7 @@ from .service import Service
 from .conditions import always_start_condition
 
 
-_ServiceCallable = Union[Service, Handler]
+_ServiceCallable = Union[Service, Handler, Actor]
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class ServiceGroup(StateTracker):
         start_condition: ServiceCondition = always_start_condition,
         name: Optional[str] = "service_group",
     ):
-        services = [] if services is None else []
+        services = [] if services is None else services
         if isinstance(services, ServiceGroup):
             self.__init__(**vars(services))
         elif isinstance(services, dict):

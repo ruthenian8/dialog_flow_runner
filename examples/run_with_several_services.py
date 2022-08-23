@@ -58,4 +58,4 @@ if __name__ == "__main__":
         "Use given code in that case to acquire "
         f"names: {[(prefix, service.name) for prefix, service in get_subgroups_and_services_from_service_group(pipeline.services_pipeline)]}"
     )
-    pipeline.start_sync()
+    pipeline.start()

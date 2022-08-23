@@ -9,4 +9,4 @@ pipeline = Pipeline.from_script(
 
 
 if __name__ == "__main__":
-    pipeline.start_sync()
+    pipeline.start()

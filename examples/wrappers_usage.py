@@ -42,7 +42,7 @@ class ActorWrapper(Wrapper):
 
 pipeline = {
     "provider": CLIProvider(),
-    "connector": dict(),
+    "context_db": dict(),
     "services": [
         ServiceGroup(wrappers=[wrap1], services=[wrapped_service1]),
         ServiceGroup(wrappers=[ActorWrapper()], services=[actor]),
@@ -52,5 +52,6 @@ pipeline = {
 
 
 pipeline = Pipeline(**pipeline)
+
 if __name__ == "__main__":
-    pipeline.start_sync()
+    pipeline.start()

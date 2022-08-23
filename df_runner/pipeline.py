@@ -1,7 +1,6 @@
 import logging
 from typing import Any, Union, List, Dict, TypedDict, Optional, Tuple
 import uuid
-from asyncio import run
 import collections
 
 from df_db_connector import DBAbstractConnector
@@ -15,7 +14,7 @@ from .service_group import ServiceGroup
 from .types import Handler
 from .service import Service
 from .types import RUNNER_STATE_KEY
-
+from .utils import run_in_current_or_new_loop
 
 logger = logging.getLogger(__name__)
 
@@ -166,26 +165,14 @@ class Pipeline:
 
         return await self.provider.run(run_with_ctx_pipeline)
 
-    def start_sync(self) -> None:
+    def start(self):
         """
         Method for starting a pipeline, sets up corresponding provider callback.
         Since one pipeline always has only one provider, there is no need for thread management here.
         Use this in async context, await will not work in sync.
         """
-        run(self._async_run_provider())
-
-    async def start_async(self) -> None:
-        """
-        Method for starting a pipeline, sets up corresponding provider callback.
-        Since one pipeline always has only one provider, there is no need for thread management here.
-        Use this in sync context, asyncio.run() will produce error in async.
-        """
-        await self._async_run_provider()
+        run_in_current_or_new_loop(self._async_run_provider())
 
     def __call__(self, request, ctx_id: Optional[Any] = None) -> Context:
         ctx_id = uuid.uuid4() if ctx_id is None else ctx_id
-        return run(self._async_run_pipeline(request, ctx_id))
-
-    async def async_call(self, request, ctx_id: Optional[Any] = None) -> Context:
-        ctx_id = uuid.uuid4() if ctx_id is None else ctx_id
-        return await self._async_run_pipeline(request, ctx_id)
+        return run_in_current_or_new_loop(self._async_run_pipeline(request, ctx_id))
