@@ -9,7 +9,8 @@ from .pipe import Pipe
 from .types import (
     StartConditionCheckerFunction,
     PipeExecutionState,
-    StartConditionState, ServiceGroupBuilder,
+    StartConditionState,
+    ServiceGroupBuilder,
 )
 from .service import Service
 from .conditions import always_start_condition
@@ -54,7 +55,9 @@ class ServiceGroup(Pipe):
         self._set_state(ctx, PipeExecutionState.RUNNING)
 
         service_futures = [service(ctx, actor) for service in self.services]
-        for service, future in zip(self.services, as_completed(service_futures) if self.asynchronous else service_futures):
+        for service, future in zip(
+            self.services, as_completed(service_futures) if self.asynchronous else service_futures
+        ):
             try:
                 service_result = await future
                 if not service.asynchronous and isinstance(service_result, Context):

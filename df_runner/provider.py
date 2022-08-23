@@ -7,7 +7,7 @@ from typing import Optional, Any, List, Tuple, Union, Awaitable
 from df_engine.core import Context
 
 from .types import PipelineRunnerFunction, PollingProviderLoopFunction
-from .utils import run_in_current_or_new_loop
+from .pipeline_utils import run_in_current_or_new_loop
 
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,8 @@ class AbsProvider(ABC):
         """
         Method invoked when provider is instantiated and connection is established.
         May be used for sending an introduction message or displaying general bot information.
-        :pipeline_runner: - a function that should return pipeline response to user request; usually it's a `Pipeline._run_pipeline(request, ctx_id)` function.
+        :pipeline_runner: - a function that should return pipeline response to user request;
+            usually it's a `Pipeline._run_pipeline(request, ctx_id)` function.
         """
         self._pipeline_runner = pipeline_runner
 
@@ -48,7 +49,8 @@ class PollingProvider(AbsProvider):
     def _respond(self, response: List[Context]):
         """
         Method used for sending users responses for their last input.
-        :response: - a list of contexts, representing dialogs with the users; `last_response`, `id` and some dialog info can be extracted from there.
+        :response: - a list of contexts, representing dialogs with the users;
+            `last_response`, `id` and some dialog info can be extracted from there.
         """
         raise NotImplementedError
 
@@ -63,11 +65,18 @@ class PollingProvider(AbsProvider):
         else:
             logger.info("%s has stopped polling.", type(self).__name__)
 
-    async def run(self, pipeline_runner: PipelineRunnerFunction, loop: PollingProviderLoopFunction = lambda: True, timeout: int = 0):
+    async def run(
+        self,
+        pipeline_runner: PipelineRunnerFunction,
+        loop: PollingProviderLoopFunction = lambda: True,
+        timeout: int = 0,
+    ):
         """
         Method, running a request - response cycle in a loop.
-        The looping behaviour is determined by :loop: and :timeout:, for most cases the loop itself shouldn't be overridden.
-        :loop: - a function that determines whether polling should be continued; called in each cycle, should return True to continue polling or False to stop.
+        The looping behaviour is determined by :loop: and :timeout:,
+            for most cases the loop itself shouldn't be overridden.
+        :loop: - a function that determines whether polling should be continued;
+            called in each cycle, should return True to continue polling or False to stop.
         :timeout: - a time interval between polls (in seconds).
         """
         await super().run(pipeline_runner)
@@ -91,10 +100,12 @@ class CallbackProvider(AbsProvider):
     def on_request(self, request: Any, ctx_id: Any) -> Union[Context, Awaitable[Context]]:
         """
         Method invoked on user input.
-        This method works just like `Pipeline.__call__(request, ctx_id)`, however callback provider may contain additional functionality (e.g. for external API accessing).
+        This method works just like `Pipeline.__call__(request, ctx_id)`,
+            however callback provider may contain additional functionality (e.g. for external API accessing).
         :request: - user input.
         :ctx_id: - any unique id that will be associated with dialog between this user and pipeline.
-        Returns a context OR an awaitable, returning context; the context represents dialog with the user; `last_response`, `id` and some dialog info can be extracted from there.
+        Returns a context OR an awaitable, returning context; the context represents dialog with the user;
+            `last_response`, `id` and some dialog info can be extracted from there.
         WARNING! This method can be run both in sync and async contexts, however in async context it SHOULD be awaited.
         """
         return run_in_current_or_new_loop(self._pipeline_runner(request, ctx_id))

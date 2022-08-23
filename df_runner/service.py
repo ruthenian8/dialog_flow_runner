@@ -8,10 +8,21 @@ from .service_wrapper import Wrapper, WrapperStage, execute_wrappers
 from .types import ServiceBuilder, StartConditionCheckerFunction, PipeExecutionState, StartConditionState
 from .pipe import Pipe
 from .conditions import always_start_condition
-from .utils import name_service_handler
 
 
 logger = logging.getLogger(__name__)
+
+
+def name_service_handler(service_handler: ServiceBuilder) -> str:
+    if isinstance(service_handler, Actor):
+        return "actor"
+    elif isinstance(service_handler, Service):
+        service: Service = service_handler
+        return service.name if service.name else name_service_handler(service.service_handler)
+    elif isinstance(service_handler, Callable):
+        return service_handler.__name__
+    else:
+        return "noname"
 
 
 class Service(Pipe):
@@ -76,8 +87,6 @@ class Service(Pipe):
                 else:
                     self.service_handler(ctx, actor)
                     self._set_state(ctx, PipeExecutionState.FINISHED)
-            elif state == StartConditionState.PENDING:
-                self._set_state(ctx, PipeExecutionState.PENDING)
             else:
                 self._set_state(ctx, PipeExecutionState.FAILED)
 

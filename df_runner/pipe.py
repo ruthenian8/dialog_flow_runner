@@ -48,5 +48,7 @@ class Pipe(ABC):
             return wait_for(task, timeout=timeout)
         else:
             if timeout is not None:
-                logger.warning(f"Timeout can not be applied for {type(self).__name__} '{self.name}': it's not asynchronous!")
+                logger.warning(
+                    f"Timeout can not be applied for {type(self).__name__} '{self.name}': it's not asynchronous!"
+                )
             return await self._run(ctx, actor)

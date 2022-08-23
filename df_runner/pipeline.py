@@ -11,7 +11,7 @@ from .service_group import ServiceGroup
 from .types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder
 from .service import Service
 from .types import RUNNER_STATE_KEY
-from .utils import run_in_current_or_new_loop, rename_same_service_prefix
+from .pipeline_utils import run_in_current_or_new_loop, rename_same_service_prefix
 
 
 logger = logging.getLogger(__name__)

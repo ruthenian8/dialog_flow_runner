@@ -1,12 +1,9 @@
 from asyncio import get_running_loop, run
 from collections import Counter
-from typing import Awaitable, Any, Coroutine, Union, List, Callable
-
-from df_engine.core import Actor
+from typing import Awaitable, Any, Coroutine, Union, List
 
 from .service import Service
 from .service_group import ServiceGroup
-from .types import ServiceBuilder
 
 
 def run_in_current_or_new_loop(future: Union[Awaitable, Coroutine]) -> Any:
@@ -47,15 +44,3 @@ def rename_same_service_prefix(services_pipeline: ServiceGroup):
                 if path_counter[path] > 1:
                     service.name = create_service_name(service.name, services)
     return services_pipeline
-
-
-def name_service_handler(service_handler: ServiceBuilder) -> str:
-    if isinstance(service_handler, Actor):
-        return "actor"
-    elif isinstance(service_handler, Service):
-        service: Service = service_handler
-        return service.name if service.name else name_service_handler(service.service_handler)
-    elif isinstance(service_handler, Callable):
-        return service_handler.__name__
-    else:
-        return "noname"

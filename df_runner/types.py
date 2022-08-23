@@ -1,9 +1,17 @@
+from abc import ABC
 from enum import unique, Enum, auto
-from typing import Callable, Any, Union, Awaitable, Dict, Tuple, List, TypedDict, Optional
+from typing import Callable, Any, Union, Awaitable, Dict, List, TypedDict, Optional, NewType
 
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Context, Actor
 from typing_extensions import NotRequired
+
+
+_ForwardPipe = NewType("Pipe", None)
+_ForwardService = NewType("Service", _ForwardPipe)
+_ForwardServiceGroup = NewType("ServiceGroup", _ForwardPipe)
+_ForwardServiceWrapper = NewType("Wrapper", None)
+_ForwardProvider = NewType("ABCProvider", ABC)
 
 
 @unique
@@ -18,7 +26,6 @@ class PipeExecutionState(Enum):
     """
 
     NOT_RUN = auto()
-    PENDING = auto()
     RUNNING = auto()
     FINISHED = auto()
     FAILED = auto()
@@ -74,38 +81,6 @@ Accepts string (user input), returns string (answer from pipeline).
 PipelineRunnerFunction = Callable[[Any, Any], Awaitable[Context]]
 
 """
-A function type for creating services.
-Accepts context, returns nothing.
-"""
-ServiceBuilder = Union[Callable[[Context, Actor], None], Callable[[Context, Actor], Awaitable[None]], "Service", Actor, TypedDict("ServiceDict", {
-        "service_handler": "ServiceBuilder",
-        "wrappers": NotRequired[Optional[List["Wrapper"]]],
-        "timeout": NotRequired[Optional[int]],
-        "asynchronous": NotRequired[bool],
-        "start_condition": NotRequired["ServiceCondition"],
-        "name": Optional[str],
-    },
-)]
-
-ServiceGroupBuilder = Union[List[Union[ServiceBuilder, List[ServiceBuilder], "ServiceGroup"]], TypedDict("ServiceGroupDict", {
-        "services": "ServiceGroupBuilder",
-        "wrappers": NotRequired[Optional[List["Wrapper"]]],
-        "timeout": NotRequired[Optional[int]],
-        "asynchronous": NotRequired[bool],
-        "start_condition": NotRequired["ServiceCondition"],
-        "name": Optional[str],
-    },
-)]
-
-PipelineBuilder = TypedDict("PipelineBuilder", {
-        "provider": NotRequired[Optional["AbsProvider"]],
-        "context_db": NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
-        "services": ServiceGroupBuilder,
-        "wrappers": NotRequired[Optional[List["Wrapper"]]],
-    },
-)
-
-"""
 A function type for creating start_conditions for services.
 Accepts context and actor (current pipeline state), returns boolean (whether service can be launched).
 """
@@ -119,3 +94,51 @@ WrapperFunction = Callable[[Context, Actor, str], Any]
 
 
 PollingProviderLoopFunction = Callable[[], bool]
+
+
+"""
+A function type for creating services.
+Accepts context, returns nothing.
+"""
+ServiceBuilder = Union[
+    Callable[[Context, Actor], None],
+    Callable[[Context, Actor], Awaitable[None]],
+    _ForwardService,
+    Actor,
+    TypedDict(
+        "ServiceDict",
+        {
+            "service_handler": "ServiceBuilder",
+            "wrappers": NotRequired[Optional[List[_ForwardServiceWrapper]]],
+            "timeout": NotRequired[Optional[int]],
+            "asynchronous": NotRequired[bool],
+            "start_condition": NotRequired[StartConditionCheckerFunction],
+            "name": Optional[str],
+        },
+    ),
+]
+
+ServiceGroupBuilder = Union[
+    List[Union[ServiceBuilder, List[ServiceBuilder], _ForwardServiceGroup]],
+    TypedDict(
+        "ServiceGroupDict",
+        {
+            "services": "ServiceGroupBuilder",
+            "wrappers": NotRequired[Optional[List[_ForwardServiceWrapper]]],
+            "timeout": NotRequired[Optional[int]],
+            "asynchronous": NotRequired[bool],
+            "start_condition": NotRequired[StartConditionCheckerFunction],
+            "name": Optional[str],
+        },
+    ),
+]
+
+PipelineBuilder = TypedDict(
+    "PipelineBuilder",
+    {
+        "provider": NotRequired[Optional[_ForwardProvider]],
+        "context_db": NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
+        "services": ServiceGroupBuilder,
+        "wrappers": NotRequired[Optional[List[_ForwardServiceWrapper]]],
+    },
+)

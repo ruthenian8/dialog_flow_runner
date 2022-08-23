@@ -24,9 +24,7 @@ def service_successful_condition(name: Optional[str] = None) -> StartConditionCh
         """
 
         state = ctx.framework_states[RUNNER_STATE_KEY].get(name, PipeExecutionState.NOT_RUN)
-        if state not in (PipeExecutionState.FINISHED, PipeExecutionState.FAILED):
-            return StartConditionState.PENDING
-        elif state == PipeExecutionState.FINISHED:
+        if state == PipeExecutionState.FINISHED:
             return StartConditionState.ALLOWED
         else:
             return StartConditionState.DENIED
