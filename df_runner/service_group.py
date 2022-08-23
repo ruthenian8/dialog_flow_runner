@@ -35,14 +35,14 @@ class ServiceGroup(StateTracker):
 
     def __init__(
         self,
-        services: List[Union[_ServiceCallable, List[_ServiceCallable], "ServiceGroup"]] = [],
-        wrappers: List[Wrapper] = [],
+        services: Optional[Union[List[Union[_ServiceCallable, List[_ServiceCallable], "ServiceGroup"]], "ServiceGroup"]] = None,
+        wrappers: Optional[List[Wrapper]] = None,
         timeout: int = -1,
         asynchronous: bool = True,
         start_condition: ServiceCondition = always_start_condition,
         name: Optional[str] = "service_group",
-        **kwargs,
     ):
+        services = [] if services is None else []
         if isinstance(services, ServiceGroup):
             self.__init__(**vars(services))
         elif isinstance(services, dict):
@@ -50,7 +50,7 @@ class ServiceGroup(StateTracker):
         elif isinstance(services, List):
             self.services = self._cast_services(services)
             services_asynchronous = all([service.asynchronous for service in self.services])
-            self.wrappers = wrappers
+            self.wrappers = [] if wrappers is None else wrappers
             self.timeout = timeout
             self.asynchronous = asynchronous and services_asynchronous
             self.start_condition = start_condition
@@ -143,8 +143,8 @@ class ServiceGroup(StateTracker):
         execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
         return ctx
 
+    @staticmethod
     def _cast_services(
-        self,
         services: List[Union[_ServiceCallable, List[_ServiceCallable], "ServiceGroup"]],
     ) -> List[Union[Service, "ServiceGroup"]]:
         handled_services = []

@@ -1,4 +1,4 @@
-from df_engine.core.script import Context
+from df_engine.core import Context
 
 from df_runner import Pipeline
 import importlib
@@ -12,8 +12,6 @@ import pytest
 
 import pathlib
 
-pathlib.Path("examples").glob("*.py")
-
 
 TURNS = [
     ("Hi", "Hi, how are you?"),
@@ -25,11 +23,12 @@ TURNS = [
 
 
 def run_pipeline_test(pipeline: Pipeline):
+    ctx = Context()
     for turn_id, (request, true_response) in enumerate(TURNS):
-        ctx: Context = pipeline(request)
+        ctx = pipeline(request, ctx.id)
         if true_response != ctx.last_response:
             msg = f" pipeline={pipeline}"
-            msg = f" turn_id={turn_id}"
+            msg += f" turn_id={turn_id}"
             msg += f" request={request} "
             msg += f"\ntrue_response != out_response: "
             msg += f"\n{true_response} != {ctx.last_response}"

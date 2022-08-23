@@ -24,6 +24,7 @@ def name_service_handler(service_handler: Union[Actor, "Service", Dict, Handler]
     else:
         return "noname"
 
+
 class Service(StateTracker):
     """
     Extension class for annotation functions, may be created from dict.
@@ -39,12 +40,11 @@ class Service(StateTracker):
     def __init__(
         self,
         service_handler: Handler,
-        wrappers: List[Wrapper] = [],
+        wrappers: Optional[List[Wrapper]] = None,
         timeout: int = -1,
         asynchronous: bool = True,
         start_condition: ServiceCondition = always_start_condition,
         name: Optional[str] = None,
-        **kwargs,
     ):
         self.name = name
         if isinstance(service_handler, dict):
@@ -53,7 +53,7 @@ class Service(StateTracker):
             self.__init__(**vars(service_handler))
         elif isinstance(service_handler, Callable):
             self.service_handler = service_handler
-            self.wrappers = wrappers
+            self.wrappers = [] if wrappers is None else wrappers
             self.timeout = timeout
             self.asynchronous = asynchronous and iscoroutinefunction(service_handler)
             self.start_condition = start_condition

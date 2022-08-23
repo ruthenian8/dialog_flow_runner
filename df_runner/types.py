@@ -70,19 +70,13 @@ CallbackFunction = Callable[[str, Any], None]
 A function type for provider-to-client interaction.
 Accepts string (user input), returns string (answer from pipeline).
 """
-ProviderFunction = Callable[[Any], Awaitable[Context]]
-
-"""
-A function type for creating annotators (and also for creating services from).
-Accepts context (before processing), returns context (after processing).
-"""
-AnnotatorFunction = Union[Callable[[Context, Actor], Context], Callable[[Context, Actor], Awaitable[Context]]]
+ProviderFunction = Callable[[Any, Any], Awaitable[Context]]
 
 """
 A function type for creating services.
-Accepts context, returns anything (will be written to context).
+Accepts context, returns nothing.
 """
-Handler = Union[Callable[[Context, Actor], Any], Callable[[Context, Actor], Awaitable[Any]]]
+Handler = Union[Callable[[Context, Actor], None], Callable[[Context, Actor], Awaitable[None]]]
 
 """
 A function type for creating start_conditions for services.
@@ -98,3 +92,6 @@ WrapperFunction = Callable[[Context, Actor, str], Any]
 
 
 ClearFunction = Callable[[Dict, Dict], Tuple[Dict, Dict]]
+
+
+LoopFunction = Callable[[], bool]

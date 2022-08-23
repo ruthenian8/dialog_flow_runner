@@ -12,7 +12,7 @@ from typing_extensions import NotRequired
 from .service_wrapper import Wrapper
 from .provider import AbsProvider, CLIProvider
 from .service_group import ServiceGroup
-from .types import Handler, AnnotatorFunction
+from .types import Handler
 from .service import Service
 from .types import RUNNER_STATE_KEY
 
@@ -71,7 +71,7 @@ def rename_same_service_prefix(services_pipeline):
     return services_pipeline
 
 
-_ServiceCallable = Union[Service, Handler]
+_ServiceCallable = Union[Service, Handler, Actor]
 
 PipelineDict = TypedDict(
     "PipelineDict",
@@ -98,16 +98,15 @@ class Pipeline:
     def __init__(
         self,
         provider: Optional[AbsProvider] = CLIProvider(),
-        context_db: Optional[Union[DBAbstractConnector, Dict]] = {},
+        context_db: Optional[Union[DBAbstractConnector, Dict]] = None,
         services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup]] = None,
-        wrappers: Optional[List[Wrapper]] = [],
+        wrappers: Optional[List[Wrapper]] = None,
         timeout: int = -1,
-        **kwargs,
     ):
         self.provider = provider
-        self.context_db = context_db
+        self.context_db = {} if context_db is None else context_db
         self.services = services
-        self.wrappers = wrappers
+        self.wrappers = [] if wrappers is None else wrappers
         self.timeout = timeout
         self.services_pipeline = ServiceGroup(
             self.services,
@@ -130,16 +129,18 @@ class Pipeline:
         script: Union[Script, Dict],
         start_label: NodeLabel2Type,
         fallback_label: Optional[NodeLabel2Type] = None,
-        context_db: Optional[Union[DBAbstractConnector, Dict]] = {},
+        context_db: Optional[Union[DBAbstractConnector, Dict]] = None,
         request_provider: AbsProvider = CLIProvider(),
-        pre_services: Optional[List[AnnotatorFunction]] = [],
-        post_services: Optional[List[AnnotatorFunction]] = [],
+        pre_services: Optional[List[Handler]] = None,
+        post_services: Optional[List[Handler]] = None,
     ):
         actor = Actor(script, start_label, fallback_label)
+        pre_services = [] if pre_services is None else pre_services
+        post_services = [] if post_services is None else post_services
         return cls(
             provider=request_provider,
-            context_db=context_db,
-            services=pre_services + [actor] + post_services,
+            context_db=context_db if context_db is None else context_db,
+            services=[*pre_services, actor, *post_services],
         )
 
     @classmethod
@@ -160,8 +161,8 @@ class Pipeline:
 
     async def _async_run_provider(self) -> Context:
         # create callback for pipeline with provided ctx id
-        async def run_with_ctx_pipeline(request: Any) -> Context:
-            return await self._async_run_pipeline(request, self.provider.ctx_id)
+        async def run_with_ctx_pipeline(request: Any, ctx_id: Any) -> Context:
+            return await self._async_run_pipeline(request, ctx_id)
 
         return await self.provider.run(run_with_ctx_pipeline)
 
@@ -181,8 +182,10 @@ class Pipeline:
         """
         await self._async_run_provider()
 
-    def __call__(self, request, ctx_id=uuid.uuid4()) -> Context:
+    def __call__(self, request, ctx_id: Optional[Any] = None) -> Context:
+        ctx_id = uuid.uuid4() if ctx_id is None else ctx_id
         return run(self._async_run_pipeline(request, ctx_id))
 
-    async def async_call(self, request, ctx_id=uuid.uuid4()) -> Context:
+    async def async_call(self, request, ctx_id: Optional[Any] = None) -> Context:
+        ctx_id = uuid.uuid4() if ctx_id is None else ctx_id
         return await self._async_run_pipeline(request, ctx_id)

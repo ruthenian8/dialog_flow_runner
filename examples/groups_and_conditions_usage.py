@@ -1,4 +1,4 @@
-from asyncio import sleep, run
+from asyncio import sleep
 from typing import Any
 
 from df_engine.core import Context, Actor
@@ -75,10 +75,11 @@ pipeline = {
 
 
 pipeline = Pipeline.from_dict(pipeline)
+
 if __name__ == "__main__":
     print("It may be not easy to understand what service belong to which group in pipeline.")
     print(
         "Use given code in that case to acquire services "
         f"with their full path: {[f'{path}.{service.name}' for path, service in pipeline.processed_services]}"
     )
-    run(pipeline.start_sync())
+    pipeline.start_sync()
