@@ -6,7 +6,7 @@ from .types import (
     StartConditionCheckerFunction,
     WrapperFunction,
     StartConditionState,
-    ServiceExecutionState,
+    PipeExecutionState,
     RUNNER_STATE_KEY,
     CallbackType,
 )

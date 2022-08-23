@@ -9,6 +9,7 @@ from df_engine.core import Context
 from .types import PipelineRunnerFunction, PollingProviderLoopFunction
 from .utils import run_in_current_or_new_loop
 
+
 logger = logging.getLogger(__name__)
 
 

@@ -7,7 +7,7 @@ from typing_extensions import NotRequired
 
 
 @unique
-class ServiceExecutionState(Enum):
+class PipeExecutionState(Enum):
     """
     Enum, representing service in a pipeline state.
     The following states are supported:
@@ -36,7 +36,6 @@ class StartConditionState(Enum):
 
     ALLOWED = auto()
     DENIED = auto()
-    PENDING = auto()
 
 
 @unique

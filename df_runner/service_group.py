@@ -8,7 +8,7 @@ from .service_wrapper import WrapperStage, Wrapper, execute_wrappers
 from .pipe import Pipe
 from .types import (
     StartConditionCheckerFunction,
-    ServiceExecutionState,
+    PipeExecutionState,
     StartConditionState, ServiceGroupBuilder,
 )
 from .service import Service
@@ -50,38 +50,22 @@ class ServiceGroup(Pipe):
         else:
             raise Exception(f"Unknown type for ServiceGroup {services}")
 
-    async def _run_async(self, ctx: Context, actor: Actor) -> Context:
-        self._set_state(ctx, ServiceExecutionState.RUNNING)
+    async def _run_services_group(self, ctx: Context, actor: Actor) -> Context:
+        self._set_state(ctx, PipeExecutionState.RUNNING)
 
-        not_run_services = [service for service in self.services if service._get_state(ctx, default=ServiceExecutionState.NOT_RUN) is ServiceExecutionState.NOT_RUN]
-        for service, future in zip(not_run_services, as_completed([service(ctx, actor) for service in not_run_services])):
+        service_futures = [service(ctx, actor) for service in self.services]
+        for service, future in zip(self.services, as_completed(service_futures) if self.asynchronous else service_futures):
             try:
-                await future
+                service_result = await future
+                if not service.asynchronous and isinstance(service_result, Context):
+                    ctx = service_result
+                elif service.asynchronous and isinstance(service_result, Awaitable):
+                    await service_result
             except TimeoutError:
                 logger.warning(f"{type(service).__name__} '{service.name}' timed out!")
 
-        failed = False
-        for service in self.services:
-            if service._get_state(ctx) == ServiceExecutionState.PENDING:
-                service._set_state(ctx, ServiceExecutionState.FAILED)
-                failed = True
-            self._set_state(ctx, None)
-
-        self._set_state(ctx, ServiceExecutionState.FAILED if failed else ServiceExecutionState.FINISHED)
-        return ctx
-
-    async def _run_sync(self, ctx: Context, actor: Actor) -> Context:
-        for service in self.services:
-            service_result = await service(ctx, actor)
-            if isinstance(service_result, Context):
-                ctx = service_result
-            elif isinstance(service_result, Awaitable):
-                try:
-                    await service_result
-                except TimeoutError:
-                    logger.warning(f"{type(service).__name__} '{service.name}' timed out!")
-
-        self._set_state(ctx, ServiceExecutionState.FINISHED)
+        failed = any([service._get_state(ctx) == PipeExecutionState.FAILED for service in self.services])
+        self._set_state(ctx, PipeExecutionState.FAILED if failed else PipeExecutionState.FINISHED)
         return ctx
 
     async def _run(
@@ -94,18 +78,16 @@ class ServiceGroup(Pipe):
         try:
             state = self.start_condition(ctx, actor)
             if state == StartConditionState.ALLOWED:
-                ctx = await self._run_async(ctx, actor) if self.asynchronous else await self._run_sync(ctx, actor)
-            elif state == StartConditionState.PENDING:
-                self._set_state(ctx, ServiceExecutionState.PENDING)
+                ctx = await self._run_services_group(ctx, actor)
             else:
-                self._set_state(ctx, ServiceExecutionState.FAILED)
+                self._set_state(ctx, PipeExecutionState.FAILED)
 
         except Exception as e:
-            self._set_state(ctx, ServiceExecutionState.FAILED)
+            self._set_state(ctx, PipeExecutionState.FAILED)
             logger.error(f"ServiceGroup '{self.name}' execution failed!\n{e}")
 
         execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
-        return ctx
+        return ctx if not self.asynchronous else None
 
     def get_subgroups_and_services(self, prefix: str = "", recursion_level: int = 99) -> List[Tuple[str, Service]]:
         """

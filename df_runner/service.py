@@ -5,24 +5,13 @@ from typing import List, Optional, Callable
 from df_engine.core import Actor, Context
 
 from .service_wrapper import Wrapper, WrapperStage, execute_wrappers
-from .types import ServiceBuilder, StartConditionCheckerFunction, ServiceExecutionState, StartConditionState
+from .types import ServiceBuilder, StartConditionCheckerFunction, PipeExecutionState, StartConditionState
 from .pipe import Pipe
 from .conditions import always_start_condition
+from .utils import name_service_handler
 
 
 logger = logging.getLogger(__name__)
-
-
-def name_service_handler(service_handler: ServiceBuilder) -> str:
-    if isinstance(service_handler, Actor):
-        return "actor"
-    elif isinstance(service_handler, Service):
-        service: Service = service_handler
-        return service.name if service.name else name_service_handler(service.service_handler)
-    elif isinstance(service_handler, Callable):
-        return service_handler.__name__
-    else:
-        return "noname"
 
 
 class Service(Pipe):
@@ -69,9 +58,9 @@ class Service(Pipe):
         if isinstance(self.service_handler, Actor):
             try:
                 ctx = self.service_handler(ctx)
-                self._set_state(ctx, ServiceExecutionState.FINISHED)
+                self._set_state(ctx, PipeExecutionState.FINISHED)
             except Exception as exc:
-                self._set_state(ctx, ServiceExecutionState.FAILED)
+                self._set_state(ctx, PipeExecutionState.FAILED)
                 logger.error(f"Actor '{self.name}' execution failed!\n{exc}")
 
             execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
@@ -81,19 +70,19 @@ class Service(Pipe):
             state = self.start_condition(ctx, actor)
             if state == StartConditionState.ALLOWED:
                 if iscoroutinefunction(self.service_handler):
-                    self._set_state(ctx, ServiceExecutionState.RUNNING)
+                    self._set_state(ctx, PipeExecutionState.RUNNING)
                     await self.service_handler(ctx, actor)
-                    self._set_state(ctx, ServiceExecutionState.FINISHED)
+                    self._set_state(ctx, PipeExecutionState.FINISHED)
                 else:
                     self.service_handler(ctx, actor)
-                    self._set_state(ctx, ServiceExecutionState.FINISHED)
+                    self._set_state(ctx, PipeExecutionState.FINISHED)
             elif state == StartConditionState.PENDING:
-                self._set_state(ctx, ServiceExecutionState.PENDING)
+                self._set_state(ctx, PipeExecutionState.PENDING)
             else:
-                self._set_state(ctx, ServiceExecutionState.FAILED)
+                self._set_state(ctx, PipeExecutionState.FAILED)
 
         except Exception as e:
-            self._set_state(ctx, ServiceExecutionState.FAILED)
+            self._set_state(ctx, PipeExecutionState.FAILED)
             logger.error(f"Service '{self.name}' execution failed!\n{e}")
 
         execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
