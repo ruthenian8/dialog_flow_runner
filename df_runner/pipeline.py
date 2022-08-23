@@ -1,20 +1,19 @@
 import logging
-from typing import Any, Union, List, Dict, TypedDict, Optional, Tuple
-import uuid
+from typing import Any, Union, List, Dict, Optional, Tuple, Awaitable
 import collections
 
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor, Script, Context
 from df_engine.core.types import NodeLabel2Type
-from typing_extensions import NotRequired
 
 from .service_wrapper import Wrapper
 from .provider import AbsProvider, CLIProvider
 from .service_group import ServiceGroup
-from .types import Handler
+from .types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder
 from .service import Service
 from .types import RUNNER_STATE_KEY
 from .utils import run_in_current_or_new_loop
+
 
 logger = logging.getLogger(__name__)
 
@@ -70,19 +69,6 @@ def rename_same_service_prefix(services_pipeline):
     return services_pipeline
 
 
-_ServiceCallable = Union[Service, Handler, Actor]
-
-PipelineDict = TypedDict(
-    "PipelineDict",
-    {
-        "provider": NotRequired[Optional[AbsProvider]],
-        "context_db": NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
-        "services": List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup]],
-        "wrappers": NotRequired[Optional[List[Wrapper]]],
-    },
-)
-
-
 class Pipeline:
     """
     Class that automates service execution and creates pipeline from dict and execution.
@@ -96,13 +82,13 @@ class Pipeline:
 
     def __init__(
         self,
-        provider: Optional[AbsProvider] = CLIProvider(),
+        provider: Optional[AbsProvider] = None,
         context_db: Optional[Union[DBAbstractConnector, Dict]] = None,
-        services: List[Union[_ServiceCallable, List[_ServiceCallable], ServiceGroup]] = None,
+        services: ServiceGroupBuilder = None,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: int = -1,
     ):
-        self.provider = provider
+        self.provider = CLIProvider() if provider is None else provider
         self.context_db = {} if context_db is None else context_db
         self.services = services
         self.wrappers = [] if wrappers is None else wrappers
@@ -122,6 +108,10 @@ class Pipeline:
         if not isinstance(self.actor, Actor):
             raise Exception("Actor not found.")
 
+    @property
+    def flat_services(self):
+        return get_subgroups_and_services_from_service_group(self.services_pipeline)
+
     @classmethod
     def from_script(
         cls,
@@ -130,8 +120,8 @@ class Pipeline:
         fallback_label: Optional[NodeLabel2Type] = None,
         context_db: Optional[Union[DBAbstractConnector, Dict]] = None,
         request_provider: AbsProvider = CLIProvider(),
-        pre_services: Optional[List[Handler]] = None,
-        post_services: Optional[List[Handler]] = None,
+        pre_services: Optional[List[ServiceBuilder]] = None,
+        post_services: Optional[List[ServiceBuilder]] = None,
     ):
         actor = Actor(script, start_label, fallback_label)
         pre_services = [] if pre_services is None else pre_services
@@ -143,10 +133,10 @@ class Pipeline:
         )
 
     @classmethod
-    def from_dict(cls, dictionary: PipelineDict) -> "Pipeline":
+    def from_dict(cls, dictionary: PipelineBuilder) -> "Pipeline":
         return cls(**dictionary)
 
-    async def _async_run_pipeline(self, request: Any, ctx_id: Optional[Any] = None) -> Context:
+    async def _run_pipeline(self, request: Any, ctx_id: Optional[Any] = None) -> Context:
         ctx = self.context_db.get(ctx_id, Context(id=ctx_id))
 
         ctx.framework_states[RUNNER_STATE_KEY] = {}
@@ -158,21 +148,13 @@ class Pipeline:
 
         return ctx
 
-    async def _async_run_provider(self) -> Context:
-        # create callback for pipeline with provided ctx id
-        async def run_with_ctx_pipeline(request: Any, ctx_id: Any) -> Context:
-            return await self._async_run_pipeline(request, ctx_id)
-
-        return await self.provider.run(run_with_ctx_pipeline)
-
-    def start(self):
+    def run(self):
         """
         Method for starting a pipeline, sets up corresponding provider callback.
         Since one pipeline always has only one provider, there is no need for thread management here.
         Use this in async context, await will not work in sync.
         """
-        run_in_current_or_new_loop(self._async_run_provider())
+        run_in_current_or_new_loop(self.provider.run(self._run_pipeline))
 
-    def __call__(self, request, ctx_id: Optional[Any] = None) -> Context:
-        ctx_id = uuid.uuid4() if ctx_id is None else ctx_id
-        return run_in_current_or_new_loop(self._async_run_pipeline(request, ctx_id))
+    def __call__(self, request: Any, ctx_id: Any) -> Union[Context, Awaitable[Context]]:
+        return run_in_current_or_new_loop(self._run_pipeline(request, ctx_id))

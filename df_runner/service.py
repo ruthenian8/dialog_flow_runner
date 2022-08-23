@@ -1,11 +1,11 @@
 import logging
 from asyncio import iscoroutinefunction
-from typing import List, Optional, Union, Dict, Callable
+from typing import List, Optional, Callable
 
 from df_engine.core import Actor, Context
 
 from .service_wrapper import Wrapper, WrapperStage, execute_wrappers
-from .types import Handler, ServiceCondition, ServiceState, ConditionState
+from .types import ServiceBuilder, StartConditionCheckerFunction, ServiceExecutionState, StartConditionState
 from .state_tracker import StateTracker
 from .conditions import always_start_condition
 
@@ -13,7 +13,7 @@ from .conditions import always_start_condition
 logger = logging.getLogger(__name__)
 
 
-def name_service_handler(service_handler: Union[Actor, "Service", Dict, Handler]) -> str:
+def name_service_handler(service_handler: ServiceBuilder) -> str:
     if isinstance(service_handler, Actor):
         return "actor"
     elif isinstance(service_handler, Service):
@@ -39,14 +39,13 @@ class Service(StateTracker):
 
     def __init__(
         self,
-        service_handler: Handler,
+        service_handler: ServiceBuilder,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: int = -1,
         asynchronous: bool = True,
-        start_condition: ServiceCondition = always_start_condition,
+        start_condition: StartConditionCheckerFunction = always_start_condition,
         name: Optional[str] = None,
     ):
-        self.name = name
         if isinstance(service_handler, dict):
             self.__init__(**service_handler)
         elif isinstance(service_handler, Service):
@@ -59,7 +58,7 @@ class Service(StateTracker):
             self.start_condition = start_condition
         else:
             raise Exception(f"Unknown type of service_handler {service_handler}")
-        self.name = self.name if self.name else name_service_handler(self.service_handler)
+        super(Service, self).__init__(name_service_handler(self.service_handler) if name is None else name)
 
     async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
         """
@@ -71,9 +70,9 @@ class Service(StateTracker):
             execute_wrappers(ctx, actor, self.wrappers, WrapperStage.PREPROCESSING, self.name)
             try:
                 ctx = self.service_handler(ctx)
-                self._set_state(ctx, ServiceState.FINISHED)
+                self._set_state(ctx, ServiceExecutionState.FINISHED)
             except Exception as exc:
-                self._set_state(ctx, ServiceState.FAILED)
+                self._set_state(ctx, ServiceExecutionState.FAILED)
                 logger.error(f"Service {self.name} execution failed for unknown reason!\n{exc}")
             execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
             return ctx
@@ -82,20 +81,20 @@ class Service(StateTracker):
 
         try:
             state = self.start_condition(ctx, actor)
-            if state == ConditionState.ALLOWED:
+            if state == StartConditionState.ALLOWED:
                 if iscoroutinefunction(self.service_handler):
-                    self._set_state(ctx, ServiceState.RUNNING)
+                    self._set_state(ctx, ServiceExecutionState.RUNNING)
                     await self.service_handler(ctx, actor)
-                    self._set_state(ctx, ServiceState.FINISHED)
+                    self._set_state(ctx, ServiceExecutionState.FINISHED)
                 else:
                     self.service_handler(ctx, actor)
-                    self._set_state(ctx, ServiceState.FINISHED)
-            elif state == ConditionState.PENDING:
-                self._set_state(ctx, ServiceState.PENDING)
+                    self._set_state(ctx, ServiceExecutionState.FINISHED)
+            elif state == StartConditionState.PENDING:
+                self._set_state(ctx, ServiceExecutionState.PENDING)
             else:
-                self._set_state(ctx, ServiceState.FAILED)
+                self._set_state(ctx, ServiceExecutionState.FAILED)
         except Exception as e:
-            self._set_state(ctx, ServiceState.FAILED)
+            self._set_state(ctx, ServiceExecutionState.FAILED)
             logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
 
         execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
@@ -108,7 +107,7 @@ def wrap(*wrappers: Wrapper):
     :wrappers: - wrappers to surround the function.
     """
 
-    def inner(service_handler: Handler) -> Service:
+    def inner(service_handler: ServiceBuilder) -> Service:
         return Service(service_handler=service_handler, wrappers=list(wrappers))
 
     return inner

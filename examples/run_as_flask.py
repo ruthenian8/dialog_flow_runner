@@ -40,12 +40,12 @@ pipeline = {
 @app.route("/df_provider")
 async def route():
     req = request.args.get("request")
-    return await provider.on_request_async(req, 0)
+    return await provider.on_request(req, 0)
 
 
 pipeline = Pipeline(**pipeline)
 
 if __name__ == "__main__":
-    pipeline.start()
+    pipeline.run()
     app.run()
     # Navigate to http://127.0.0.1:5000/df_provider?request=Hi

@@ -2,17 +2,17 @@ from typing import Optional
 
 from df_engine.core import Actor, Context
 
-from .types import RUNNER_STATE_KEY, ConditionState, ServiceCondition, ServiceState
+from .types import RUNNER_STATE_KEY, StartConditionState, StartConditionCheckerFunction, ServiceExecutionState
 
 
-def always_start_condition(ctx: Context, actor: Actor) -> ConditionState:
+def always_start_condition(ctx: Context, actor: Actor) -> StartConditionState:
     """
     Condition that always allows service execution, it's the default condition for all services.
     """
-    return ConditionState.ALLOWED
+    return StartConditionState.ALLOWED
 
 
-def service_successful_condition(name: Optional[str] = None) -> ServiceCondition:
+def service_successful_condition(name: Optional[str] = None) -> StartConditionCheckerFunction:
     """
     Condition that allows service execution, only if the other service was executed successfully.
     :name: - the name of the condition service or group
@@ -23,12 +23,12 @@ def service_successful_condition(name: Optional[str] = None) -> ServiceCondition
         Function that checks single service ServiceState and returns ConditionState for this service.
         """
 
-        state = ctx.framework_states[RUNNER_STATE_KEY].get(name, ServiceState.NOT_RUN)
-        if state not in (ServiceState.FINISHED, ServiceState.FAILED):
-            return ConditionState.PENDING
-        elif state == ServiceState.FINISHED:
-            return ConditionState.ALLOWED
+        state = ctx.framework_states[RUNNER_STATE_KEY].get(name, ServiceExecutionState.NOT_RUN)
+        if state not in (ServiceExecutionState.FINISHED, ServiceExecutionState.FAILED):
+            return StartConditionState.PENDING
+        elif state == ServiceExecutionState.FINISHED:
+            return StartConditionState.ALLOWED
         else:
-            return ConditionState.DENIED
+            return StartConditionState.DENIED
 
     return check_service_state

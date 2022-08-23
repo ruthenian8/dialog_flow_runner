@@ -1,77 +1,84 @@
 import logging
 import uuid
 from abc import abstractmethod, ABC
-from asyncio import sleep, run
-from typing import Optional, Any, List, Tuple
+from asyncio import sleep
+from typing import Optional, Any, List, Tuple, Union, Awaitable
 
 from df_engine.core import Context
 
-from .types import ProviderFunction, LoopFunction
+from .types import PipelineRunnerFunction, PollingProviderLoopFunction
+from .utils import run_in_current_or_new_loop
 
 logger = logging.getLogger(__name__)
 
 
 class AbsProvider(ABC):
     """
-    Class that represents a provider used for communication between runner and user.
+    Class that represents a provider used for communication between pipeline and users.
+    It is responsible for connection between user and provider, as well as for request-response transactions.
     """
 
     def __init__(self):
-        self._callback: Optional[ProviderFunction] = None
+        self._pipeline_runner: Optional[PipelineRunnerFunction] = None
 
-    async def run(self, callback: ProviderFunction, *args, **kwargs):
+    async def run(self, pipeline_runner: PipelineRunnerFunction):
         """
-        Method invoked when user first interacts with the runner and dialog starts.
-        A good place to generate self.ctx_id - a unique ID of the dialog.
-        May be used for sending self._intro - an introduction message.
-        :callback: - a function that is run every time user provider an input, returns runner answer.
+        Method invoked when provider is instantiated and connection is established.
+        May be used for sending an introduction message or displaying general bot information.
+        :pipeline_runner: - a function that should return pipeline response to user request; usually it's a `Pipeline._run_pipeline(request, ctx_id)` function.
         """
-        self._callback = callback
+        self._pipeline_runner = pipeline_runner
 
 
 class PollingProvider(AbsProvider):
     """
-    Polling provider runs in a loop, constantly asking user for a new input.
+    Polling provider runs in a loop, constantly asking users for a new input.
     """
 
-    def __init__(self, timeout: int = 0):
-        super().__init__()
-        self._timeout = timeout
-
     @abstractmethod
-    def _request(self) -> Tuple[List[Any], List[Any]]:
+    def _request(self) -> List[Tuple[Any, Any]]:
         """
-        Method used for sending user a request for input.
+        Method used for sending users request for their input.
+        Returns a list of tuples: user inputs and context ids (any user ids) associated with inputs.
         """
         raise NotImplementedError
 
     @abstractmethod
     def _respond(self, response: List[Context]):
         """
-        Method used for sending user a response for his last input.
+        Method used for sending users responses for their last input.
+        :response: - a list of contexts, representing dialogs with the users; `last_response`, `id` and some dialog info can be extracted from there.
         """
         raise NotImplementedError
 
-    def _except(self, e: Exception):
+    def _on_exception(self, e: BaseException):
         """
-        Method that is called on polling cycle exceptions.
+        Method that is called on polling cycle exceptions, in some cases it should show users the exception.
+        By default, it logs all exit exceptions to `info` log and all non-exit exceptions to `error`.
+        :e: - the exception.
         """
-        logger.error(e)
+        if isinstance(e, Exception):
+            logger.error("Exception in %s loop!\n%s", type(self).__name__, str(e))
+        else:
+            logger.info("%s has stopped polling.", type(self).__name__)
 
-    async def run(self, callback: ProviderFunction, loop: LoopFunction = lambda: True, *args, **kwargs):
+    async def run(self, pipeline_runner: PipelineRunnerFunction, loop: PollingProviderLoopFunction = lambda: True, timeout: int = 0):
         """
-        Method, running a request - response cycle in a loop, sleeping for self._timeout seconds after each iteration.
+        Method, running a request - response cycle in a loop.
+        The looping behaviour is determined by :loop: and :timeout:, for most cases the loop itself shouldn't be overridden.
+        :loop: - a function that determines whether polling should be continued; called in each cycle, should return True to continue polling or False to stop.
+        :timeout: - a time interval between polls (in seconds).
         """
-        await super().run(callback)
+        await super().run(pipeline_runner)
         while loop():
             try:
-                requests, ctx_ids = self._request()
-                responses = [await self._callback(request, ctx_id) for request, ctx_id in zip(requests, ctx_ids)]
+                user_updates = self._request()
+                responses = [await self._pipeline_runner(request, ctx_id) for request, ctx_id in user_updates]
                 self._respond(responses)
-                await sleep(self._timeout)
+                await sleep(timeout)
 
-            except Exception as e:
-                self._except(e)
+            except BaseException as e:
+                self._on_exception(e)
                 break
 
 
@@ -80,45 +87,45 @@ class CallbackProvider(AbsProvider):
     Callback provider is waiting for user input and answers once it gets one.
     """
 
-    async def on_request_async(self, request: Any, ctx_id: Any) -> Any:
+    def on_request(self, request: Any, ctx_id: Any) -> Union[Context, Awaitable[Context]]:
         """
-        Method invoked on user input, should run await self._callback function (if any).
-        Use this in async context, await will not work in sync.
+        Method invoked on user input.
+        This method works just like `Pipeline.__call__(request, ctx_id)`, however callback provider may contain additional functionality (e.g. for external API accessing).
+        :request: - user input.
+        :ctx_id: - any unique id that will be associated with dialog between this user and pipeline.
+        Returns a context OR an awaitable, returning context; the context represents dialog with the user; `last_response`, `id` and some dialog info can be extracted from there.
+        WARNING! This method can be run both in sync and async contexts, however in async context it SHOULD be awaited.
         """
-        response = await self._callback(request, ctx_id)
-        return response.last_response
-
-    def on_request_sync(self, request: Any, ctx_id: Any) -> Any:
-        """
-        Method invoked on user input, should run self._callback function (if any).
-        Use this in sync context, asyncio.run() will produce error in async.
-        """
-        response = run(self._callback(request, ctx_id))
-        return response.last_response
+        return run_in_current_or_new_loop(self._pipeline_runner(request, ctx_id))
 
 
 class CLIProvider(PollingProvider):
     """
-    Command line provider - the default provider for each runner.
+    Command line provider - the default provider, communicating with user via STDIN/STDOUT.
+    This provider can maintain dialog with one user at a time only.
     """
 
     def __init__(
         self, intro: Optional[str] = None, prompt_request: str = "request: ", prompt_response: str = "response: "
     ):
         super().__init__()
-        self.ctx_id: Optional[Any] = None
+        self._ctx_id: Optional[Any] = None
         self._intro: Optional[str] = intro
         self._prompt_request: str = prompt_request
         self._prompt_response: str = prompt_response
 
-    async def run(self, callback: ProviderFunction, *args, **kwargs):
-        self.ctx_id = uuid.uuid4()
-        if self._intro is not None:
-            print(self._intro)
-        await super().run(callback)
-
-    def _request(self) -> Tuple[List[Any], List[Any]]:
-        return [input(self._prompt_request)], [self.ctx_id]
+    def _request(self) -> List[Tuple[Any, Any]]:
+        return [(input(self._prompt_request), self._ctx_id)]
 
     def _respond(self, response: List[Context]):
         print(f"{self._prompt_response}{response[0].last_response}")
+
+    async def run(self, pipeline_runner: PipelineRunnerFunction, **kwargs):
+        """
+        The CLIProvider generates new dialog id used to user identification on each `run` call.
+        :kwargs: - argument, added for compatibility with super class, it shouldn't be used normally.
+        """
+        self._ctx_id = uuid.uuid4()
+        if self._intro is not None:
+            print(self._intro)
+        await super().run(pipeline_runner, **kwargs)

@@ -1,6 +1,7 @@
 from df_runner import Pipeline
 from examples import basic_example
 
+
 pipeline = Pipeline.from_script(
     basic_example.SCRIPT,
     start_label=("greeting_flow", "start_node"),
@@ -9,4 +10,4 @@ pipeline = Pipeline.from_script(
 
 
 if __name__ == "__main__":
-    pipeline.start()
+    pipeline.run()

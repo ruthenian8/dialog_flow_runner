@@ -7,16 +7,13 @@ from df_engine.core import Actor, Context
 from .service_wrapper import WrapperStage, Wrapper, execute_wrappers
 from .state_tracker import StateTracker
 from .types import (
-    Handler,
-    ServiceCondition,
-    ServiceState,
-    ConditionState,
+    StartConditionCheckerFunction,
+    ServiceExecutionState,
+    StartConditionState, ServiceGroupBuilder,
 )
 from .service import Service
 from .conditions import always_start_condition
 
-
-_ServiceCallable = Union[Service, Handler, Actor]
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +32,13 @@ class ServiceGroup(StateTracker):
 
     def __init__(
         self,
-        services: Optional[Union[List[Union[_ServiceCallable, List[_ServiceCallable], "ServiceGroup"]], "ServiceGroup"]] = None,
+        services: ServiceGroupBuilder,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: int = -1,
         asynchronous: bool = True,
-        start_condition: ServiceCondition = always_start_condition,
+        start_condition: StartConditionCheckerFunction = always_start_condition,
         name: Optional[str] = "service_group",
     ):
-        services = [] if services is None else services
         if isinstance(services, ServiceGroup):
             self.__init__(**vars(services))
         elif isinstance(services, dict):
@@ -57,6 +53,7 @@ class ServiceGroup(StateTracker):
             self.name = name
         else:
             raise Exception(f"Unknown type for ServiceGroup {services}")
+        super(ServiceGroup, self).__init__(name)
 
     async def _run_service_group(
         self,
@@ -67,14 +64,14 @@ class ServiceGroup(StateTracker):
     ) -> Optional[Context]:
         try:
             state = self.start_condition(ctx, actor)
-            if state == ConditionState.ALLOWED:
+            if state == StartConditionState.ALLOWED:
 
                 if self.asynchronous:
-                    self._set_state(ctx, ServiceState.RUNNING)
+                    self._set_state(ctx, ServiceExecutionState.RUNNING)
 
                     running = dict()
                     for service in self.services:
-                        if service._get_state(ctx, default=ServiceState.NOT_RUN) is ServiceState.NOT_RUN:
+                        if service._get_state(ctx, default=ServiceExecutionState.NOT_RUN) is ServiceExecutionState.NOT_RUN:
                             service_result = create_task(service(ctx, actor), name=service.name)
                             timeout = service.timeout if service.timeout > -1 else None
                             running.update({service.name: wait_for(service_result, timeout=timeout)})
@@ -88,11 +85,11 @@ class ServiceGroup(StateTracker):
 
                     failed = False
                     for service in self.services:
-                        if service._get_state(ctx) == ServiceState.PENDING:
-                            service._set_state(ctx, ServiceState.FAILED)
+                        if service._get_state(ctx) == ServiceExecutionState.PENDING:
+                            service._set_state(ctx, ServiceExecutionState.FAILED)
                             failed = True
                         self._set_state(ctx, None)
-                    self._set_state(ctx, ServiceState.FAILED if failed else ServiceState.FINISHED)
+                    self._set_state(ctx, ServiceExecutionState.FAILED if failed else ServiceExecutionState.FINISHED)
 
                 else:
                     for service in self.services:
@@ -110,15 +107,15 @@ class ServiceGroup(StateTracker):
                         if isinstance(service_result, Context):
                             ctx = service_result
 
-                    self._set_state(ctx, ServiceState.FINISHED)
+                    self._set_state(ctx, ServiceExecutionState.FINISHED)
 
-            elif state == ConditionState.PENDING:
-                self._set_state(ctx, ServiceState.PENDING)
+            elif state == StartConditionState.PENDING:
+                self._set_state(ctx, ServiceExecutionState.PENDING)
             else:
-                self._set_state(ctx, ServiceState.FAILED)
+                self._set_state(ctx, ServiceExecutionState.FAILED)
 
         except Exception as e:
-            self._set_state(ctx, ServiceState.FAILED)
+            self._set_state(ctx, ServiceExecutionState.FAILED)
             logger.error(f"ServiceGroup {self.name} execution failed for unknown reason!\n{e}")
 
         return ctx
@@ -144,9 +141,7 @@ class ServiceGroup(StateTracker):
         return ctx
 
     @staticmethod
-    def _cast_services(
-        services: List[Union[_ServiceCallable, List[_ServiceCallable], "ServiceGroup"]],
-    ) -> List[Union[Service, "ServiceGroup"]]:
+    def _cast_services(services: ServiceGroupBuilder) -> List[Union[Service, "ServiceGroup"]]:
         handled_services = []
         for service in services:
             if isinstance(service, List) or isinstance(service, ServiceGroup):

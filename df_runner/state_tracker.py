@@ -6,7 +6,9 @@ from .types import RUNNER_STATE_KEY
 
 
 class StateTracker:
-    name: str = ""
+
+    def __init__(self, name: str):
+        self.name = name
 
     def _set_state(self, ctx: Context, value: Any = None):
         if RUNNER_STATE_KEY not in ctx.framework_states:

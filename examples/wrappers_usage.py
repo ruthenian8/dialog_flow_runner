@@ -54,4 +54,4 @@ pipeline = {
 pipeline = Pipeline(**pipeline)
 
 if __name__ == "__main__":
-    pipeline.start()
+    pipeline.run()
