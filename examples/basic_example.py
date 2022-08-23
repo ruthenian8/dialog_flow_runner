@@ -41,5 +41,5 @@ pipeline = Pipeline.from_script(
 
 if __name__ == "__main__":
     while True:
-        ctx: Context = pipeline(input("Send request: "))
+        ctx: Context = pipeline(input("Send request: "), 0)
         print(ctx.last_response)

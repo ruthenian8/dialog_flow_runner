@@ -11,11 +11,11 @@ from .types import (
     CallbackType,
 )
 
-from .provider import PollingProvider, CallbackProvider, CLIProvider
 from .service_wrapper import Wrapper, WrapperStage
 from .service import Service
 from .service_group import ServiceGroup
-from .pipeline import Pipeline, get_subgroups_and_services_from_service_group
+from .provider import PollingProvider, CallbackProvider, CLIProvider
+from .pipeline import Pipeline
 
 __author__ = "Denis Kuznetsov"
 __email__ = "kuznetsov.den.p@gmail.com"

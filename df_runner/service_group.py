@@ -1,11 +1,11 @@
 import logging
-from asyncio import wait_for, create_task, as_completed, TimeoutError as AsyncTimeoutError
-from typing import Optional, List, Union
+from asyncio import as_completed, TimeoutError
+from typing import Optional, List, Union, Tuple, Awaitable
 
 from df_engine.core import Actor, Context
 
 from .service_wrapper import WrapperStage, Wrapper, execute_wrappers
-from .state_tracker import StateTracker
+from .pipe import Pipe
 from .types import (
     StartConditionCheckerFunction,
     ServiceExecutionState,
@@ -18,7 +18,7 @@ from .conditions import always_start_condition
 logger = logging.getLogger(__name__)
 
 
-class ServiceGroup(StateTracker):
+class ServiceGroup(Pipe):
     """
     An instance that represents a service group.
     Group can be also defined in pipeline dict as a nested service list.
@@ -45,70 +45,56 @@ class ServiceGroup(StateTracker):
             self.__init__(**services)
         elif isinstance(services, List):
             self.services = self._cast_services(services)
-            services_asynchronous = all([service.asynchronous for service in self.services])
-            self.wrappers = [] if wrappers is None else wrappers
-            self.timeout = timeout
-            self.asynchronous = asynchronous and services_asynchronous
-            self.start_condition = start_condition
-            self.name = name
+            asynchronous = asynchronous and all([service.asynchronous for service in self.services])
+            super(ServiceGroup, self).__init__(wrappers, timeout, asynchronous, start_condition, name)
         else:
             raise Exception(f"Unknown type for ServiceGroup {services}")
-        super(ServiceGroup, self).__init__(name)
 
-    async def _run_service_group(
+    async def _run_async(self, ctx: Context, actor: Actor) -> Context:
+        self._set_state(ctx, ServiceExecutionState.RUNNING)
+
+        not_run_services = [service for service in self.services if service._get_state(ctx, default=ServiceExecutionState.NOT_RUN) is ServiceExecutionState.NOT_RUN]
+        for service, future in zip(not_run_services, as_completed([service(ctx, actor) for service in not_run_services])):
+            try:
+                await future
+            except TimeoutError:
+                logger.warning(f"{type(service).__name__} '{service.name}' timed out!")
+
+        failed = False
+        for service in self.services:
+            if service._get_state(ctx) == ServiceExecutionState.PENDING:
+                service._set_state(ctx, ServiceExecutionState.FAILED)
+                failed = True
+            self._set_state(ctx, None)
+
+        self._set_state(ctx, ServiceExecutionState.FAILED if failed else ServiceExecutionState.FINISHED)
+        return ctx
+
+    async def _run_sync(self, ctx: Context, actor: Actor) -> Context:
+        for service in self.services:
+            service_result = await service(ctx, actor)
+            if isinstance(service_result, Context):
+                ctx = service_result
+            elif isinstance(service_result, Awaitable):
+                try:
+                    await service_result
+                except TimeoutError:
+                    logger.warning(f"{type(service).__name__} '{service.name}' timed out!")
+
+        self._set_state(ctx, ServiceExecutionState.FINISHED)
+        return ctx
+
+    async def _run(
         self,
         ctx: Context,
         actor: Optional[Actor] = None,
-        *args,
-        **kwargs,
     ) -> Optional[Context]:
+        execute_wrappers(ctx, actor, self.wrappers, WrapperStage.PREPROCESSING, self.name)
+
         try:
             state = self.start_condition(ctx, actor)
             if state == StartConditionState.ALLOWED:
-
-                if self.asynchronous:
-                    self._set_state(ctx, ServiceExecutionState.RUNNING)
-
-                    running = dict()
-                    for service in self.services:
-                        if service._get_state(ctx, default=ServiceExecutionState.NOT_RUN) is ServiceExecutionState.NOT_RUN:
-                            service_result = create_task(service(ctx, actor), name=service.name)
-                            timeout = service.timeout if service.timeout > -1 else None
-                            running.update({service.name: wait_for(service_result, timeout=timeout)})
-                        self._set_state(ctx, None)
-
-                    for name, future in zip(running.keys(), as_completed(running.values())):
-                        try:
-                            await future
-                        except AsyncTimeoutError:
-                            logger.warning(f"Service {name} timed out!")
-
-                    failed = False
-                    for service in self.services:
-                        if service._get_state(ctx) == ServiceExecutionState.PENDING:
-                            service._set_state(ctx, ServiceExecutionState.FAILED)
-                            failed = True
-                        self._set_state(ctx, None)
-                    self._set_state(ctx, ServiceExecutionState.FAILED if failed else ServiceExecutionState.FINISHED)
-
-                else:
-                    for service in self.services:
-                        service_result = None
-                        if service.asynchronous:
-                            timeout = service.timeout if service.timeout > -1 else None
-                            task = create_task(service(ctx, actor, *args, **kwargs), name=service.name)
-                            future = wait_for(task, timeout=timeout)
-                            try:
-                                await future
-                            except AsyncTimeoutError:
-                                logger.warning(f"{type(service).__name__} {service.name} timed out!")
-                        else:
-                            service_result = await service(ctx, actor)
-                        if isinstance(service_result, Context):
-                            ctx = service_result
-
-                    self._set_state(ctx, ServiceExecutionState.FINISHED)
-
+                ctx = await self._run_async(ctx, actor) if self.asynchronous else await self._run_sync(ctx, actor)
             elif state == StartConditionState.PENDING:
                 self._set_state(ctx, ServiceExecutionState.PENDING)
             else:
@@ -116,29 +102,25 @@ class ServiceGroup(StateTracker):
 
         except Exception as e:
             self._set_state(ctx, ServiceExecutionState.FAILED)
-            logger.error(f"ServiceGroup {self.name} execution failed for unknown reason!\n{e}")
-
-        return ctx
-
-    async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
-        self._set_state(ctx, dict())
-        execute_wrappers(ctx, actor, self.wrappers, WrapperStage.PREPROCESSING, self.name)
-
-        timeout = self.timeout if self.timeout > -1 else None
-        if self.asynchronous:
-            task = create_task(self._run_service_group(ctx, actor, *args, **kwargs), name=self.name)
-            future = wait_for(task, timeout=timeout)
-            try:
-                await future
-            except AsyncTimeoutError:
-                logger.warning(f"ServiceGroup {self.name} timed out!")
-        else:
-            if timeout is not None:
-                logger.warning(f"Timeout can not be applied for group {self.name}: it is not asynchronous !")
-            ctx = await self._run_service_group(ctx, actor, *args, **kwargs)
+            logger.error(f"ServiceGroup '{self.name}' execution failed!\n{e}")
 
         execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
         return ctx
+
+    def get_subgroups_and_services(self, prefix: str = "", recursion_level: int = 99) -> List[Tuple[str, Service]]:
+        """
+        Returns a copy of created inner services flat array used during actual pipeline running.
+        Breadth First Algorithm
+        """
+        prefix += f".{self.name}"
+        services = []
+        if recursion_level > 0:
+            recursion_level -= 1
+            services += [(prefix, service) for service in self.services]
+            for service in self.services:
+                if not isinstance(service, Service):
+                    services += service.get_subgroups_and_services(prefix, recursion_level)
+        return services
 
     @staticmethod
     def _cast_services(services: ServiceGroupBuilder) -> List[Union[Service, "ServiceGroup"]]:

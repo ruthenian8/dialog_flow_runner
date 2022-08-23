@@ -32,12 +32,12 @@ def wrapped_service1(ctx: Context, actor: Actor) -> Any:
 
 
 class ActorWrapper(Wrapper):
-    def __init__(self, **kwargs):
+    def __init__(self):
         def pre_func(ctx: Context, actor: Actor, _: str) -> Any:
             print(f"\t\tactor pre wrapper")
             print(f"\t\tlast request 1st letter was {'lower' if str(ctx.last_request)[0].islower() else 'upper'}case")
 
-        super().__init__(pre_func=pre_func, post_func=lambda ctx, act, _: None, **kwargs)
+        super().__init__(pre_func=pre_func, post_func=lambda ctx, act, _: None)
 
 
 pipeline = {

@@ -6,7 +6,7 @@ from df_engine.core import Actor, Context
 
 from .service_wrapper import Wrapper, WrapperStage, execute_wrappers
 from .types import ServiceBuilder, StartConditionCheckerFunction, ServiceExecutionState, StartConditionState
-from .state_tracker import StateTracker
+from .pipe import Pipe
 from .conditions import always_start_condition
 
 
@@ -25,7 +25,7 @@ def name_service_handler(service_handler: ServiceBuilder) -> str:
         return "noname"
 
 
-class Service(StateTracker):
+class Service(Pipe):
     """
     Extension class for annotation functions, may be created from dict.
 
@@ -52,32 +52,30 @@ class Service(StateTracker):
             self.__init__(**vars(service_handler))
         elif isinstance(service_handler, Callable):
             self.service_handler = service_handler
-            self.wrappers = [] if wrappers is None else wrappers
-            self.timeout = timeout
-            self.asynchronous = asynchronous and iscoroutinefunction(service_handler)
-            self.start_condition = start_condition
+            name = name_service_handler(self.service_handler) if name is None else name
+            asynchronous = asynchronous and iscoroutinefunction(service_handler)
+            super(Service, self).__init__(wrappers, timeout, asynchronous, start_condition, name)
         else:
             raise Exception(f"Unknown type of service_handler {service_handler}")
-        super(Service, self).__init__(name_service_handler(self.service_handler) if name is None else name)
 
-    async def __call__(self, ctx: Context, actor: Optional[Actor] = None, *args, **kwargs) -> Optional[Context]:
+    async def _run(self, ctx: Context, actor: Optional[Actor] = None) -> Optional[Context]:
         """
         Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
         It also sets named variables in context.framework_states for other services start_conditions.
         If execution fails the error is caught here.
         """
+        execute_wrappers(ctx, actor, self.wrappers, WrapperStage.PREPROCESSING, self.name)
+
         if isinstance(self.service_handler, Actor):
-            execute_wrappers(ctx, actor, self.wrappers, WrapperStage.PREPROCESSING, self.name)
             try:
                 ctx = self.service_handler(ctx)
                 self._set_state(ctx, ServiceExecutionState.FINISHED)
             except Exception as exc:
                 self._set_state(ctx, ServiceExecutionState.FAILED)
-                logger.error(f"Service {self.name} execution failed for unknown reason!\n{exc}")
+                logger.error(f"Actor '{self.name}' execution failed!\n{exc}")
+
             execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
             return ctx
-
-        execute_wrappers(ctx, actor, self.wrappers, WrapperStage.PREPROCESSING, self.name)
 
         try:
             state = self.start_condition(ctx, actor)
@@ -93,9 +91,10 @@ class Service(StateTracker):
                 self._set_state(ctx, ServiceExecutionState.PENDING)
             else:
                 self._set_state(ctx, ServiceExecutionState.FAILED)
+
         except Exception as e:
             self._set_state(ctx, ServiceExecutionState.FAILED)
-            logger.error(f"Service {self.name} execution failed for unknown reason!\n{e}")
+            logger.error(f"Service '{self.name}' execution failed!\n{e}")
 
         execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
 

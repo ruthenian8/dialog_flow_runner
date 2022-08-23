@@ -1,6 +1,5 @@
 import logging
-from typing import Any, Union, List, Dict, Optional, Tuple, Awaitable
-import collections
+from typing import Any, Union, List, Dict, Optional, Awaitable
 
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor, Script, Context
@@ -12,61 +11,10 @@ from .service_group import ServiceGroup
 from .types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder
 from .service import Service
 from .types import RUNNER_STATE_KEY
-from .utils import run_in_current_or_new_loop
+from .utils import run_in_current_or_new_loop, rename_same_service_prefix
 
 
 logger = logging.getLogger(__name__)
-
-
-def get_subgroups_and_services_from_service_group(
-    service_group: ServiceGroup,
-    prefix: str = "",
-    recursion_level=99,
-) -> List[Tuple[str, Service]]:
-    """
-    Returns a copy of created inner services flat array used during actual pipeline running.
-    Breadth First Algorithm
-    """
-    prefix += f".{service_group.name}"
-    services = []
-    if recursion_level > 0:
-        recursion_level -= 1
-        services += [(prefix, service) for service in service_group.services]
-        for service in service_group.services:
-            if not isinstance(service, Service):
-                services += get_subgroups_and_services_from_service_group(service, prefix, recursion_level)
-    return services
-
-
-def create_service_name(base_name, services: List[Union[Service, ServiceGroup]]):
-    name_index = 0
-    while f"{base_name}_{name_index}" in [serv.name for serv in services]:
-        name_index += 1
-    return f"{base_name}_{name_index}"
-
-
-def rename_same_service_prefix(services_pipeline):
-    name_scoup_level = 0
-    checked_names = 0
-    while True:
-        name_scoup_level += 1
-        flat_services = get_subgroups_and_services_from_service_group(
-            services_pipeline, recursion_level=name_scoup_level
-        )
-        flat_services = flat_services[checked_names:]
-        if not flat_services:
-            break
-        checked_names += len(flat_services)
-        flat_services = [(f"{prefix}.{serv.name}", serv) for prefix, serv in flat_services]
-        paths, services = list(zip(*flat_services))
-        path_counter = collections.Counter(paths)
-
-        if max(path_counter.values()) > 1:
-            # rename procedure for same paths
-            for path, service in flat_services:
-                if path_counter[path] > 1:
-                    service.name = create_service_name(service.name, services)
-    return services_pipeline
 
 
 class Pipeline:
@@ -101,7 +49,7 @@ class Pipeline:
         )
         self.services_pipeline = rename_same_service_prefix(self.services_pipeline)
 
-        flat_services = get_subgroups_and_services_from_service_group(self.services_pipeline)
+        flat_services = self.services_pipeline.get_subgroups_and_services()
         flat_services = [serv for _, serv in flat_services if isinstance(serv, Service)]
         actor = [serv.service_handler for serv in flat_services if isinstance(serv.service_handler, Actor)]
         self.actor = actor and actor[0]
@@ -110,7 +58,7 @@ class Pipeline:
 
     @property
     def flat_services(self):
-        return get_subgroups_and_services_from_service_group(self.services_pipeline)
+        return self.services_pipeline.get_subgroups_and_services()
 
     @classmethod
     def from_script(
