@@ -1,13 +1,12 @@
 import logging
 import uuid
 from abc import abstractmethod, ABC
-from asyncio import sleep
-from typing import Optional, Any, List, Tuple, Union, Awaitable
+from asyncio import sleep, run
+from typing import Optional, Any, List, Tuple
 
 from df_engine.core import Context
 
 from .types import PipelineRunnerFunction, PollingProviderLoopFunction
-from .pipeline_utils import run_in_current_or_new_loop
 
 
 logger = logging.getLogger(__name__)
@@ -97,18 +96,17 @@ class CallbackProvider(AbsProvider):
     Callback provider is waiting for user input and answers once it gets one.
     """
 
-    def on_request(self, request: Any, ctx_id: Any) -> Union[Context, Awaitable[Context]]:
+    def on_request(self, request: Any, ctx_id: Any) -> Context:
         """
         Method invoked on user input.
         This method works just like `Pipeline.__call__(request, ctx_id)`,
             however callback provider may contain additional functionality (e.g. for external API accessing).
         :request: - user input.
         :ctx_id: - any unique id that will be associated with dialog between this user and pipeline.
-        Returns a context OR an awaitable, returning context; the context represents dialog with the user;
+        Returns context that represents dialog with the user;
             `last_response`, `id` and some dialog info can be extracted from there.
-        WARNING! This method can be run both in sync and async contexts, however in async context it SHOULD be awaited.
         """
-        return run_in_current_or_new_loop(self._pipeline_runner(request, ctx_id))
+        return run(self._pipeline_runner(request, ctx_id))
 
 
 class CLIProvider(PollingProvider):

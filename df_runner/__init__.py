@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa: F401
 
+import nest_asyncio
+
+nest_asyncio.apply()
+
+
 from .types import (
     PipelineRunnerFunction,
     StartConditionCheckerFunction,

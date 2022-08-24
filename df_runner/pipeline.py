@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Union, List, Dict, Optional, Awaitable
+from asyncio import run
+from typing import Any, Union, List, Dict, Optional
 
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor, Script, Context
@@ -11,7 +12,7 @@ from .service_group import ServiceGroup
 from .types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder
 from .service import Service
 from .types import RUNNER_STATE_KEY
-from .pipeline_utils import run_in_current_or_new_loop, rename_same_service_prefix
+from .pipeline_utils import rename_same_service_prefix
 
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class Pipeline:
         services: ServiceGroupBuilder = None,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: int = -1,
+        optimization_warnings: bool = False,
     ):
         self.provider = CLIProvider() if provider is None else provider
         self.context_db = {} if context_db is None else context_db
@@ -48,6 +50,9 @@ class Pipeline:
             name="pipeline",
         )
         self.services_pipeline = rename_same_service_prefix(self.services_pipeline)
+
+        if optimization_warnings:
+            self.services_pipeline.check_async()
 
         flat_services = self.services_pipeline.get_subgroups_and_services()
         flat_services = [serv for _, serv in flat_services if isinstance(serv, Service)]
@@ -93,7 +98,6 @@ class Pipeline:
         del ctx.framework_states[RUNNER_STATE_KEY]
 
         self.context_db[ctx_id] = ctx
-
         return ctx
 
     def run(self):
@@ -102,7 +106,7 @@ class Pipeline:
         Since one pipeline always has only one provider, there is no need for thread management here.
         Use this in async context, await will not work in sync.
         """
-        run_in_current_or_new_loop(self.provider.run(self._run_pipeline))
+        run(self.provider.run(self._run_pipeline))
 
-    def __call__(self, request: Any, ctx_id: Any) -> Union[Context, Awaitable[Context]]:
-        return run_in_current_or_new_loop(self._run_pipeline(request, ctx_id))
+    def __call__(self, request: Any, ctx_id: Any) -> Context:
+        return run(self._run_pipeline(request, ctx_id))

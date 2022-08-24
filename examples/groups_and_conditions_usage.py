@@ -7,6 +7,7 @@ from df_runner import CLIProvider, Service, Pipeline, ServiceGroup
 from df_runner.conditions import service_successful_condition
 from examples import basic_example
 
+
 actor = Actor(
     basic_example.SCRIPT,
     start_label=("greeting_flow", "start_node"),
@@ -37,6 +38,7 @@ async def postpostprocess(ctx: Context, actor: Actor) -> Any:
 pipeline = {
     "provider": CLIProvider(),
     "context_db": {},
+    "optimization_warnings": True,
     "services": [
         [
             {

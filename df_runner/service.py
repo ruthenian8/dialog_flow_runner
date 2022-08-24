@@ -41,20 +41,24 @@ class Service(Pipe):
         self,
         service_handler: ServiceBuilder,
         wrappers: Optional[List[Wrapper]] = None,
-        timeout: int = -1,
-        asynchronous: bool = True,
+        timeout: Optional[int] = None,
+        asynchronous: Optional[bool] = None,
         start_condition: StartConditionCheckerFunction = always_start_condition,
         name: Optional[str] = None,
     ):
         if isinstance(service_handler, dict):
             self.__init__(**service_handler)
         elif isinstance(service_handler, Service):
-            self.__init__(**vars(service_handler))
+            service_dict = vars(service_handler)
+            service_dict["asynchronous"] = service_dict.pop("_user_async")
+            service_dict.pop("_calc_async")
+            self.__init__(**service_dict)
         elif isinstance(service_handler, Callable):
             self.service_handler = service_handler
             name = name_service_handler(self.service_handler) if name is None else name
-            asynchronous = asynchronous and iscoroutinefunction(service_handler)
-            super(Service, self).__init__(wrappers, timeout, asynchronous, start_condition, name)
+            super(Service, self).__init__(
+                wrappers, timeout, asynchronous, iscoroutinefunction(service_handler), start_condition, name
+            )
         else:
             raise Exception(f"Unknown type of service_handler {service_handler}")
 

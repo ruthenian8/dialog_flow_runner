@@ -140,5 +140,6 @@ PipelineBuilder = TypedDict(
         "context_db": NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
         "services": ServiceGroupBuilder,
         "wrappers": NotRequired[Optional[List[_ForwardServiceWrapper]]],
+        "optimization_warnings": NotRequired[bool],
     },
 )

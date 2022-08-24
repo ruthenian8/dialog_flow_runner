@@ -35,19 +35,22 @@ class ServiceGroup(Pipe):
         self,
         services: ServiceGroupBuilder,
         wrappers: Optional[List[Wrapper]] = None,
-        timeout: int = -1,
-        asynchronous: bool = True,
+        timeout: Optional[int] = None,
+        asynchronous: Optional[bool] = None,
         start_condition: StartConditionCheckerFunction = always_start_condition,
         name: Optional[str] = "service_group",
     ):
         if isinstance(services, ServiceGroup):
-            self.__init__(**vars(services))
+            services_dict = vars(services)
+            services_dict["asynchronous"] = services_dict.pop("_user_async")
+            services_dict.pop("_calc_async")
+            self.__init__(**services_dict)
         elif isinstance(services, dict):
             self.__init__(**services)
         elif isinstance(services, List):
             self.services = self._cast_services(services)
-            asynchronous = asynchronous and all([service.asynchronous for service in self.services])
-            super(ServiceGroup, self).__init__(wrappers, timeout, asynchronous, start_condition, name)
+            calc_async = all([service.asynchronous for service in self.services])
+            super(ServiceGroup, self).__init__(wrappers, timeout, asynchronous, calc_async, start_condition, name)
         else:
             raise Exception(f"Unknown type for ServiceGroup {services}")
 
@@ -106,6 +109,33 @@ class ServiceGroup(Pipe):
                 if not isinstance(service, Service):
                     services += service.get_subgroups_and_services(prefix, recursion_level)
         return services
+
+    def check_async(self):
+        for service in self.services:
+            if isinstance(service, Service):
+                if service._calc_async and service._user_async is not None and not service._user_async:
+                    logger.warning(
+                        "Service '%s' could be asynchronous or should be marked as synchronous explicitly!",
+                        service.name,
+                    )
+                if not service.asynchronous and service.timeout is not None:
+                    logger.warning("Timeout can not be applied for Service '%s': it's not asynchronous!", service.name)
+            else:
+                if not service._calc_async:
+                    if service._user_async is None and any(
+                        [subservice.asynchronous for subservice in service.services]
+                    ):
+                        logger.warning(
+                            "ServiceGroup '%s' contains both sync and async services, "
+                            "it should be split or marked as synchronous explicitly!",
+                            service.name,
+                        )
+                    elif service._user_async:
+                        logger.warning(
+                            "ServiceGroup '%s' is marked asynchronous, however contains synchronous services in it!",
+                            service.name,
+                        )
+                service.check_async()
 
     @staticmethod
     def _cast_services(services: ServiceGroupBuilder) -> List[Union[Service, "ServiceGroup"]]:

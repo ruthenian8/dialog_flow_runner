@@ -17,14 +17,16 @@ class Pipe(ABC):
     def __init__(
         self,
         wrappers: Optional[List[Wrapper]] = None,
-        timeout: int = -1,
-        asynchronous: bool = True,
+        timeout: Optional[int] = None,
+        user_async: Optional[bool] = None,
+        calc_async: bool = False,
         start_condition: StartConditionCheckerFunction = always_start_condition,
         name: Optional[str] = "pipe",
     ):
         self.wrappers = [] if wrappers is None else wrappers
         self.timeout = timeout
-        self.asynchronous = asynchronous
+        self._user_async = user_async
+        self._calc_async = calc_async
         self.start_condition = start_condition
         self.name = name
 
@@ -36,19 +38,17 @@ class Pipe(ABC):
     def _get_state(self, ctx: Context, default: Optional[PipeExecutionState] = None) -> PipeExecutionState:
         return ctx.framework_states[RUNNER_STATE_KEY].get(self.name, default)
 
+    @property
+    def asynchronous(self):
+        return self._calc_async if self._user_async is None else self._user_async
+
     @abstractmethod
     async def _run(self, ctx: Context, actor: Optional[Actor] = None) -> Optional[Context]:
         pass
 
     async def __call__(self, ctx: Context, actor: Optional[Actor] = None) -> Optional[Union[Context, Awaitable]]:
-        timeout = self.timeout if self.timeout > -1 else None
         if self.asynchronous:
-            timeout = self.timeout if self.timeout > -1 else None
             task = create_task(self._run(ctx, actor), name=self.name)
-            return wait_for(task, timeout=timeout)
+            return wait_for(task, timeout=self.timeout)
         else:
-            if timeout is not None:
-                logger.warning(
-                    f"Timeout can not be applied for {type(self).__name__} '{self.name}': it's not asynchronous!"
-                )
             return await self._run(ctx, actor)

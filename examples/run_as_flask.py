@@ -40,7 +40,7 @@ pipeline = {
 @app.route("/df_provider")
 async def route():
     req = request.args.get("request")
-    return await provider.on_request(req, 0)
+    return provider.on_request(req, 0).last_response
 
 
 pipeline = Pipeline(**pipeline)
