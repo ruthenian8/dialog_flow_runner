@@ -40,13 +40,10 @@ class Pipeline:
     ):
         self.provider = CLIProvider() if provider is None else provider
         self.context_db = {} if context_db is None else context_db
-        self.services = services
-        self.wrappers = [] if wrappers is None else wrappers
-        self.timeout = timeout
         self.services_pipeline = ServiceGroup(
-            self.services,
-            wrappers=self.wrappers,
-            timeout=self.timeout,
+            services,
+            wrappers=[] if wrappers is None else wrappers,
+            timeout=timeout,
             name="pipeline",
         )
         self.services_pipeline = rename_same_service_prefix(self.services_pipeline)
@@ -64,6 +61,16 @@ class Pipeline:
     @property
     def flat_services(self):
         return self.services_pipeline.get_subgroups_and_services()
+
+    def to_string(self, show_wrappers: bool = False) -> str:
+        representation = "Pipeline:\n"
+        representation += f"\tprovider: {str(self.provider)}\n"
+        if isinstance(self.context_db, dict):
+            representation += "\tcontext_db: %s" % "[Dict]\n"
+        else:
+            representation += str(self.context_db)
+        representation += "\tservices:\n%s" % self.services_pipeline.to_string(show_wrappers, "\t\t")
+        return representation
 
     @classmethod
     def from_script(

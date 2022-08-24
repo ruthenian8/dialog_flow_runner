@@ -135,6 +135,16 @@ class ServiceGroup(Pipe):
                         )
                 service.check_async()
 
+    def to_string(self, show_wrappers: bool = False, offset: str = "") -> str:
+        representation = super(ServiceGroup, self).to_string(show_wrappers, offset)
+        if len(self.services) > 0:
+            services_list = [service.to_string(show_wrappers, f"\t\t{offset}") for service in self.services]
+            services_representation = f"\n%s" % "\n".join(services_list)
+        else:
+            services_representation = "[None]"
+        representation += f"{offset}\tservices: {services_representation}"
+        return representation
+
     @staticmethod
     def _cast_services(services: ServiceGroupBuilder) -> List[Union[Service, "ServiceGroup"]]:
         handled_services = []

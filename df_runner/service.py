@@ -16,9 +16,6 @@ logger = logging.getLogger(__name__)
 def name_service_handler(service_handler: ServiceBuilder) -> str:
     if isinstance(service_handler, Actor):
         return "actor"
-    elif isinstance(service_handler, Service):
-        service: Service = service_handler
-        return service.name if service.name else name_service_handler(service.service_handler)
     elif isinstance(service_handler, Callable):
         return service_handler.__name__
     else:
@@ -98,6 +95,17 @@ class Service(Pipe):
             logger.error(f"Service '{self.name}' execution failed!\n{e}")
 
         execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
+
+    def to_string(self, show_wrappers: bool = False, offset: str = "") -> str:
+        representation = super(Service, self).to_string(show_wrappers, offset)
+        if isinstance(self.service_handler, Actor):
+            service_representation = str(self.service_handler)
+        elif isinstance(self.service_handler, Callable):
+            service_representation = f"Callable '{self.service_handler.__name__}'"
+        else:
+            service_representation = "[Unknown]"
+        representation += f"{offset}\tservice_handler: {service_representation}"
+        return representation
 
 
 def wrap(*wrappers: Wrapper):

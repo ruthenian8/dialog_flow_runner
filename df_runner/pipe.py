@@ -52,3 +52,17 @@ class Pipe(ABC):
             return wait_for(task, timeout=self.timeout)
         else:
             return await self._run(ctx, actor)
+
+    def to_string(self, show_wrappers: bool = False, offset: str = "") -> str:
+        representation = f"{offset}{type(self).__name__} '{self.name}':\n"
+        representation += f"{offset}\ttimeout: {self.timeout}\n"
+        representation += f"{offset}\tasynchronous: {self.asynchronous}\n"
+        representation += f"{offset}\tstart_condition: {self.start_condition.__name__}\n"
+        if show_wrappers:
+            if len(self.wrappers) > 0:
+                wrappers_list = [wrapper.to_string(f"\t\t{offset}") for wrapper in self.wrappers]
+                wrappers_representation = f"\n%s" % "\n".join(wrappers_list)
+            else:
+                wrappers_representation = "[None]"
+            representation += f"{offset}\twrappers: {wrappers_representation}\n"
+        return representation

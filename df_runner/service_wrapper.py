@@ -39,6 +39,12 @@ class Wrapper:
         self.post_func = post_func
         self.name = name
 
+    def to_string(self, offset: str = "") -> str:
+        representation = f"{offset}{type(self).__name__} '{self.name}':\n"
+        representation += f"{offset}\tpre_func: Callable '{self.pre_func.__name__}'\n"
+        representation += f"{offset}\tpost_func: Callable '{self.post_func.__name__}'"
+        return representation
+
 
 def execute_wrappers(ctx: Context, actor: Actor, wrappers: List[Wrapper], wrapper_type: WrapperStage, name):
     for wrapper in wrappers:
