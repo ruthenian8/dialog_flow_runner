@@ -2,14 +2,19 @@ from typing import Optional
 
 from df_engine.core import Actor, Context
 
-from .types import RUNNER_STATE_KEY, StartConditionState, StartConditionCheckerFunction, PipeExecutionState
+from .types import (
+    RUNNER_STATE_KEY,
+    StartConditionCheckerFunction,
+    PipeExecutionState,
+    StartConditionCheckerAggregationFunction,
+)
 
 
-def always_start_condition(ctx: Context, actor: Actor) -> StartConditionState:
+def always_start_condition(ctx: Context, actor: Actor) -> bool:
     """
     Condition that always allows service execution, it's the default condition for all services.
     """
-    return StartConditionState.ALLOWED
+    return True
 
 
 def service_successful_condition(name: Optional[str] = None) -> StartConditionCheckerFunction:
@@ -24,9 +29,30 @@ def service_successful_condition(name: Optional[str] = None) -> StartConditionCh
         """
 
         state = ctx.framework_states[RUNNER_STATE_KEY].get(name, PipeExecutionState.NOT_RUN)
-        if state == PipeExecutionState.FINISHED:
-            return StartConditionState.ALLOWED
-        else:
-            return StartConditionState.DENIED
+        return state == PipeExecutionState.FINISHED
 
     return check_service_state
+
+
+def not_condition(function: StartConditionCheckerFunction) -> StartConditionCheckerFunction:
+    def not_fun(ctx: Context, actor: Actor):
+        return not function(ctx, actor)
+
+    return not_fun
+
+
+def aggregate_condition(
+    aggregator: StartConditionCheckerAggregationFunction, *functions: StartConditionCheckerFunction
+) -> StartConditionCheckerFunction:
+    def aggregation_fun(ctx: Context, actor: Actor):
+        return aggregator([function(ctx, actor) for function in functions])
+
+    return aggregation_fun
+
+
+def all_condition(*functions: StartConditionCheckerFunction) -> StartConditionCheckerFunction:
+    return aggregate_condition(all, *functions)
+
+
+def any_condition(*functions: StartConditionCheckerFunction) -> StartConditionCheckerFunction:
+    return aggregate_condition(any, *functions)

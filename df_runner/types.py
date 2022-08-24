@@ -1,6 +1,6 @@
 from abc import ABC
 from enum import unique, Enum, auto
-from typing import Callable, Any, Union, Awaitable, Dict, List, TypedDict, Optional, NewType
+from typing import Callable, Any, Union, Awaitable, Dict, List, TypedDict, Optional, NewType, Iterable
 
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Context, Actor
@@ -29,20 +29,6 @@ class PipeExecutionState(Enum):
     RUNNING = auto()
     FINISHED = auto()
     FAILED = auto()
-
-
-@unique
-class StartConditionState(Enum):
-    """
-    Enum, representing service condition state.
-    The following states are supported:
-        ALLOWED: service can be executed and all its conditions met
-        DENIED: service can not be executed, some services it depends on failed
-        PENDING: service can not be executed right now, some services it depends on are still running
-    """
-
-    ALLOWED = auto()
-    DENIED = auto()
 
 
 @unique
@@ -84,7 +70,13 @@ PipelineRunnerFunction = Callable[[Any, Any], Awaitable[Context]]
 A function type for creating start_conditions for services.
 Accepts context and actor (current pipeline state), returns boolean (whether service can be launched).
 """
-StartConditionCheckerFunction = Callable[[Context, Actor], StartConditionState]
+StartConditionCheckerFunction = Callable[[Context, Actor], bool]
+
+"""
+A function type for creating start_conditions for services.
+Accepts context and actor (current pipeline state), returns boolean (whether service can be launched).
+"""
+StartConditionCheckerAggregationFunction = Callable[[Iterable[bool]], bool]
 
 """
 A function type for creating wrappers (pre- and postprocessing).

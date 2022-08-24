@@ -10,7 +10,6 @@ from .types import (
     PipelineRunnerFunction,
     StartConditionCheckerFunction,
     WrapperFunction,
-    StartConditionState,
     PipeExecutionState,
     RUNNER_STATE_KEY,
     CallbackType,

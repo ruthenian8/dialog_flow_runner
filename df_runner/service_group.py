@@ -9,7 +9,6 @@ from .pipe import Pipe
 from .types import (
     StartConditionCheckerFunction,
     PipeExecutionState,
-    StartConditionState,
     ServiceGroupBuilder,
 )
 from .service import Service
@@ -82,8 +81,7 @@ class ServiceGroup(Pipe):
         execute_wrappers(ctx, actor, self.wrappers, WrapperStage.PREPROCESSING, self.name)
 
         try:
-            state = self.start_condition(ctx, actor)
-            if state == StartConditionState.ALLOWED:
+            if self.start_condition(ctx, actor):
                 ctx = await self._run_services_group(ctx, actor)
             else:
                 self._set_state(ctx, PipeExecutionState.FAILED)

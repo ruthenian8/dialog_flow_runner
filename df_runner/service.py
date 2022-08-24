@@ -5,7 +5,7 @@ from typing import List, Optional, Callable
 from df_engine.core import Actor, Context
 
 from .service_wrapper import Wrapper, WrapperStage, execute_wrappers
-from .types import ServiceBuilder, StartConditionCheckerFunction, PipeExecutionState, StartConditionState
+from .types import ServiceBuilder, StartConditionCheckerFunction, PipeExecutionState
 from .pipe import Pipe
 from .conditions import always_start_condition
 
@@ -82,8 +82,7 @@ class Service(Pipe):
             return ctx
 
         try:
-            state = self.start_condition(ctx, actor)
-            if state == StartConditionState.ALLOWED:
+            if self.start_condition(ctx, actor):
                 if iscoroutinefunction(self.service_handler):
                     self._set_state(ctx, PipeExecutionState.RUNNING)
                     await self.service_handler(ctx, actor)
