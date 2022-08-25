@@ -63,6 +63,27 @@ class Service(Pipe):
         else:
             raise Exception(f"Too many parameters required for service '{self.name}' handler: {handler_params}!")
 
+    def _run_as_actor(self, ctx: Context):
+        try:
+            ctx = self.service_handler(ctx)
+            self._set_state(ctx, PipeExecutionState.FINISHED)
+        except Exception as exc:
+            self._set_state(ctx, PipeExecutionState.FAILED)
+            logger.error(f"Actor '{self.name}' execution failed!\n{exc}")
+        return ctx
+
+    def _run_as_service(self, ctx: Context, actor: Actor):
+        try:
+            if self.start_condition(ctx, actor):
+                self._set_state(ctx, PipeExecutionState.RUNNING)
+                await self._run_service_handler(ctx, actor)
+                self._set_state(ctx, PipeExecutionState.FINISHED)
+            else:
+                self._set_state(ctx, PipeExecutionState.FAILED)
+        except Exception as e:
+            self._set_state(ctx, PipeExecutionState.FAILED)
+            logger.error(f"Service '{self.name}' execution failed!\n{e}")
+
     async def _run(self, ctx: Context, actor: Optional[Actor] = None) -> Optional[Context]:
         """
         Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
@@ -73,31 +94,15 @@ class Service(Pipe):
             wrapper.run_wrapper_function(WrapperStage.PREPROCESSING, ctx, actor, self._get_runtime_info(ctx))
 
         if isinstance(self.service_handler, Actor):
-            try:
-                ctx = self.service_handler(ctx)
-                self._set_state(ctx, PipeExecutionState.FINISHED)
-            except Exception as exc:
-                self._set_state(ctx, PipeExecutionState.FAILED)
-                logger.error(f"Actor '{self.name}' execution failed!\n{exc}")
-
-            for wrapper in self.wrappers:
-                wrapper.run_wrapper_function(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
-            return ctx
-
-        try:
-            if self.start_condition(ctx, actor):
-                self._set_state(ctx, PipeExecutionState.RUNNING)
-                await self._run_service_handler(ctx, actor)
-                self._set_state(ctx, PipeExecutionState.FINISHED)
-            else:
-                self._set_state(ctx, PipeExecutionState.FAILED)
-
-        except Exception as e:
-            self._set_state(ctx, PipeExecutionState.FAILED)
-            logger.error(f"Service '{self.name}' execution failed!\n{e}")
+            self._run_as_actor(ctx)
+        else:
+            self._run_as_service(ctx, actor)
 
         for wrapper in self.wrappers:
             wrapper.run_wrapper_function(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
+
+        if isinstance(self.service_handler, Actor):
+            return ctx
 
     def to_string(self, show_wrappers: bool = False, offset: str = "") -> str:
         representation = super(Service, self).to_string(show_wrappers, offset)
