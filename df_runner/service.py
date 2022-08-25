@@ -1,25 +1,18 @@
 import logging
 from asyncio import iscoroutinefunction
+from inspect import signature
 from typing import List, Optional, Callable
 
 from df_engine.core import Actor, Context
 
-from .service_wrapper import Wrapper, WrapperStage, execute_wrappers
-from .types import ServiceBuilder, StartConditionCheckerFunction, PipeExecutionState
+from .service_utils import name_service_handler, wrap_sync_function_in_async
+from .service_wrapper import Wrapper
+from .types import ServiceBuilder, StartConditionCheckerFunction, PipeExecutionState, WrapperStage
 from .pipe import Pipe
 from .conditions import always_start_condition
 
 
 logger = logging.getLogger(__name__)
-
-
-def name_service_handler(service_handler: ServiceBuilder) -> str:
-    if isinstance(service_handler, Actor):
-        return "actor"
-    elif isinstance(service_handler, Callable):
-        return service_handler.__name__
-    else:
-        return "noname"
 
 
 class Service(Pipe):
@@ -59,13 +52,25 @@ class Service(Pipe):
         else:
             raise Exception(f"Unknown type of service_handler {service_handler}")
 
+    async def _run_service_handler(self, ctx: Context, actor: Actor):
+        handler_params = len(signature(self.service_handler).parameters)
+        if handler_params == 1:
+            await wrap_sync_function_in_async(self.service_handler, ctx)
+        elif handler_params == 2:
+            await wrap_sync_function_in_async(self.service_handler, ctx, actor)
+        elif handler_params == 3:
+            await wrap_sync_function_in_async(self.service_handler, ctx, actor, self._get_runtime_info(ctx))
+        else:
+            raise Exception(f"Too many parameters required for service '{self.name}' handler: {handler_params}!")
+
     async def _run(self, ctx: Context, actor: Optional[Actor] = None) -> Optional[Context]:
         """
         Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
         It also sets named variables in context.framework_states for other services start_conditions.
         If execution fails the error is caught here.
         """
-        execute_wrappers(ctx, actor, self.wrappers, WrapperStage.PREPROCESSING, self.name)
+        for wrapper in self.wrappers:
+            wrapper.run_wrapper_function(WrapperStage.PREPROCESSING, ctx, actor, self._get_runtime_info(ctx))
 
         if isinstance(self.service_handler, Actor):
             try:
@@ -75,18 +80,15 @@ class Service(Pipe):
                 self._set_state(ctx, PipeExecutionState.FAILED)
                 logger.error(f"Actor '{self.name}' execution failed!\n{exc}")
 
-            execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
+            for wrapper in self.wrappers:
+                wrapper.run_wrapper_function(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
             return ctx
 
         try:
             if self.start_condition(ctx, actor):
-                if iscoroutinefunction(self.service_handler):
-                    self._set_state(ctx, PipeExecutionState.RUNNING)
-                    await self.service_handler(ctx, actor)
-                    self._set_state(ctx, PipeExecutionState.FINISHED)
-                else:
-                    self.service_handler(ctx, actor)
-                    self._set_state(ctx, PipeExecutionState.FINISHED)
+                self._set_state(ctx, PipeExecutionState.RUNNING)
+                await self._run_service_handler(ctx, actor)
+                self._set_state(ctx, PipeExecutionState.FINISHED)
             else:
                 self._set_state(ctx, PipeExecutionState.FAILED)
 
@@ -94,7 +96,8 @@ class Service(Pipe):
             self._set_state(ctx, PipeExecutionState.FAILED)
             logger.error(f"Service '{self.name}' execution failed!\n{e}")
 
-        execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
+        for wrapper in self.wrappers:
+            wrapper.run_wrapper_function(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
 
     def to_string(self, show_wrappers: bool = False, offset: str = "") -> str:
         representation = super(Service, self).to_string(show_wrappers, offset)

@@ -1,24 +1,12 @@
 import logging
-from enum import unique, Enum, auto
-from typing import Optional, List
-
+from inspect import signature
+from typing import Optional
 
 from df_engine.core import Context, Actor
 
-from .types import WrapperFunction
-
+from .types import WrapperFunction, WrapperInfo, ServiceInfo, WrapperStage
 
 logger = logging.getLogger(__name__)
-
-
-@unique
-class WrapperStage(Enum):
-    """
-    Enum, representing wrapper type, pre- or postprocessing.
-    """
-
-    PREPROCESSING = auto()
-    POSTPROCESSING = auto()
 
 
 class Wrapper:
@@ -35,20 +23,33 @@ class Wrapper:
         post_func: WrapperFunction,
         name: Optional[str] = None,
     ):
-        self.pre_func = pre_func
-        self.post_func = post_func
+        self._pre_func = pre_func
+        self._post_func = post_func
         self.name = name
+
+    def _get_runtime_info(self, stage: WrapperStage, service_info: ServiceInfo) -> WrapperInfo:
+        return {
+            "name": self.name,
+            "stage": stage,
+            "service": service_info,
+        }
+
+    async def run_wrapper_function(self, stage: WrapperStage, ctx: Context, actor: Actor, service_info: ServiceInfo):
+        function = self._pre_func if stage is WrapperStage.PREPROCESSING else self._post_func
+        handler_params = len(signature(function).parameters)
+        if handler_params == 1:
+            function(ctx)
+        elif handler_params == 2:
+            function(ctx, actor)
+        elif handler_params == 3:
+            function(ctx, actor, self._get_runtime_info(stage, service_info))
+        else:
+            raise Exception(
+                f"Too many parameters required for wrapper '{self.name}' ({stage.name}) handler: {handler_params}!"
+            )
 
     def to_string(self, offset: str = "") -> str:
         representation = f"{offset}{type(self).__name__} '{self.name}':\n"
-        representation += f"{offset}\tpre_func: Callable '{self.pre_func.__name__}'\n"
-        representation += f"{offset}\tpost_func: Callable '{self.post_func.__name__}'"
+        representation += f"{offset}\tpre_func: Callable '{self._pre_func.__name__}'\n"
+        representation += f"{offset}\tpost_func: Callable '{self._post_func.__name__}'"
         return representation
-
-
-def execute_wrappers(ctx: Context, actor: Actor, wrappers: List[Wrapper], wrapper_type: WrapperStage, name):
-    for wrapper in wrappers:
-        if wrapper_type is WrapperStage.PREPROCESSING:
-            wrapper.pre_func(ctx, actor, name)
-        else:
-            wrapper.post_func(ctx, actor, name)

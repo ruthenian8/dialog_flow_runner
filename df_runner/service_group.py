@@ -4,7 +4,7 @@ from typing import Optional, List, Union, Tuple, Awaitable
 
 from df_engine.core import Actor, Context
 
-from .service_wrapper import WrapperStage, Wrapper, execute_wrappers
+from .service_wrapper import WrapperStage, Wrapper
 from .pipe import Pipe
 from .types import (
     StartConditionCheckerFunction,
@@ -78,7 +78,8 @@ class ServiceGroup(Pipe):
         ctx: Context,
         actor: Optional[Actor] = None,
     ) -> Optional[Context]:
-        execute_wrappers(ctx, actor, self.wrappers, WrapperStage.PREPROCESSING, self.name)
+        for wrapper in self.wrappers:
+            wrapper.run_wrapper_function(WrapperStage.PREPROCESSING, ctx, actor, self._get_runtime_info(ctx))
 
         try:
             if self.start_condition(ctx, actor):
@@ -90,7 +91,8 @@ class ServiceGroup(Pipe):
             self._set_state(ctx, PipeExecutionState.FAILED)
             logger.error(f"ServiceGroup '{self.name}' execution failed!\n{e}")
 
-        execute_wrappers(ctx, actor, self.wrappers, WrapperStage.POSTPROCESSING, self.name)
+        for wrapper in self.wrappers:
+            wrapper.run_wrapper_function(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
         return ctx if not self.asynchronous else None
 
     def get_subgroups_and_services(self, prefix: str = "", recursion_level: int = 99) -> List[Tuple[str, Service]]:
@@ -139,7 +141,7 @@ class ServiceGroup(Pipe):
         representation = super(ServiceGroup, self).to_string(show_wrappers, offset)
         if len(self.services) > 0:
             services_list = [service.to_string(show_wrappers, f"\t\t{offset}") for service in self.services]
-            services_representation = f"\n%s" % "\n".join(services_list)
+            services_representation = "\n%s" % "\n".join(services_list)
         else:
             services_representation = "[None]"
         representation += f"{offset}\tservices: {services_representation}"

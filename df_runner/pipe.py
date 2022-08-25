@@ -7,8 +7,7 @@ from df_engine.core import Context, Actor
 
 from .service_wrapper import Wrapper
 from .conditions import always_start_condition
-from .types import RUNNER_STATE_KEY, StartConditionCheckerFunction, PipeExecutionState
-
+from .types import RUNNER_STATE_KEY, StartConditionCheckerFunction, PipeExecutionState, ServiceInfo
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ class Pipe(ABC):
         user_async: Optional[bool] = None,
         calc_async: bool = False,
         start_condition: StartConditionCheckerFunction = always_start_condition,
-        name: Optional[str] = "pipe",
+        name: str = "pipe",
     ):
         self.wrappers = [] if wrappers is None else wrappers
         self.timeout = timeout
@@ -39,12 +38,12 @@ class Pipe(ABC):
         return ctx.framework_states[RUNNER_STATE_KEY].get(self.name, default)
 
     @property
-    def asynchronous(self):
+    def asynchronous(self) -> bool:
         return self._calc_async if self._user_async is None else self._user_async
 
     @abstractmethod
     async def _run(self, ctx: Context, actor: Optional[Actor] = None) -> Optional[Context]:
-        pass
+        raise NotImplementedError
 
     async def __call__(self, ctx: Context, actor: Optional[Actor] = None) -> Optional[Union[Context, Awaitable]]:
         if self.asynchronous:
@@ -52,6 +51,14 @@ class Pipe(ABC):
             return wait_for(task, timeout=self.timeout)
         else:
             return await self._run(ctx, actor)
+
+    def _get_runtime_info(self, ctx: Context) -> ServiceInfo:
+        return {
+            "name": self.name,
+            "timeout": self.timeout,
+            "asynchronous": self.asynchronous,
+            "execution_state": ctx.framework_states[RUNNER_STATE_KEY],
+        }
 
     def to_string(self, show_wrappers: bool = False, offset: str = "") -> str:
         representation = f"{offset}{type(self).__name__} '{self.name}':\n"
@@ -61,7 +68,7 @@ class Pipe(ABC):
         if show_wrappers:
             if len(self.wrappers) > 0:
                 wrappers_list = [wrapper.to_string(f"\t\t{offset}") for wrapper in self.wrappers]
-                wrappers_representation = f"\n%s" % "\n".join(wrappers_list)
+                wrappers_representation = "\n%s" % "\n".join(wrappers_list)
             else:
                 wrappers_representation = "[None]"
             representation += f"{offset}\twrappers: {wrappers_representation}\n"

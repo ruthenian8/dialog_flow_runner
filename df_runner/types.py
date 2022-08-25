@@ -48,6 +48,16 @@ class CallbackType(Enum):
     AFTER_ALL = auto()
 
 
+@unique
+class WrapperStage(Enum):
+    """
+    Enum, representing wrapper type, pre- or postprocessing.
+    """
+
+    PREPROCESSING = auto()
+    POSTPROCESSING = auto()
+
+
 """
 RUNNER: storage for services and groups execution status
 """
@@ -78,14 +88,50 @@ Accepts context and actor (current pipeline state), returns boolean (whether ser
 """
 StartConditionCheckerAggregationFunction = Callable[[Iterable[bool]], bool]
 
+
+PollingProviderLoopFunction = Callable[[], bool]
+
+
+ServiceInfo = TypedDict(
+    "ServiceInfo",
+    {
+        "name": str,
+        "timeout": Optional[int],
+        "asynchronous": bool,
+        "execution_state": Dict[str, PipeExecutionState],
+    },
+)
+
+
+WrapperInfo = TypedDict(
+    "WrapperInfo",
+    {
+        "name": Optional[str],
+        "stage": WrapperStage,
+        "service": ServiceInfo,
+    },
+)
+
+
 """
 A function type for creating wrappers (pre- and postprocessing).
 Accepts context, actor (current pipeline state), name of the wrapped service and returns anything.
 """
-WrapperFunction = Callable[[Context, Actor, str], Any]
+WrapperFunction = Union[
+    Callable[[Context], None],
+    Callable[[Context, Actor], None],
+    Callable[[Context, Actor, WrapperInfo], None],
+]
 
 
-PollingProviderLoopFunction = Callable[[], bool]
+ServiceFunction = Union[
+    Callable[[Context], None],
+    Callable[[Context], Awaitable[None]],
+    Callable[[Context, Actor], None],
+    Callable[[Context, Actor], Awaitable[None]],
+    Callable[[Context, Actor, ServiceInfo], None],
+    Callable[[Context, Actor, ServiceInfo], Awaitable[None]],
+]
 
 
 """
@@ -93,8 +139,7 @@ A function type for creating services.
 Accepts context, returns nothing.
 """
 ServiceBuilder = Union[
-    Callable[[Context, Actor], None],
-    Callable[[Context, Actor], Awaitable[None]],
+    ServiceFunction,
     _ForwardService,
     Actor,
     TypedDict(

@@ -54,4 +54,5 @@ pipeline = {
 pipeline = Pipeline(**pipeline)
 
 if __name__ == "__main__":
+    print(pipeline.to_string(True))
     pipeline.run()
