@@ -25,7 +25,7 @@ __author__ = "Denis Kuznetsov"
 __email__ = "kuznetsov.den.p@gmail.com"
 __version__ = "0.2.1"
 
-#
+# TODO:
 # Use stucture:
 # - df_pipeline/
 #   - pipeline/

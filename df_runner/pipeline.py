@@ -1,5 +1,5 @@
 import logging
-from asyncio import run # import asyncio ; and use `asyncio.run` after
+from asyncio import run # TODO: replace by `import asyncio`  and use `asyncio.run` instead `run`
 from typing import Any, Union, List, Dict, Optional
 
 from df_db_connector import DBAbstractConnector
