@@ -123,7 +123,7 @@ def add_wrapper(pre_func: Optional[WrapperFunction] = None, post_func: Optional[
     return inner
 
 
-def wrap(*wrappers: Wrapper):
+def wrap(*wrappers: Wrapper): # TODO: rename pls
     """
     A wrapper wrapping function that creates WrappedService from any service function.
     Target function will no longer be a function after wrapping; it will become a WrappedService object.

@@ -1,5 +1,5 @@
 import logging
-from asyncio import run
+from asyncio import run # import asyncio ; and use `asyncio.run` after
 from typing import Any, Union, List, Dict, Optional
 
 from df_db_connector import DBAbstractConnector
@@ -51,7 +51,7 @@ class Pipeline:
         if optimization_warnings:
             self.services_pipeline.check_async()
 
-        flat_services = self.services_pipeline.get_subgroups_and_services()
+        flat_services = self.services_pipeline.get_subgroups_and_services() # TODO: use self.flat_services instead in next line
         flat_services = [serv for _, serv in flat_services if isinstance(serv, Service)]
         actor = [serv.service_handler for serv in flat_services if isinstance(serv.service_handler, Actor)]
         self.actor = actor and actor[0]
@@ -60,8 +60,9 @@ class Pipeline:
 
     @property
     def flat_services(self):
-        return self.services_pipeline.get_subgroups_and_services()
+        return self.services_pipeline.get_subgroups_and_services() # with services and service groups
 
+# TODO: maybe __repr__
     def to_string(self, show_wrappers: bool = False) -> str:
         representation = "Pipeline:\n"
         representation += f"\tprovider: {str(self.provider)}\n"

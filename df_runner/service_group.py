@@ -38,10 +38,12 @@ class ServiceGroup(Pipe):
         asynchronous: Optional[bool] = None,
         start_condition: StartConditionCheckerFunction = always_start_condition,
         name: Optional[str] = "service_group",
+        # TODO: **kwargs,
     ):
         if isinstance(services, ServiceGroup):
             services_dict = vars(services)
-            services_dict["asynchronous"] = services_dict.pop("_user_async")
+            # TODO: services_dict["asynchronous"] = services_dict.pop("_user_async") # change names _user_async_flag
+
             services_dict.pop("_calc_async")
             self.__init__(**services_dict)
         elif isinstance(services, dict):
@@ -133,7 +135,7 @@ class ServiceGroup(Pipe):
                     elif service._user_async:
                         logger.warning(
                             "ServiceGroup '%s' is marked asynchronous, however contains synchronous services in it!",
-                            service.name,
+                            service.name, # TODO: use f-strings
                         )
                 service.check_async()
 

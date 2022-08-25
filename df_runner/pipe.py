@@ -24,8 +24,8 @@ class Pipe(ABC):
     ):
         self.wrappers = [] if wrappers is None else wrappers
         self.timeout = timeout
-        self._user_async = user_async
-        self._calc_async = calc_async
+        self.user_async = user_async # TODO: requested_async_flag
+        self.calc_async = calc_async # TODO: result_async_flag
         self.start_condition = start_condition
         self.name = name
 
@@ -57,10 +57,12 @@ class Pipe(ABC):
             "name": self.name,
             "timeout": self.timeout,
             "asynchronous": self.asynchronous,
-            "execution_state": ctx.framework_states[RUNNER_STATE_KEY],
+            "execution_state": ctx.framework_states[RUNNER_STATE_KEY], # deepcopy
         }
 
-    def to_string(self, show_wrappers: bool = False, offset: str = "") -> str:
+# TODO: __srt__ or __repr__ or as dict - without formatting
+# TODO: as _get_runtime_info ?
+    def __dict__(self, show_wrappers: bool = False, offset: str = "") -> str:
         representation = f"{offset}{type(self).__name__} '{self.name}':\n"
         representation += f"{offset}\ttimeout: {self.timeout}\n"
         representation += f"{offset}\tasynchronous: {self.asynchronous}\n"

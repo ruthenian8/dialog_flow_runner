@@ -12,23 +12,26 @@ from .types import PipelineRunnerFunction, PollingProviderLoopFunction
 logger = logging.getLogger(__name__)
 
 
-class AbsProvider(ABC):
+class AbsProvider(ABC): # TODO: naming ?
     """
     Class that represents a provider used for communication between pipeline and users.
     It is responsible for connection between user and provider, as well as for request-response transactions.
     """
 
-    def __init__(self):
+    def __init__(self): # delete
         self._pipeline_runner: Optional[PipelineRunnerFunction] = None
 
-    async def run(self, pipeline_runner: PipelineRunnerFunction):
+# TODO: rename to run_pipeline
+    async def run(self, pipeline_runner: PipelineRunnerFunction): # TODO: add `, *args, **kwargs
         """
         Method invoked when provider is instantiated and connection is established.
         May be used for sending an introduction message or displaying general bot information.
         :pipeline_runner: - a function that should return pipeline response to user request;
             usually it's a `Pipeline._run_pipeline(request, ctx_id)` function.
         """
-        self._pipeline_runner = pipeline_runner
+        self._pipeline_runner = pipeline_runner # TODO: delete
+        # TODO: pipeline_runner(*args, **kwargs)
+
 
 
 class PollingProvider(AbsProvider):
@@ -128,7 +131,7 @@ class CLIProvider(PollingProvider):
         return [(input(self._prompt_request), self._ctx_id)]
 
     def _respond(self, response: List[Context]):
-        print(f"{self._prompt_response}{response[0].last_response}")
+        print(f"{self._prompt_response}{response[0].last_response}") # maybe setup output?
 
     async def run(self, pipeline_runner: PipelineRunnerFunction, **kwargs):
         """

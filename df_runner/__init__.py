@@ -24,3 +24,16 @@ from .pipeline import Pipeline
 __author__ = "Denis Kuznetsov"
 __email__ = "kuznetsov.den.p@gmail.com"
 __version__ = "0.2.1"
+
+#
+# Use stucture:
+# - df_pipeline/
+#   - pipeline/
+#     - pipeline
+#     - pipeline_component
+#     - utils
+#   - service/
+#     - service
+#     - service_group
+#     - service_wrappers
+#     - utils
