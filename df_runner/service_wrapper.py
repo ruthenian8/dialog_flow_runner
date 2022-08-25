@@ -19,8 +19,8 @@ class Wrapper:
 
     def __init__(
         self,
-        pre_func: WrapperFunction,
-        post_func: WrapperFunction,
+        pre_func: Optional[WrapperFunction] = None,
+        post_func: Optional[WrapperFunction] = None,
         name: Optional[str] = None,
     ):
         self._pre_func = pre_func
@@ -36,6 +36,9 @@ class Wrapper:
 
     async def run_wrapper_function(self, stage: WrapperStage, ctx: Context, actor: Actor, service_info: ServiceInfo):
         function = self._pre_func if stage is WrapperStage.PREPROCESSING else self._post_func
+        if function is None:
+            return
+
         handler_params = len(signature(function).parameters)
         if handler_params == 1:
             function(ctx)

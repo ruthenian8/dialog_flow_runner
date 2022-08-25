@@ -7,7 +7,7 @@ from df_engine.core import Actor, Context
 
 from .service_utils import name_service_handler, wrap_sync_function_in_async
 from .service_wrapper import Wrapper
-from .types import ServiceBuilder, StartConditionCheckerFunction, PipeExecutionState, WrapperStage
+from .types import ServiceBuilder, StartConditionCheckerFunction, PipeExecutionState, WrapperStage, WrapperFunction
 from .pipe import Pipe
 from .conditions import always_start_condition
 
@@ -109,6 +109,13 @@ class Service(Pipe):
             service_representation = "[Unknown]"
         representation += f"{offset}\tservice_handler: {service_representation}"
         return representation
+
+
+def add_wrapper(pre_func: Optional[WrapperFunction] = None, post_func: Optional[WrapperFunction] = None):
+    def inner(service_handler: ServiceBuilder) -> Service:
+        return Service(service_handler=service_handler, wrappers=[Wrapper(pre_func, post_func)])
+
+    return inner
 
 
 def wrap(*wrappers: Wrapper):
