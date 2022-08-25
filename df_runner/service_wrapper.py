@@ -34,7 +34,7 @@ class Wrapper:
             "service": service_info,
         }
 
-    async def run_wrapper_function(self, stage: WrapperStage, ctx: Context, actor: Actor, service_info: ServiceInfo):
+    def run_wrapper_function(self, stage: WrapperStage, ctx: Context, actor: Actor, service_info: ServiceInfo):
         function = self._pre_func if stage is WrapperStage.PREPROCESSING else self._post_func
         if function is None:
             return

@@ -72,7 +72,7 @@ class Service(Pipe):
             logger.error(f"Actor '{self.name}' execution failed!\n{exc}")
         return ctx
 
-    def _run_as_service(self, ctx: Context, actor: Actor):
+    async def _run_as_service(self, ctx: Context, actor: Actor):
         try:
             if self.start_condition(ctx, actor):
                 self._set_state(ctx, PipeExecutionState.RUNNING)
@@ -94,9 +94,9 @@ class Service(Pipe):
             wrapper.run_wrapper_function(WrapperStage.PREPROCESSING, ctx, actor, self._get_runtime_info(ctx))
 
         if isinstance(self.service_handler, Actor):
-            self._run_as_actor(ctx)
+            ctx = self._run_as_actor(ctx)
         else:
-            self._run_as_service(ctx, actor)
+            await self._run_as_service(ctx, actor)
 
         for wrapper in self.wrappers:
             wrapper.run_wrapper_function(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
