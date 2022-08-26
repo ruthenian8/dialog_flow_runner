@@ -2,8 +2,7 @@ from typing import Any
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIProvider, Wrapper, Pipeline, ServiceGroup
-from df_runner.service import wrap
+from df_runner import CLIProvider, Wrapper, Pipeline, ServiceGroup, wrap
 from examples import basic_example
 
 actor = Actor(

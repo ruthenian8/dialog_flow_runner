@@ -6,13 +6,13 @@ from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor, Script, Context
 from df_engine.core.types import NodeLabel2Type
 
-from .service_wrapper import Wrapper
-from .provider import AbsProvider, CLIProvider
-from .service_group import ServiceGroup
-from .types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder
-from .service import Service
-from .types import RUNNER_STATE_KEY
-from .pipeline_utils import rename_same_service_prefix, print_instance_dict
+from ..service.service import Service
+from ..service.wrapper import Wrapper
+from ..provider import AbsProvider, CLIProvider
+from ..service.group import ServiceGroup
+from ..types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder
+from ..types import RUNNER_STATE_KEY
+from .utils import rename_same_service_prefix, print_instance_dict
 
 logger = logging.getLogger(__name__)
 
@@ -57,16 +57,17 @@ class Pipeline:
         if not isinstance(self.actor, Actor):
             raise Exception("Actor not found.")
 
+    @property
     def dict(self) -> dict:
         return {
             "type": type(self).__name__,
             "provider": f"Instance of {type(self.provider).__name__}",
             "context_db": f"Instance of {type(self.context_db).__name__}",
-            "services": [self.services_pipeline.dict()],
+            "services": [self.services_pipeline.dict],
         }
 
     def to_string(self, show_wrappers: bool = False) -> str:
-        return print_instance_dict(self.dict(), show_wrappers)
+        return print_instance_dict(self.dict, show_wrappers)
 
     @classmethod
     def from_script(

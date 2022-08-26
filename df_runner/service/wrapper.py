@@ -4,7 +4,7 @@ from typing import Optional
 
 from df_engine.core import Context, Actor
 
-from .types import WrapperFunction, WrapperInfo, ServiceInfo, WrapperStage
+from ..types import WrapperFunction, WrapperInfo, ServiceInfo, WrapperStage
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ class Wrapper:
                 f"Too many parameters required for wrapper `{self.name}` ({stage.name}) handler: {handler_params}!"
             )
 
+    @property
     def dict(self) -> dict:
         return {
             "type": type(self).__name__,

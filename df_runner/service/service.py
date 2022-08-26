@@ -5,12 +5,11 @@ from typing import List, Optional, Callable, Tuple, Any
 
 from df_engine.core import Actor, Context
 
-from .service_utils import name_service_handler, wrap_sync_function_in_async
-from .service_wrapper import Wrapper
-from .types import ServiceBuilder, StartConditionCheckerFunction, PipeExecutionState, WrapperStage, WrapperFunction
-from .pipe import Pipe
-from .conditions import always_start_condition
-
+from .utils import name_service_handler, wrap_sync_function_in_async
+from .wrapper import Wrapper
+from ..types import ServiceBuilder, StartConditionCheckerFunction, PipeExecutionState, WrapperStage, WrapperFunction
+from ..pipeline.component import Pipe
+from ..conditions import always_start_condition
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,12 @@ class Service(Pipe):
         else:
             raise Exception(f"Unknown type of service_handler {service_handler}")
 
-    def decay(self, drop_attrs: Tuple[str] = (), replace_attrs: Tuple[Tuple[str, str]] = (), add_attrs: Tuple[Tuple[str, Any]] = ()) -> dict:
+    def decay(
+        self,
+        drop_attrs: Tuple[str, ...] = (),
+        replace_attrs: Tuple[Tuple[str, str], ...] = (),
+        add_attrs: Tuple[Tuple[str, Any], ...] = (),
+    ) -> dict:
         return super(Service, self).decay(("calculated_async_flag",), (("requested_async_flag", "async_flag"),))
 
     async def _run_service_handler(self, ctx: Context, actor: Actor):
@@ -104,10 +108,11 @@ class Service(Pipe):
         if isinstance(self.service_handler, Actor):
             return ctx
 
+    @property
     def dict(self) -> dict:
-        representation = super(Service, self).dict()
+        representation = super(Service, self).dict
         if isinstance(self.service_handler, Actor):
-            service_representation = "Instance of Actor"
+            service_representation = f"Instance of {type(self.service_handler).__name__}"
         elif isinstance(self.service_handler, Callable):
             service_representation = f"Callable '{self.service_handler.__name__}'"
         else:

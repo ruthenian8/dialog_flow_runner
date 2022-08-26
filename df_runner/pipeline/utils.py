@@ -1,8 +1,8 @@
 from collections import Counter
 from typing import Union, List
 
-from .service import Service
-from .service_group import ServiceGroup
+from ..service.service import Service
+from ..service.group import ServiceGroup
 
 
 def print_instance_dict(

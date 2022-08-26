@@ -3,7 +3,7 @@ from typing import Callable
 
 from df_engine.core import Actor
 
-from df_runner.types import ServiceBuilder
+from ..types import ServiceBuilder
 
 
 def name_service_handler(service_handler: ServiceBuilder) -> str:
