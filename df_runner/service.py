@@ -1,7 +1,7 @@
 import logging
 from asyncio import iscoroutinefunction
 from inspect import signature
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Tuple, Any
 
 from df_engine.core import Actor, Context
 
@@ -39,10 +39,7 @@ class Service(Pipe):
         if isinstance(service_handler, dict):
             self.__init__(**service_handler)
         elif isinstance(service_handler, Service):
-            service_dict = vars(service_handler)
-            service_dict["async_flag"] = service_dict.pop("requested_async_flag", None)
-            service_dict.pop("calculated_async_flag")
-            self.__init__(**service_dict)
+            self.__init__(**service_handler.decay())
         elif isinstance(service_handler, Callable):
             self.service_handler = service_handler
             name = name_service_handler(self.service_handler) if name is None else name
@@ -51,6 +48,9 @@ class Service(Pipe):
             )
         else:
             raise Exception(f"Unknown type of service_handler {service_handler}")
+
+    def decay(self, drop_attrs: Tuple[str] = (), replace_attrs: Tuple[Tuple[str, str]] = (), add_attrs: Tuple[Tuple[str, Any]] = ()) -> dict:
+        return super(Service, self).decay(("calculated_async_flag",), (("requested_async_flag", "async_flag"),))
 
     async def _run_service_handler(self, ctx: Context, actor: Actor):
         handler_params = len(signature(self.service_handler).parameters)

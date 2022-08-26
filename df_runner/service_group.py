@@ -1,6 +1,6 @@
 import logging
 from asyncio import as_completed, TimeoutError
-from typing import Optional, List, Union, Tuple, Awaitable
+from typing import Optional, List, Union, Tuple, Awaitable, Any
 
 from df_engine.core import Actor, Context
 
@@ -40,10 +40,7 @@ class ServiceGroup(Pipe):
         name: Optional[str] = "service_group",
     ):
         if isinstance(services, ServiceGroup):
-            services_dict = vars(services)
-            services_dict["async_flag"] = services_dict.pop("requested_async_flag", None)
-            services_dict.pop("calculated_async_flag")
-            self.__init__(**services_dict)
+            self.__init__(**services.decay())
         elif isinstance(services, dict):
             self.__init__(**services)
         elif isinstance(services, List):
@@ -52,6 +49,9 @@ class ServiceGroup(Pipe):
             super(ServiceGroup, self).__init__(wrappers, timeout, async_flag, calc_async, start_condition, name)
         else:
             raise Exception(f"Unknown type for ServiceGroup {services}")
+
+    def decay(self, drop_attrs: Tuple[str] = (), replace_attrs: Tuple[Tuple[str, str]] = (), add_attrs: Tuple[Tuple[str, Any]] = ()) -> dict:
+        return super(ServiceGroup, self).decay(("calculated_async_flag",), (("requested_async_flag", "async_flag"),))
 
     async def _run_services_group(self, ctx: Context, actor: Actor) -> Context:
         self._set_state(ctx, PipeExecutionState.RUNNING)

@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from asyncio import create_task, wait_for
 from copy import deepcopy
-from typing import Optional, List, Union, Awaitable
+from typing import Optional, List, Union, Awaitable, Tuple, Any
 
 from df_engine.core import Context, Actor
 
@@ -10,18 +10,19 @@ from .service_wrapper import Wrapper
 from .conditions import always_start_condition
 from .types import RUNNER_STATE_KEY, StartConditionCheckerFunction, PipeExecutionState, ServiceInfo
 
+
 logger = logging.getLogger(__name__)
 
 
 class Pipe(ABC):
     def __init__(
-        self,
-        wrappers: Optional[List[Wrapper]] = None,
-        timeout: Optional[int] = None,
-        requested_async_flag: Optional[bool] = None,
-        calculated_async_flag: bool = False,
-        start_condition: StartConditionCheckerFunction = always_start_condition,
-        name: str = "pipe",
+            self,
+            wrappers: Optional[List[Wrapper]] = None,
+            timeout: Optional[int] = None,
+            requested_async_flag: Optional[bool] = None,
+            calculated_async_flag: bool = False,
+            start_condition: StartConditionCheckerFunction = always_start_condition,
+            name: str = "pipe",
     ):
         self.wrappers = [] if wrappers is None else wrappers
         self.timeout = timeout
@@ -29,6 +30,18 @@ class Pipe(ABC):
         self.calculated_async_flag = calculated_async_flag
         self.start_condition = start_condition
         self.name = name
+
+    def decay(self, drop_attrs: Tuple[str] = (), replace_attrs: Tuple[Tuple[str, str]] = (), add_attrs: Tuple[Tuple[str, Any]] = ()) -> dict:
+        replace_attrs = dict(replace_attrs)
+        result = {}
+        for attribute in vars(self):
+            if not attribute.startswith('_') and attribute not in drop_attrs:
+                if attribute in replace_attrs:
+                    result[replace_attrs[attribute]] = getattr(self, attribute)
+                else:
+                    result[attribute] = getattr(self, attribute)
+        result.update(dict(add_attrs))
+        return result
 
     def _set_state(self, ctx: Context, value: PipeExecutionState):
         if RUNNER_STATE_KEY not in ctx.framework_states:
