@@ -5,6 +5,31 @@ from .service import Service
 from .service_group import ServiceGroup
 
 
+def print_instance_dict(
+    service: dict,
+    show_wrappers: bool,
+    offset: str = "",
+    wrappers_key: str = "wrappers",
+    type_key: str = "type",
+    name_key: str = "name",
+) -> str:
+    representation = f"{offset}{service.get(type_key, '[None]')}%s:\n" % (
+        f" '{service.get(name_key, '[None]')}'" if name_key in service else ""
+    )
+    for key, value in service.items():
+        if key not in (type_key, name_key, wrappers_key) or (key == wrappers_key and show_wrappers):
+            if isinstance(value, List):
+                if len(value) > 0:
+                    values = [print_instance_dict(instance, show_wrappers, f"\t\t{offset}") for instance in value]
+                    value_str = "\n%s" % "\n".join(values)
+                else:
+                    value_str = "[None]"
+            else:
+                value_str = str(value)
+            representation += f"{offset}\t{key}: {value_str}\n"
+    return representation[:-1]
+
+
 def create_service_name(base_name, services: List[Union[Service, ServiceGroup]]):
     name_index = 0
     while f"{base_name}_{name_index}" in [serv.name for serv in services]:

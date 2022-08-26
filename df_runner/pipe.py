@@ -1,6 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from asyncio import create_task, wait_for
+from copy import deepcopy
 from typing import Optional, List, Union, Awaitable
 
 from df_engine.core import Context, Actor
@@ -17,15 +18,15 @@ class Pipe(ABC):
         self,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: Optional[int] = None,
-        user_async: Optional[bool] = None,
-        calc_async: bool = False,
+        requested_async_flag: Optional[bool] = None,
+        calculated_async_flag: bool = False,
         start_condition: StartConditionCheckerFunction = always_start_condition,
         name: str = "pipe",
     ):
         self.wrappers = [] if wrappers is None else wrappers
         self.timeout = timeout
-        self.user_async = user_async # TODO: requested_async_flag
-        self.calc_async = calc_async # TODO: result_async_flag
+        self.requested_async_flag = requested_async_flag
+        self.calculated_async_flag = calculated_async_flag
         self.start_condition = start_condition
         self.name = name
 
@@ -39,7 +40,7 @@ class Pipe(ABC):
 
     @property
     def asynchronous(self) -> bool:
-        return self._calc_async if self._user_async is None else self._user_async
+        return self.calculated_async_flag if self.requested_async_flag is None else self.requested_async_flag
 
     @abstractmethod
     async def _run(self, ctx: Context, actor: Optional[Actor] = None) -> Optional[Context]:
@@ -57,21 +58,14 @@ class Pipe(ABC):
             "name": self.name,
             "timeout": self.timeout,
             "asynchronous": self.asynchronous,
-            "execution_state": ctx.framework_states[RUNNER_STATE_KEY], # deepcopy
+            "execution_state": deepcopy(ctx.framework_states[RUNNER_STATE_KEY]),
         }
 
-# TODO: __srt__ or __repr__ or as dict - without formatting
-# TODO: as _get_runtime_info ?
-    def __dict__(self, show_wrappers: bool = False, offset: str = "") -> str:
-        representation = f"{offset}{type(self).__name__} '{self.name}':\n"
-        representation += f"{offset}\ttimeout: {self.timeout}\n"
-        representation += f"{offset}\tasynchronous: {self.asynchronous}\n"
-        representation += f"{offset}\tstart_condition: {self.start_condition.__name__}\n"
-        if show_wrappers:
-            if len(self.wrappers) > 0:
-                wrappers_list = [wrapper.to_string(f"\t\t{offset}") for wrapper in self.wrappers]
-                wrappers_representation = "\n%s" % "\n".join(wrappers_list)
-            else:
-                wrappers_representation = "[None]"
-            representation += f"{offset}\twrappers: {wrappers_representation}\n"
-        return representation
+    def dict(self) -> dict:
+        return {
+            "type": type(self).__name__,
+            "name": self.name,
+            "asynchronous": self.asynchronous,
+            "start_condition": self.start_condition.__name__,
+            "wrappers": [wrapper.dict() for wrapper in self.wrappers],
+        }

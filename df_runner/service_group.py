@@ -35,23 +35,21 @@ class ServiceGroup(Pipe):
         services: ServiceGroupBuilder,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: Optional[int] = None,
-        asynchronous: Optional[bool] = None,
+        async_flag: Optional[bool] = None,
         start_condition: StartConditionCheckerFunction = always_start_condition,
         name: Optional[str] = "service_group",
-        # TODO: **kwargs,
     ):
         if isinstance(services, ServiceGroup):
             services_dict = vars(services)
-            # TODO: services_dict["asynchronous"] = services_dict.pop("_user_async") # change names _user_async_flag
-
-            services_dict.pop("_calc_async")
+            services_dict["async_flag"] = services_dict.pop("requested_async_flag", None)
+            services_dict.pop("calculated_async_flag")
             self.__init__(**services_dict)
         elif isinstance(services, dict):
             self.__init__(**services)
         elif isinstance(services, List):
             self.services = self._cast_services(services)
             calc_async = all([service.asynchronous for service in self.services])
-            super(ServiceGroup, self).__init__(wrappers, timeout, asynchronous, calc_async, start_condition, name)
+            super(ServiceGroup, self).__init__(wrappers, timeout, async_flag, calc_async, start_condition, name)
         else:
             raise Exception(f"Unknown type for ServiceGroup {services}")
 
@@ -115,38 +113,36 @@ class ServiceGroup(Pipe):
     def check_async(self):
         for service in self.services:
             if isinstance(service, Service):
-                if service._calc_async and service._user_async is not None and not service._user_async:
+                if (
+                    service.calculated_async_flag
+                    and service.requested_async_flag is not None
+                    and not service.requested_async_flag
+                ):
                     logger.warning(
-                        "Service '%s' could be asynchronous or should be marked as synchronous explicitly!",
-                        service.name,
+                        f"Service '{service.name}' could be asynchronous"
+                        "or should be marked as synchronous explicitly!",
                     )
                 if not service.asynchronous and service.timeout is not None:
-                    logger.warning("Timeout can not be applied for Service '%s': it's not asynchronous!", service.name)
+                    logger.warning(f"Timeout can not be applied for Service '{service.name}': it's not asynchronous!")
             else:
-                if not service._calc_async:
-                    if service._user_async is None and any(
+                if not service.calculated_async_flag:
+                    if service.requested_async_flag is None and any(
                         [subservice.asynchronous for subservice in service.services]
                     ):
                         logger.warning(
-                            "ServiceGroup '%s' contains both sync and async services, "
+                            f"ServiceGroup '{service.name}' contains both sync and async services, "
                             "it should be split or marked as synchronous explicitly!",
-                            service.name,
                         )
-                    elif service._user_async:
+                    elif service.requested_async_flag:
                         logger.warning(
-                            "ServiceGroup '%s' is marked asynchronous, however contains synchronous services in it!",
-                            service.name, # TODO: use f-strings
+                            f"ServiceGroup '{service.name}' is marked asynchronous,"
+                            "however contains synchronous services in it!",
                         )
                 service.check_async()
 
-    def to_string(self, show_wrappers: bool = False, offset: str = "") -> str:
-        representation = super(ServiceGroup, self).to_string(show_wrappers, offset)
-        if len(self.services) > 0:
-            services_list = [service.to_string(show_wrappers, f"\t\t{offset}") for service in self.services]
-            services_representation = "\n%s" % "\n".join(services_list)
-        else:
-            services_representation = "[None]"
-        representation += f"{offset}\tservices: {services_representation}"
+    def dict(self) -> dict:
+        representation = super(ServiceGroup, self).dict()
+        representation.update({"services": [service.dict() for service in self.services]})
         return representation
 
     @staticmethod

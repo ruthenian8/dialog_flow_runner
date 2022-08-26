@@ -19,7 +19,7 @@ class Wrapper:
 
     def __init__(
         self,
-        pre_func: Optional[WrapperFunction] = None, # TODO: use same name handler
+        pre_func: Optional[WrapperFunction] = None,  # TODO: use same name handler
         post_func: Optional[WrapperFunction] = None,
         name: Optional[str] = None,
     ):
@@ -45,14 +45,16 @@ class Wrapper:
         elif handler_params == 2:
             function(ctx, actor)
         elif handler_params == 3:
-            function(ctx, actor, self._get_runtime_info(stage, service_info)) # TODO: info about all states of serv
+            function(ctx, actor, self._get_runtime_info(stage, service_info))
         else:
             raise Exception(
                 f"Too many parameters required for wrapper `{self.name}` ({stage.name}) handler: {handler_params}!"
             )
 
-    def to_string(self, offset: str = "") -> str:
-        representation = f"{offset}{type(self).__name__} '{self.name}':\n"
-        representation += f"{offset}\tpre_func: Callable '{self._pre_func.__name__}'\n"
-        representation += f"{offset}\tpost_func: Callable '{self._post_func.__name__}'"
-        return representation
+    def dict(self) -> dict:
+        return {
+            "type": type(self).__name__,
+            "name": self.name,
+            "pre_func": self._pre_func.__name__,
+            "post_func": self._post_func.__name__,
+        }

@@ -32,7 +32,7 @@ class Service(Pipe):
         service_handler: ServiceBuilder,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: Optional[int] = None,
-        asynchronous: Optional[bool] = None,
+        async_flag: Optional[bool] = None,
         start_condition: StartConditionCheckerFunction = always_start_condition,
         name: Optional[str] = None,
     ):
@@ -40,14 +40,14 @@ class Service(Pipe):
             self.__init__(**service_handler)
         elif isinstance(service_handler, Service):
             service_dict = vars(service_handler)
-            service_dict["asynchronous"] = service_dict.pop("_user_async")
-            service_dict.pop("_calc_async")
+            service_dict["async_flag"] = service_dict.pop("requested_async_flag", None)
+            service_dict.pop("calculated_async_flag")
             self.__init__(**service_dict)
         elif isinstance(service_handler, Callable):
             self.service_handler = service_handler
             name = name_service_handler(self.service_handler) if name is None else name
             super(Service, self).__init__(
-                wrappers, timeout, asynchronous, iscoroutinefunction(service_handler), start_condition, name
+                wrappers, timeout, async_flag, iscoroutinefunction(service_handler), start_condition, name
             )
         else:
             raise Exception(f"Unknown type of service_handler {service_handler}")
@@ -104,15 +104,15 @@ class Service(Pipe):
         if isinstance(self.service_handler, Actor):
             return ctx
 
-    def to_string(self, show_wrappers: bool = False, offset: str = "") -> str:
-        representation = super(Service, self).to_string(show_wrappers, offset)
+    def dict(self) -> dict:
+        representation = super(Service, self).dict()
         if isinstance(self.service_handler, Actor):
-            service_representation = str(self.service_handler)
+            service_representation = "Instance of Actor"
         elif isinstance(self.service_handler, Callable):
             service_representation = f"Callable '{self.service_handler.__name__}'"
         else:
             service_representation = "[Unknown]"
-        representation += f"{offset}\tservice_handler: {service_representation}"
+        representation.update({"service_handler": service_representation})
         return representation
 
 
@@ -123,7 +123,7 @@ def add_wrapper(pre_func: Optional[WrapperFunction] = None, post_func: Optional[
     return inner
 
 
-def wrap(*wrappers: Wrapper): # TODO: rename pls
+def wrap(*wrappers: Wrapper):  # TODO: rename pls
     """
     A wrapper wrapping function that creates WrappedService from any service function.
     Target function will no longer be a function after wrapping; it will become a WrappedService object.

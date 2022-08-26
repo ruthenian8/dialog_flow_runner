@@ -12,26 +12,22 @@ from .types import PipelineRunnerFunction, PollingProviderLoopFunction
 logger = logging.getLogger(__name__)
 
 
-class AbsProvider(ABC): # TODO: naming ?
+class AbsProvider(ABC):  # TODO: naming ?
     """
     Class that represents a provider used for communication between pipeline and users.
     It is responsible for connection between user and provider, as well as for request-response transactions.
     """
 
-    def __init__(self): # delete
-        self._pipeline_runner: Optional[PipelineRunnerFunction] = None
-
-# TODO: rename to run_pipeline
-    async def run(self, pipeline_runner: PipelineRunnerFunction): # TODO: add `, *args, **kwargs
+    # TODO: rename to run_pipeline
+    @abstractmethod
+    async def run(self, pipeline_runner: PipelineRunnerFunction):
         """
         Method invoked when provider is instantiated and connection is established.
         May be used for sending an introduction message or displaying general bot information.
         :pipeline_runner: - a function that should return pipeline response to user request;
             usually it's a `Pipeline._run_pipeline(request, ctx_id)` function.
         """
-        self._pipeline_runner = pipeline_runner # TODO: delete
-        # TODO: pipeline_runner(*args, **kwargs)
-
+        raise NotImplementedError
 
 
 class PollingProvider(AbsProvider):
@@ -63,9 +59,9 @@ class PollingProvider(AbsProvider):
         :e: - the exception.
         """
         if isinstance(e, Exception):
-            logger.error("Exception in %s loop!\n%s", type(self).__name__, str(e))
+            logger.error(f"Exception in {type(self).__name__} loop!\n{str(e)}")
         else:
-            logger.info("%s has stopped polling.", type(self).__name__)
+            logger.info(f"{type(self).__name__} has stopped polling.")
 
     async def run(
         self,
@@ -81,11 +77,10 @@ class PollingProvider(AbsProvider):
             called in each cycle, should return True to continue polling or False to stop.
         :timeout: - a time interval between polls (in seconds).
         """
-        await super().run(pipeline_runner)
         while loop():
             try:
                 user_updates = self._request()
-                responses = [await self._pipeline_runner(request, ctx_id) for request, ctx_id in user_updates]
+                responses = [await pipeline_runner(request, ctx_id) for request, ctx_id in user_updates]
                 self._respond(responses)
                 await sleep(timeout)
 
@@ -98,6 +93,12 @@ class CallbackProvider(AbsProvider):
     """
     Callback provider is waiting for user input and answers once it gets one.
     """
+
+    def __init__(self):
+        self._pipeline_runner: Optional[PipelineRunnerFunction] = None
+
+    async def run(self, pipeline_runner: PipelineRunnerFunction):
+        self._pipeline_runner = pipeline_runner
 
     def on_request(self, request: Any, ctx_id: Any) -> Context:
         """
@@ -131,7 +132,7 @@ class CLIProvider(PollingProvider):
         return [(input(self._prompt_request), self._ctx_id)]
 
     def _respond(self, response: List[Context]):
-        print(f"{self._prompt_response}{response[0].last_response}") # maybe setup output?
+        print(f"{self._prompt_response}{response[0].last_response}")  # maybe setup output?
 
     async def run(self, pipeline_runner: PipelineRunnerFunction, **kwargs):
         """

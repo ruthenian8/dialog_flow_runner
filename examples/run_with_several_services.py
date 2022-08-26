@@ -53,9 +53,4 @@ pipeline = {
 
 pipeline = Pipeline.from_dict(pipeline)
 if __name__ == "__main__":
-    print("It may be not easy to understand what service names were generated for the pipeline.")
-    print(
-        "Use given code in that case to acquire "
-        f"names: {[(prefix, service.name) for prefix, service in pipeline.flat_services]}"
-    )
     pipeline.run()

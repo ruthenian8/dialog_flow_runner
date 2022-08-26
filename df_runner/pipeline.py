@@ -1,5 +1,5 @@
 import logging
-from asyncio import run # TODO: replace by `import asyncio`  and use `asyncio.run` instead `run`
+from asyncio import run  # TODO: replace by `import asyncio`  and use `asyncio.run` instead `run`
 from typing import Any, Union, List, Dict, Optional
 
 from df_db_connector import DBAbstractConnector
@@ -12,8 +12,7 @@ from .service_group import ServiceGroup
 from .types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder
 from .service import Service
 from .types import RUNNER_STATE_KEY
-from .pipeline_utils import rename_same_service_prefix
-
+from .pipeline_utils import rename_same_service_prefix, print_instance_dict
 
 logger = logging.getLogger(__name__)
 
@@ -51,27 +50,23 @@ class Pipeline:
         if optimization_warnings:
             self.services_pipeline.check_async()
 
-        flat_services = self.services_pipeline.get_subgroups_and_services() # TODO: use self.flat_services instead in next line
+        flat_services = self.services_pipeline.get_subgroups_and_services()
         flat_services = [serv for _, serv in flat_services if isinstance(serv, Service)]
         actor = [serv.service_handler for serv in flat_services if isinstance(serv.service_handler, Actor)]
         self.actor = actor and actor[0]
         if not isinstance(self.actor, Actor):
             raise Exception("Actor not found.")
 
-    @property
-    def flat_services(self):
-        return self.services_pipeline.get_subgroups_and_services() # with services and service groups
+    def dict(self) -> dict:
+        return {
+            "type": type(self).__name__,
+            "provider": f"Instance of {type(self.provider).__name__}",
+            "context_db": f"Instance of {type(self.context_db).__name__}",
+            "services": [self.services_pipeline.dict()],
+        }
 
-# TODO: maybe __repr__
     def to_string(self, show_wrappers: bool = False) -> str:
-        representation = "Pipeline:\n"
-        representation += f"\tprovider: {str(self.provider)}\n"
-        if isinstance(self.context_db, dict):
-            representation += "\tcontext_db: %s" % "[Dict]\n"
-        else:
-            representation += str(self.context_db)
-        representation += "\tservices:\n%s" % self.services_pipeline.to_string(show_wrappers, "\t\t")
-        return representation
+        return print_instance_dict(self.dict(), show_wrappers)
 
     @classmethod
     def from_script(
