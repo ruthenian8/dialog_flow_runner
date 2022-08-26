@@ -11,8 +11,8 @@ from ..service.wrapper import Wrapper
 from ..provider import AbsProvider, CLIProvider
 from ..service.group import ServiceGroup
 from ..types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder
-from ..types import RUNNER_STATE_KEY
-from .utils import rename_same_service_prefix, print_instance_dict
+from ..types import PIPELINE_STATE_KEY
+from .utils import resolve_components_name_collisions, print_component_info_dict
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,8 @@ class Pipeline:
 
     def __init__(
         self,
-        provider: Optional[AbsProvider] = None,
-        context_db: Optional[Union[DBAbstractConnector, Dict]] = None,
+        provider: Optional[AbsProvider] = None,  # NAMING: connected to Provider naming
+        context_db: Optional[Union[DBAbstractConnector, Dict]] = None,  # NAMING: context, but not always db
         services: ServiceGroupBuilder = None,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: int = -1,
@@ -39,35 +39,35 @@ class Pipeline:
     ):
         self.provider = CLIProvider() if provider is None else provider
         self.context_db = {} if context_db is None else context_db
-        self.services_pipeline = ServiceGroup(
+        self._services_pipeline = ServiceGroup(
             services,
             wrappers=[] if wrappers is None else wrappers,
             timeout=timeout,
             name="pipeline",
         )
-        self.services_pipeline = rename_same_service_prefix(self.services_pipeline)
+        self._services_pipeline = resolve_components_name_collisions(self._services_pipeline)
 
         if optimization_warnings:
-            self.services_pipeline.check_async()
+            self._services_pipeline.log_optimization_warnings()
 
-        flat_services = self.services_pipeline.get_subgroups_and_services()
+        flat_services = self._services_pipeline.get_subgroups_and_services()
         flat_services = [serv for _, serv in flat_services if isinstance(serv, Service)]
         actor = [serv.service_handler for serv in flat_services if isinstance(serv.service_handler, Actor)]
-        self.actor = actor and actor[0]
+        self.actor = actor and actor[0]  # FIXME: obscure syntax
         if not isinstance(self.actor, Actor):
             raise Exception("Actor not found.")
 
     @property
-    def dict(self) -> dict:
+    def info_dict(self) -> dict:
         return {
             "type": type(self).__name__,
             "provider": f"Instance of {type(self.provider).__name__}",
             "context_db": f"Instance of {type(self.context_db).__name__}",
-            "services": [self.services_pipeline.dict],
+            "services": [self._services_pipeline.info_dict],
         }
 
-    def to_string(self, show_wrappers: bool = False) -> str:
-        return print_instance_dict(self.dict, show_wrappers)
+    def to_string(self, show_wrappers: bool = False) -> str:  # NAMING: 'pretty_print', add pretty printing parameters (like offsets, etc.)
+        return print_component_info_dict(self.info_dict, show_wrappers)
 
     @classmethod
     def from_script(
@@ -75,8 +75,8 @@ class Pipeline:
         script: Union[Script, Dict],
         start_label: NodeLabel2Type,
         fallback_label: Optional[NodeLabel2Type] = None,
-        context_db: Optional[Union[DBAbstractConnector, Dict]] = None,
-        request_provider: AbsProvider = CLIProvider(),
+        context_db: Optional[Union[DBAbstractConnector, Dict]] = None,  # NAMING: connected to context_db
+        request_provider: AbsProvider = CLIProvider(),  # NAMING: connected to Provider naming
         pre_services: Optional[List[ServiceBuilder]] = None,
         post_services: Optional[List[ServiceBuilder]] = None,
     ):
@@ -96,10 +96,10 @@ class Pipeline:
     async def _run_pipeline(self, request: Any, ctx_id: Optional[Any] = None) -> Context:
         ctx = self.context_db.get(ctx_id, Context(id=ctx_id))
 
-        ctx.framework_states[RUNNER_STATE_KEY] = {}
+        ctx.framework_states[PIPELINE_STATE_KEY] = {}
         ctx.add_request(request)
-        ctx = await self.services_pipeline(ctx, self.actor)
-        del ctx.framework_states[RUNNER_STATE_KEY]
+        ctx = await self._services_pipeline(ctx, self.actor)
+        del ctx.framework_states[PIPELINE_STATE_KEY]
 
         self.context_db[ctx_id] = ctx
         return ctx

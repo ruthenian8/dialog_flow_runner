@@ -1,24 +1,23 @@
 import logging
 from asyncio import as_completed, TimeoutError
-from typing import Optional, List, Union, Tuple, Awaitable, Any
+from typing import Optional, List, Union, Tuple, Awaitable
 
 from df_engine.core import Actor, Context
 
 from .wrapper import WrapperStage, Wrapper
-from ..pipeline.component import Pipe
+from ..pipeline.component import PipelineComponent
 from ..types import (
     StartConditionCheckerFunction,
-    PipeExecutionState,
-    ServiceGroupBuilder,
+    ComponentExecutionState,
+    ServiceGroupBuilder, ServiceBuilder,
 )
 from .service import Service
 from ..conditions import always_start_condition
 
-
 logger = logging.getLogger(__name__)
 
 
-class ServiceGroup(Pipe):
+class ServiceGroup(PipelineComponent):
     """
     An instance that represents a service group.
     Group can be also defined in pipeline dict as a nested service list.
@@ -35,31 +34,23 @@ class ServiceGroup(Pipe):
         services: ServiceGroupBuilder,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: Optional[int] = None,
-        async_flag: Optional[bool] = None,
+        async_flag: Optional[bool] = None,  # NAMING: 'asynchronous', user defines an __object__, this is its feature
         start_condition: StartConditionCheckerFunction = always_start_condition,
         name: Optional[str] = "service_group",
     ):
         if isinstance(services, ServiceGroup):
-            self.__init__(**services.decay())
+            self.__init__(**services.cast_to_custom_dict(("calculated_async_flag",), (("requested_async_flag", "async_flag"),)))
         elif isinstance(services, dict):
             self.__init__(**services)
         elif isinstance(services, List):
-            self.services = self._cast_services(services)
+            self.services = self._create_components(services)
             calc_async = all([service.asynchronous for service in self.services])
             super(ServiceGroup, self).__init__(wrappers, timeout, async_flag, calc_async, start_condition, name)
         else:
             raise Exception(f"Unknown type for ServiceGroup {services}")
 
-    def decay(
-        self,
-        drop_attrs: Tuple[str, ...] = (),
-        replace_attrs: Tuple[Tuple[str, str], ...] = (),
-        add_attrs: Tuple[Tuple[str, Any], ...] = (),
-    ) -> dict:
-        return super(ServiceGroup, self).decay(("calculated_async_flag",), (("requested_async_flag", "async_flag"),))
-
     async def _run_services_group(self, ctx: Context, actor: Actor) -> Context:
-        self._set_state(ctx, PipeExecutionState.RUNNING)
+        self._set_state(ctx, ComponentExecutionState.RUNNING)
 
         service_futures = [service(ctx, actor) for service in self.services]
         for service, future in zip(
@@ -74,8 +65,8 @@ class ServiceGroup(Pipe):
             except TimeoutError:
                 logger.warning(f"{type(service).__name__} '{service.name}' timed out!")
 
-        failed = any([service._get_state(ctx) == PipeExecutionState.FAILED for service in self.services])
-        self._set_state(ctx, PipeExecutionState.FAILED if failed else PipeExecutionState.FINISHED)
+        failed = any([service.get_state(ctx) == ComponentExecutionState.FAILED for service in self.services])
+        self._set_state(ctx, ComponentExecutionState.FAILED if failed else ComponentExecutionState.FINISHED)
         return ctx
 
     async def _run(
@@ -84,23 +75,23 @@ class ServiceGroup(Pipe):
         actor: Optional[Actor] = None,
     ) -> Optional[Context]:
         for wrapper in self.wrappers:
-            wrapper.run_wrapper_function(WrapperStage.PREPROCESSING, ctx, actor, self._get_runtime_info(ctx))
+            wrapper.run_stage(WrapperStage.PREPROCESSING, ctx, actor, self._get_runtime_info(ctx))
 
         try:
             if self.start_condition(ctx, actor):
                 ctx = await self._run_services_group(ctx, actor)
             else:
-                self._set_state(ctx, PipeExecutionState.FAILED)
+                self._set_state(ctx, ComponentExecutionState.FAILED)
 
         except Exception as e:
-            self._set_state(ctx, PipeExecutionState.FAILED)
+            self._set_state(ctx, ComponentExecutionState.FAILED)
             logger.error(f"ServiceGroup '{self.name}' execution failed!\n{e}")
 
         for wrapper in self.wrappers:
-            wrapper.run_wrapper_function(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
+            wrapper.run_stage(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
         return ctx if not self.asynchronous else None
 
-    def get_subgroups_and_services(self, prefix: str = "", recursion_level: int = 99) -> List[Tuple[str, Service]]:
+    def get_subgroups_and_services(self, prefix: str = "", recursion_level: int = 99) -> List[Tuple[str, Service]]:  # FIXME: Why not recursion? Why 99? Is that efficiency __really__ that important?
         """
         Returns a copy of created inner services flat array used during actual pipeline running.
         Breadth First Algorithm
@@ -115,7 +106,7 @@ class ServiceGroup(Pipe):
                     services += service.get_subgroups_and_services(prefix, recursion_level)
         return services
 
-    def check_async(self):
+    def log_optimization_warnings(self):
         for service in self.services:
             if isinstance(service, Service):
                 if (
@@ -132,7 +123,7 @@ class ServiceGroup(Pipe):
             else:
                 if not service.calculated_async_flag:
                     if service.requested_async_flag is None and any(
-                        [subservice.asynchronous for subservice in service.services]
+                        [sub_service.asynchronous for sub_service in service.services]
                     ):
                         logger.warning(
                             f"ServiceGroup '{service.name}' contains both sync and async services, "
@@ -143,16 +134,16 @@ class ServiceGroup(Pipe):
                             f"ServiceGroup '{service.name}' is marked asynchronous,"
                             "however contains synchronous services in it!",
                         )
-                service.check_async()
+                service.log_optimization_warnings()
 
     @property
-    def dict(self) -> dict:
-        representation = super(ServiceGroup, self).dict
-        representation.update({"services": [service.dict for service in self.services]})
+    def info_dict(self) -> dict:
+        representation = super(ServiceGroup, self).info_dict
+        representation.update({"services": [service.info_dict for service in self.services]})
         return representation
 
     @staticmethod
-    def _cast_services(services: ServiceGroupBuilder) -> List[Union[Service, "ServiceGroup"]]:
+    def _create_components(services: ServiceGroupBuilder) -> List[Union[ServiceBuilder, ServiceGroupBuilder]]:
         handled_services = []
         for service in services:
             if isinstance(service, List) or isinstance(service, ServiceGroup):

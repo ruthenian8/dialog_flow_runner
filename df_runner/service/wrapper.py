@@ -4,7 +4,7 @@ from typing import Optional
 
 from df_engine.core import Context, Actor
 
-from ..types import WrapperFunction, WrapperInfo, ServiceInfo, WrapperStage
+from ..types import WrapperFunction, WrapperRuntimeInfo, ServiceRuntimeInfo, WrapperStage
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class Wrapper:
 
     def __init__(
         self,
-        pre_func: Optional[WrapperFunction] = None,  # TODO: use same name handler
+        pre_func: Optional[WrapperFunction] = None,  # NAMING: ('proprocess', 'postprocess'), ('before', 'after')
         post_func: Optional[WrapperFunction] = None,
         name: Optional[str] = None,
     ):
@@ -27,14 +27,14 @@ class Wrapper:
         self._post_func = post_func
         self.name = name
 
-    def _get_runtime_info(self, stage: WrapperStage, service_info: ServiceInfo) -> WrapperInfo:
+    def _get_runtime_info(self, stage: WrapperStage, service_info: ServiceRuntimeInfo) -> WrapperRuntimeInfo:
         return {
             "name": self.name,
             "stage": stage,
             "service": service_info,
         }
 
-    def run_wrapper_function(self, stage: WrapperStage, ctx: Context, actor: Actor, service_info: ServiceInfo):
+    def run_stage(self, stage: WrapperStage, ctx: Context, actor: Actor, service_info: ServiceRuntimeInfo):
         function = self._pre_func if stage is WrapperStage.PREPROCESSING else self._post_func
         if function is None:
             return
@@ -52,7 +52,7 @@ class Wrapper:
             )
 
     @property
-    def dict(self) -> dict:
+    def info_dict(self) -> dict:
         return {
             "type": type(self).__name__,
             "name": self.name,

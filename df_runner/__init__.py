@@ -7,12 +7,12 @@ nest_asyncio.apply()
 
 
 from .types import (
-    PipeExecutionState,
+    ComponentExecutionState,
     CallbackType,
     WrapperStage,
     StartConditionCheckerFunction,
-    ServiceInfo,
-    WrapperInfo,
+    ServiceRuntimeInfo,
+    WrapperRuntimeInfo,
 )
 
 from .provider import CLIProvider, CallbackProvider
@@ -25,10 +25,10 @@ from .conditions import (
     any_condition,
 )
 
-from .pipeline.component import Pipe
-from .service.service import Service, wrap, add_wrapper
-from .service.group import ServiceGroup
+from .pipeline.component import PipelineComponent
 from .service.wrapper import Wrapper
+from .service.service import Service, with_wrappers, add_wrapper
+from .service.group import ServiceGroup
 from .pipeline.pipeline import Pipeline
 
 

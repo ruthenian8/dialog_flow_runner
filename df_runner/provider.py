@@ -8,19 +8,17 @@ from df_engine.core import Context
 
 from .types import PipelineRunnerFunction, PollingProviderLoopFunction
 
-
 logger = logging.getLogger(__name__)
 
 
-class AbsProvider(ABC):  # TODO: naming ?
+class AbsProvider(ABC):  # NAMING: 'ioproxy', 'interface', 'ioadapter', 'userconnector'
     """
     Class that represents a provider used for communication between pipeline and users.
     It is responsible for connection between user and provider, as well as for request-response transactions.
     """
 
-    # TODO: rename to run_pipeline
     @abstractmethod
-    async def run(self, pipeline_runner: PipelineRunnerFunction):
+    async def run(self, pipeline_runner: PipelineRunnerFunction):  # NAMING: connected to service_handler naming (use word 'connect')
         """
         Method invoked when provider is instantiated and connection is established.
         May be used for sending an introduction message or displaying general bot information.

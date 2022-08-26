@@ -2,7 +2,7 @@ from typing import Any
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIProvider, Wrapper, Pipeline, ServiceGroup, wrap
+from df_runner import CLIProvider, Wrapper, Pipeline, ServiceGroup, with_wrappers
 from examples import basic_example
 
 actor = Actor(
@@ -10,7 +10,7 @@ actor = Actor(
 )
 
 
-@wrap(
+@with_wrappers(
     Wrapper(
         pre_func=lambda ctx, act, _: print("\t\tpre-wrapper"),
         post_func=lambda ctx, act, _: print("\t\tpost-wrapper"),

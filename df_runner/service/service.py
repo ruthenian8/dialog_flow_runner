@@ -1,20 +1,20 @@
 import logging
 from asyncio import iscoroutinefunction
 from inspect import signature
-from typing import List, Optional, Callable, Tuple, Any
+from typing import List, Optional, Callable
 
 from df_engine.core import Actor, Context
 
 from .utils import name_service_handler, wrap_sync_function_in_async
 from .wrapper import Wrapper
-from ..types import ServiceBuilder, StartConditionCheckerFunction, PipeExecutionState, WrapperStage, WrapperFunction
-from ..pipeline.component import Pipe
+from ..types import ServiceBuilder, StartConditionCheckerFunction, ComponentExecutionState, WrapperStage, WrapperFunction
+from ..pipeline.component import PipelineComponent
 from ..conditions import always_start_condition
 
 logger = logging.getLogger(__name__)
 
 
-class Service(Pipe):
+class Service(PipelineComponent):
     """
     Extension class for annotation functions, may be created from dict.
 
@@ -28,17 +28,17 @@ class Service(Pipe):
 
     def __init__(
         self,
-        service_handler: ServiceBuilder,
+        service_handler: ServiceBuilder,  # NAMING: 'handler', 'operator', 'action'
         wrappers: Optional[List[Wrapper]] = None,
         timeout: Optional[int] = None,
-        async_flag: Optional[bool] = None,
+        async_flag: Optional[bool] = None,  # NAMING: 'asynchronous', user defines an __object__, this is its feature
         start_condition: StartConditionCheckerFunction = always_start_condition,
         name: Optional[str] = None,
     ):
         if isinstance(service_handler, dict):
             self.__init__(**service_handler)
         elif isinstance(service_handler, Service):
-            self.__init__(**service_handler.decay())
+            self.__init__(**service_handler.cast_to_custom_dict(("calculated_async_flag",), (("requested_async_flag", "async_flag"),)))
         elif isinstance(service_handler, Callable):
             self.service_handler = service_handler
             name = name_service_handler(self.service_handler) if name is None else name
@@ -48,15 +48,7 @@ class Service(Pipe):
         else:
             raise Exception(f"Unknown type of service_handler {service_handler}")
 
-    def decay(
-        self,
-        drop_attrs: Tuple[str, ...] = (),
-        replace_attrs: Tuple[Tuple[str, str], ...] = (),
-        add_attrs: Tuple[Tuple[str, Any], ...] = (),
-    ) -> dict:
-        return super(Service, self).decay(("calculated_async_flag",), (("requested_async_flag", "async_flag"),))
-
-    async def _run_service_handler(self, ctx: Context, actor: Actor):
+    async def _run_service_handler(self, ctx: Context, actor: Actor):  # NAMING: connected to service_handler naming
         handler_params = len(signature(self.service_handler).parameters)
         if handler_params == 1:
             await wrap_sync_function_in_async(self.service_handler, ctx)
@@ -70,22 +62,22 @@ class Service(Pipe):
     def _run_as_actor(self, ctx: Context):
         try:
             ctx = self.service_handler(ctx)
-            self._set_state(ctx, PipeExecutionState.FINISHED)
+            self._set_state(ctx, ComponentExecutionState.FINISHED)
         except Exception as exc:
-            self._set_state(ctx, PipeExecutionState.FAILED)
+            self._set_state(ctx, ComponentExecutionState.FAILED)
             logger.error(f"Actor '{self.name}' execution failed!\n{exc}")
         return ctx
 
     async def _run_as_service(self, ctx: Context, actor: Actor):
         try:
             if self.start_condition(ctx, actor):
-                self._set_state(ctx, PipeExecutionState.RUNNING)
+                self._set_state(ctx, ComponentExecutionState.RUNNING)
                 await self._run_service_handler(ctx, actor)
-                self._set_state(ctx, PipeExecutionState.FINISHED)
+                self._set_state(ctx, ComponentExecutionState.FINISHED)
             else:
-                self._set_state(ctx, PipeExecutionState.FAILED)
+                self._set_state(ctx, ComponentExecutionState.FAILED)
         except Exception as e:
-            self._set_state(ctx, PipeExecutionState.FAILED)
+            self._set_state(ctx, ComponentExecutionState.FAILED)
             logger.error(f"Service '{self.name}' execution failed!\n{e}")
 
     async def _run(self, ctx: Context, actor: Optional[Actor] = None) -> Optional[Context]:
@@ -95,7 +87,7 @@ class Service(Pipe):
         If execution fails the error is caught here.
         """
         for wrapper in self.wrappers:
-            wrapper.run_wrapper_function(WrapperStage.PREPROCESSING, ctx, actor, self._get_runtime_info(ctx))
+            wrapper.run_stage(WrapperStage.PREPROCESSING, ctx, actor, self._get_runtime_info(ctx))
 
         if isinstance(self.service_handler, Actor):
             ctx = self._run_as_actor(ctx)
@@ -103,14 +95,14 @@ class Service(Pipe):
             await self._run_as_service(ctx, actor)
 
         for wrapper in self.wrappers:
-            wrapper.run_wrapper_function(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
+            wrapper.run_stage(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
 
         if isinstance(self.service_handler, Actor):
             return ctx
 
     @property
-    def dict(self) -> dict:
-        representation = super(Service, self).dict
+    def info_dict(self) -> dict:
+        representation = super(Service, self).info_dict
         if isinstance(self.service_handler, Actor):
             service_representation = f"Instance of {type(self.service_handler).__name__}"
         elif isinstance(self.service_handler, Callable):
@@ -121,14 +113,14 @@ class Service(Pipe):
         return representation
 
 
-def add_wrapper(pre_func: Optional[WrapperFunction] = None, post_func: Optional[WrapperFunction] = None):
+def wrap_with(pre_func: Optional[WrapperFunction] = None, post_func: Optional[WrapperFunction] = None):
     def inner(service_handler: ServiceBuilder) -> Service:
         return Service(service_handler=service_handler, wrappers=[Wrapper(pre_func, post_func)])
 
     return inner
 
 
-def wrap(*wrappers: Wrapper):  # TODO: rename pls
+def with_wrappers(*wrappers: Wrapper):
     """
     A wrapper wrapping function that creates WrappedService from any service function.
     Target function will no longer be a function after wrapping; it will become a WrappedService object.

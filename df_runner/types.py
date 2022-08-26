@@ -7,15 +7,15 @@ from df_engine.core import Context, Actor
 from typing_extensions import NotRequired
 
 
-_ForwardPipe = NewType("Pipe", None)
-_ForwardService = NewType("Service", _ForwardPipe)
-_ForwardServiceGroup = NewType("ServiceGroup", _ForwardPipe)
+_ForwardPipelineComponent = NewType("PipelineComponent", None)
+_ForwardService = NewType("Service", _ForwardPipelineComponent)
+_ForwardServiceGroup = NewType("ServiceGroup", _ForwardPipelineComponent)
 _ForwardServiceWrapper = NewType("Wrapper", None)
 _ForwardProvider = NewType("ABCProvider", ABC)
 
 
 @unique
-class PipeExecutionState(Enum):
+class ComponentExecutionState(Enum):
     """
     Enum, representing service in a pipeline state.
     The following states are supported:
@@ -61,7 +61,7 @@ class WrapperStage(Enum):
 """
 RUNNER: storage for services and groups execution status
 """
-RUNNER_STATE_KEY = "PIPELINE"
+PIPELINE_STATE_KEY = "PIPELINE"
 
 
 """
@@ -92,23 +92,23 @@ StartConditionCheckerAggregationFunction = Callable[[Iterable[bool]], bool]
 PollingProviderLoopFunction = Callable[[], bool]
 
 
-ServiceInfo = TypedDict(
-    "ServiceInfo",
+ServiceRuntimeInfo = TypedDict(
+    "ServiceRuntimeInfo",
     {
         "name": str,
         "timeout": Optional[int],
         "asynchronous": bool,
-        "execution_state": Dict[str, PipeExecutionState],
+        "execution_state": Dict[str, ComponentExecutionState],
     },
 )
 
 
-WrapperInfo = TypedDict(
-    "WrapperInfo",
+WrapperRuntimeInfo = TypedDict(
+    "WrapperRuntimeInfo",
     {
         "name": Optional[str],
         "stage": WrapperStage,
-        "service": ServiceInfo,
+        "service": ServiceRuntimeInfo,
     },
 )
 
@@ -120,7 +120,7 @@ Accepts context, actor (current pipeline state), name of the wrapped service and
 WrapperFunction = Union[
     Callable[[Context], None],
     Callable[[Context, Actor], None],
-    Callable[[Context, Actor, WrapperInfo], None],
+    Callable[[Context, Actor, WrapperRuntimeInfo], None],
 ]
 
 
@@ -129,8 +129,8 @@ ServiceFunction = Union[
     Callable[[Context], Awaitable[None]],
     Callable[[Context, Actor], None],
     Callable[[Context, Actor], Awaitable[None]],
-    Callable[[Context, Actor, ServiceInfo], None],
-    Callable[[Context, Actor, ServiceInfo], Awaitable[None]],
+    Callable[[Context, Actor, ServiceRuntimeInfo], None],
+    Callable[[Context, Actor, ServiceRuntimeInfo], Awaitable[None]],
 ]
 
 

@@ -8,12 +8,12 @@ from df_engine.core import Context, Actor
 
 from ..service.wrapper import Wrapper
 from ..conditions import always_start_condition
-from ..types import RUNNER_STATE_KEY, StartConditionCheckerFunction, PipeExecutionState, ServiceInfo
+from ..types import PIPELINE_STATE_KEY, StartConditionCheckerFunction, ComponentExecutionState, ServiceRuntimeInfo
 
 logger = logging.getLogger(__name__)
 
 
-class Pipe(ABC):
+class PipelineComponent(ABC):
     def __init__(
         self,
         wrappers: Optional[List[Wrapper]] = None,
@@ -30,7 +30,7 @@ class Pipe(ABC):
         self.start_condition = start_condition
         self.name = name
 
-    def decay(
+    def cast_to_custom_dict(
         self,
         drop_attrs: Tuple[str, ...] = (),
         replace_attrs: Tuple[Tuple[str, str], ...] = (),
@@ -39,7 +39,7 @@ class Pipe(ABC):
         replace_attrs = dict(replace_attrs)
         result = {}
         for attribute in vars(self):
-            if not attribute.startswith("_") and attribute not in drop_attrs:
+            if not attribute.startswith("__") and attribute not in drop_attrs:
                 if attribute in replace_attrs:
                     result[replace_attrs[attribute]] = getattr(self, attribute)
                 else:
@@ -47,13 +47,13 @@ class Pipe(ABC):
         result.update(dict(add_attrs))
         return result
 
-    def _set_state(self, ctx: Context, value: PipeExecutionState):
-        if RUNNER_STATE_KEY not in ctx.framework_states:
-            ctx.framework_states[RUNNER_STATE_KEY] = {}
-        ctx.framework_states[RUNNER_STATE_KEY][self.name] = value
+    def _set_state(self, ctx: Context, value: ComponentExecutionState):
+        if PIPELINE_STATE_KEY not in ctx.framework_states:
+            ctx.framework_states[PIPELINE_STATE_KEY] = {}
+        ctx.framework_states[PIPELINE_STATE_KEY][self.name] = value
 
-    def _get_state(self, ctx: Context, default: Optional[PipeExecutionState] = None) -> PipeExecutionState:
-        return ctx.framework_states[RUNNER_STATE_KEY].get(self.name, default)
+    def get_state(self, ctx: Context, default: Optional[ComponentExecutionState] = None) -> ComponentExecutionState:
+        return ctx.framework_states[PIPELINE_STATE_KEY].get(self.name, default)
 
     @property
     def asynchronous(self) -> bool:
@@ -70,20 +70,20 @@ class Pipe(ABC):
         else:
             return await self._run(ctx, actor)
 
-    def _get_runtime_info(self, ctx: Context) -> ServiceInfo:
+    def _get_runtime_info(self, ctx: Context) -> ServiceRuntimeInfo:
         return {
             "name": self.name,
             "timeout": self.timeout,
             "asynchronous": self.asynchronous,
-            "execution_state": deepcopy(ctx.framework_states[RUNNER_STATE_KEY]),
+            "execution_state": deepcopy(ctx.framework_states[PIPELINE_STATE_KEY]),
         }
 
     @property
-    def dict(self) -> dict:
+    def info_dict(self) -> dict:
         return {
             "type": type(self).__name__,
             "name": self.name,
             "asynchronous": self.asynchronous,
             "start_condition": self.start_condition.__name__,
-            "wrappers": [wrapper.dict for wrapper in self.wrappers],
+            "wrappers": [wrapper.info_dict for wrapper in self.wrappers],
         }

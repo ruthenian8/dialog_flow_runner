@@ -3,14 +3,14 @@ from typing import Optional
 from df_engine.core import Actor, Context
 
 from .types import (
-    RUNNER_STATE_KEY,
+    PIPELINE_STATE_KEY,
     StartConditionCheckerFunction,
-    PipeExecutionState,
+    ComponentExecutionState,
     StartConditionCheckerAggregationFunction,
 )
 
 
-def always_start_condition(ctx: Context, actor: Actor) -> bool:
+def always_start_condition(_: Context, __: Actor) -> bool:
     """
     Condition that always allows service execution, it's the default condition for all services.
     """
@@ -23,13 +23,13 @@ def service_successful_condition(name: Optional[str] = None) -> StartConditionCh
     :name: - the name of the condition service or group
     """
 
-    def check_service_state(ctx: Context, actor: Actor):
+    def check_service_state(ctx: Context, _: Actor):
         """
         Function that checks single service ServiceState and returns ConditionState for this service.
         """
 
-        state = ctx.framework_states[RUNNER_STATE_KEY].get(name, PipeExecutionState.NOT_RUN)
-        return state == PipeExecutionState.FINISHED
+        state = ctx.framework_states[PIPELINE_STATE_KEY].get(name, ComponentExecutionState.NOT_RUN)
+        return state == ComponentExecutionState.FINISHED
 
     return check_service_state
 

@@ -6,7 +6,7 @@ from df_engine.core import Actor
 from ..types import ServiceBuilder
 
 
-def name_service_handler(service_handler: ServiceBuilder) -> str:
+def name_service_handler(service_handler: ServiceBuilder) -> str:  # NAMING: connected to service_handler naming
     if isinstance(service_handler, Actor):
         return "actor"
     elif isinstance(service_handler, Callable):

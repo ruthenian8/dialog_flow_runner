@@ -5,7 +5,7 @@ from ..service.service import Service
 from ..service.group import ServiceGroup
 
 
-def print_instance_dict(
+def print_component_info_dict(
     service: dict,
     show_wrappers: bool,
     offset: str = "",
@@ -20,7 +20,7 @@ def print_instance_dict(
         if key not in (type_key, name_key, wrappers_key) or (key == wrappers_key and show_wrappers):
             if isinstance(value, List):
                 if len(value) > 0:
-                    values = [print_instance_dict(instance, show_wrappers, f"\t\t{offset}") for instance in value]
+                    values = [print_component_info_dict(instance, show_wrappers, f"\t\t{offset}") for instance in value]
                     value_str = "\n%s" % "\n".join(values)
                 else:
                     value_str = "[None]"
@@ -30,30 +30,29 @@ def print_instance_dict(
     return representation[:-1]
 
 
-def create_service_name(base_name, services: List[Union[Service, ServiceGroup]]):
+def rename_component_incrementing(base_name: str, services: List[Union[Service, ServiceGroup]]):
     name_index = 0
     while f"{base_name}_{name_index}" in [serv.name for serv in services]:
         name_index += 1
     return f"{base_name}_{name_index}"
 
 
-def rename_same_service_prefix(services_pipeline: ServiceGroup):
-    name_scoup_level = 0
+def resolve_components_name_collisions(service_group: ServiceGroup):  # FIXME: WARNING! services with same name but different paths can co-exist! Why not recursion? Complex code.
+    name_scope_level = 0
     checked_names = 0
     while True:
-        name_scoup_level += 1
-        flat_services = services_pipeline.get_subgroups_and_services(recursion_level=name_scoup_level)
+        name_scope_level += 1
+        flat_services = service_group.get_subgroups_and_services(recursion_level=name_scope_level)
         flat_services = flat_services[checked_names:]
-        if not flat_services:
+        if not flat_services:  # FIXME: obscure syntax
             break
+
         checked_names += len(flat_services)
         flat_services = [(f"{prefix}.{serv.name}", serv) for prefix, serv in flat_services]
         paths, services = list(zip(*flat_services))
         path_counter = Counter(paths)
 
-        if max(path_counter.values()) > 1:
-            # rename procedure for same paths
-            for path, service in flat_services:
-                if path_counter[path] > 1:
-                    service.name = create_service_name(service.name, services)
-    return services_pipeline
+        for path, service in flat_services:
+            if path_counter[path] > 1:
+                service.name = rename_component_incrementing(service.name, services)
+    return service_group
