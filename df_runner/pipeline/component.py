@@ -21,7 +21,7 @@ class PipelineComponent(ABC):
         requested_async_flag: Optional[bool] = None,
         calculated_async_flag: bool = False,
         start_condition: StartConditionCheckerFunction = always_start_condition,
-        name: str = "pipe",
+        name: str = "pipe", # TODO: rename
     ):
         self.wrappers = [] if wrappers is None else wrappers
         self.timeout = timeout
@@ -30,10 +30,10 @@ class PipelineComponent(ABC):
         self.start_condition = start_condition
         self.name = name
 
-    def cast_to_custom_dict(
+    def cast_to_custom_dict( # TODO: naming `get_attrs_with_constrains`?
         self,
         drop_attrs: Tuple[str, ...] = (),
-        replace_attrs: Tuple[Tuple[str, str], ...] = (),
+        replace_attrs: Tuple[Tuple[str, str], ...] = (), # TODO: change type to `Dict` and name can be like "attr_name_mapping"
         add_attrs: Tuple[Tuple[str, Any], ...] = (),
     ) -> dict:
         replace_attrs = dict(replace_attrs)

@@ -130,7 +130,7 @@ class CLIProvider(PollingProvider):
         return [(input(self._prompt_request), self._ctx_id)]
 
     def _respond(self, response: List[Context]):
-        print(f"{self._prompt_response}{response[0].last_response}")  # maybe setup output?
+        print(f"{self._prompt_response}{response[0].last_response}")  # TODO: maybe setup output?
 
     async def run(self, pipeline_runner: PipelineRunnerFunction, **kwargs):
         """

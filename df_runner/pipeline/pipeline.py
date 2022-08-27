@@ -26,7 +26,7 @@ class Pipeline:
         provider (optionally) - an AbsProvider instance for this pipeline
         connector (optionally) - an DBAbstractConnector instance for this pipeline or a dict
         wrappers (optionally) - Wrapper classes array to add to all pipeline services
-    """
+    """ # TODO: upd description
 
     def __init__(
         self,
