@@ -61,18 +61,23 @@ class ServiceGroup(PipelineComponent):
     async def _run_services_group(self, ctx: Context, actor: Actor) -> Context:
         self._set_state(ctx, ComponentExecutionState.RUNNING)
 
-        service_futures = [service(ctx, actor) if self.asynchronous else service for service in self.services]
-        for service, future in zip(
-            self.services, asyncio.as_completed(service_futures) if self.asynchronous else service_futures
-        ):
-            try:
-                service_result = await future if self.asynchronous else await future(ctx, actor)
+        if self.asynchronous:
+            service_futures = [service(ctx, actor) for service in self.services]
+            for service, future in zip(self.services, asyncio.as_completed(service_futures)):
+                try:
+                    service_result = await future
+                    if service.asynchronous and isinstance(service_result, Awaitable):
+                        await service_result
+                except asyncio.TimeoutError:
+                    logger.warning(f"{type(service).__name__} '{service.name}' timed out!")
+
+        else:
+            for service in self.services:
+                service_result = await service(ctx, actor)
                 if not service.asynchronous and isinstance(service_result, Context):
                     ctx = service_result
                 elif service.asynchronous and isinstance(service_result, Awaitable):
                     await service_result
-            except asyncio.TimeoutError:
-                logger.warning(f"{type(service).__name__} '{service.name}' timed out!")
 
         failed = any([service.get_state(ctx) == ComponentExecutionState.FAILED for service in self.services])
         self._set_state(ctx, ComponentExecutionState.FAILED if failed else ComponentExecutionState.FINISHED)
