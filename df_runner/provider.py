@@ -18,7 +18,9 @@ class AbsProvider(ABC):  # NAMING: 'ioproxy', 'interface', 'ioadapter', 'usercon
     """
 
     @abstractmethod
-    async def run(self, pipeline_runner: PipelineRunnerFunction):  # NAMING: connected to service_handler naming (use word 'connect')
+    async def run(
+        self, pipeline_runner: PipelineRunnerFunction
+    ):  # NAMING: connected to service_handler naming (use word 'connect')
         """
         Method invoked when provider is instantiated and connection is established.
         May be used for sending an introduction message or displaying general bot information.
@@ -118,7 +120,10 @@ class CLIProvider(PollingProvider):
     """
 
     def __init__(
-        self, intro: Optional[str] = None, prompt_request: str = "request: ", prompt_response: str = "response: "
+        self,
+        intro: Optional[str] = None,
+        prompt_request: str = "request: ",
+        prompt_response: str = "response: ",
     ):
         super().__init__()
         self._ctx_id: Optional[Any] = None
