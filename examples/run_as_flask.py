@@ -3,7 +3,7 @@ from typing import Any
 from df_engine.core import Context, Actor
 from flask import Flask, request
 
-from df_runner import Pipeline, Service, CallbackProvider
+from df_runner import Pipeline, Service, CallbackMessageInterface
 from examples import basic_example
 
 
@@ -21,16 +21,16 @@ def postprocess(ctx: Context, actor: Actor) -> Any:
     print(f"\tpostprocession Service")
 
 
-provider = CallbackProvider()
+message_interface = CallbackMessageInterface()
 
 pipeline = {
-    "provider": provider,
-    "context_db": {},
+    "message_interface": message_interface,
+    "context_storage": {},
     "services": [
-        {"service_handler": preprocess},
-        {"service_handler": actor, "name": "encapsulated-actor"},
+        {"handler": preprocess},
+        {"handler": actor, "name": "encapsulated-actor"},
         Service(
-            service_handler=postprocess,
+            handler=postprocess,
             name="postprocess",
         ),
     ],
@@ -40,7 +40,7 @@ pipeline = {
 @app.route("/df_provider")
 async def route():
     req = request.args.get("request")
-    return provider.on_request(req, 0).last_response
+    return message_interface.on_request(req, 0).last_response
 
 
 pipeline = Pipeline(**pipeline)

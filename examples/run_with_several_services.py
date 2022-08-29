@@ -3,7 +3,7 @@ from typing import Any
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIProvider, Service, Pipeline
+from df_runner import CLIMessageInterface, Service, Pipeline
 from examples import basic_example
 
 actor = Actor(
@@ -34,17 +34,17 @@ async def postpostprocess(ctx: Context, actor: Actor) -> Any:
 
 
 pipeline = {
-    "provider": CLIProvider(),
-    "context_db": {},
+    "message_interface": CLIMessageInterface(),
+    "context_storage": {},
     "services": [
         {
-            "service_handler": preprocess,
+            "handler": preprocess,
             "timeout": 3,
         },
         actor,
         postprocess,
         Service(
-            service_handler=postpostprocess,
+            handler=postpostprocess,
             name="postprocess",
         ),
     ],

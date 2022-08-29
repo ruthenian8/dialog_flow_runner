@@ -15,7 +15,7 @@ from .types import (
     WrapperRuntimeInfo,
 )
 
-from .provider import CLIProvider, CallbackProvider
+from .message_interface import CLIMessageInterface, CallbackMessageInterface
 from .conditions import (
     always_start_condition,
     service_successful_condition,
@@ -27,7 +27,7 @@ from .conditions import (
 
 from .pipeline.component import PipelineComponent
 from .service.wrapper import Wrapper
-from .service.service import Service, with_wrappers, add_wrapper
+from .service.service import Service, with_wrappers, wrap_with
 from .service.group import ServiceGroup
 from .pipeline.pipeline import Pipeline
 

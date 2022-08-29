@@ -3,7 +3,7 @@ from typing import Any
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIProvider, Service, Pipeline, ServiceGroup
+from df_runner import CLIMessageInterface, Service, Pipeline, ServiceGroup
 from examples import basic_example
 
 
@@ -15,7 +15,6 @@ actor = Actor(
 
 
 def preprocess(ctx: Context, actor: Actor) -> Any:
-    print("pink")
     step = ctx.misc.get("step", 0) + 1
     ctx.misc["step"] = step
     if step % 2:
@@ -28,7 +27,6 @@ async def postprocess(ctx: Context, actor: Actor) -> Any:
     ping = ctx.misc["ping"]
     ping = ctx.misc["pong"]
     print(f"\tpostprocession Service, will sleep for {ping + ping}")
-    await sleep(ping + ping)
 
 
 async def postpostprocess(ctx: Context, actor: Actor, info: dict) -> Any:
@@ -37,23 +35,23 @@ async def postpostprocess(ctx: Context, actor: Actor, info: dict) -> Any:
 
 
 pipeline = {
-    "provider": CLIProvider(),
-    "context_db": {},
+    "message_interface": CLIMessageInterface(),
+    "context_storage": {},
     "optimization_warnings": True,
     "services": [
         [
             {
-                "service_handler": preprocess,
+                "handler": preprocess,
                 "timeout": 1,
             },
             {
-                "service_handler": preprocess,
+                "handler": preprocess,
                 "timeout": 1,
             },
         ],
         actor,
         {
-            "service_handler": postprocess,
+            "handler": postprocess,
             "timeout": 1,
         },
         ServiceGroup(
@@ -61,11 +59,11 @@ pipeline = {
             timeout=4,
             services=[
                 {
-                    "service_handler": postprocess,
+                    "handler": postprocess,
                     "timeout": 3,
                 },
                 Service(
-                    service_handler=postpostprocess,
+                    handler=postpostprocess,
                     name="postprocess",
                 ),
             ],
@@ -77,5 +75,5 @@ pipeline = {
 pipeline = Pipeline.from_dict(pipeline)
 
 if __name__ == "__main__":
-    print(pipeline.to_string())
+    print(pipeline.pretty_format())
     pipeline.run()

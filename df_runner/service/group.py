@@ -1,5 +1,5 @@
+import asyncio
 import logging
-from asyncio import as_completed, TimeoutError
 from typing import Optional, List, Union, Tuple, Awaitable
 
 from df_engine.core import Actor, Context
@@ -9,7 +9,8 @@ from ..pipeline.component import PipelineComponent
 from ..types import (
     StartConditionCheckerFunction,
     ComponentExecutionState,
-    ServiceGroupBuilder, ServiceBuilder,
+    ServiceGroupBuilder,
+    ServiceBuilder,
 )
 from .service import Service
 from ..conditions import always_start_condition
@@ -34,35 +35,43 @@ class ServiceGroup(PipelineComponent):
         services: ServiceGroupBuilder,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: Optional[int] = None,
-        async_flag: Optional[bool] = None,  # NAMING: 'asynchronous', user defines an __object__, this is its feature
+        asynchronous: Optional[bool] = None,
         start_condition: StartConditionCheckerFunction = always_start_condition,
-        name: Optional[str] = "service_group",
+        name: Optional[str] = None,
     ):
         if isinstance(services, ServiceGroup):
-            self.__init__(**services.cast_to_custom_dict(("calculated_async_flag",), (("requested_async_flag", "async_flag"),)))
+            self.__init__(
+                **services.get_attrs_with_updates(
+                    (
+                        "calculated_async_flag",
+                        "path",
+                    ),
+                    {"requested_async_flag": "asynchronous"},
+                )
+            )
         elif isinstance(services, dict):
             self.__init__(**services)
         elif isinstance(services, List):
             self.services = self._create_components(services)
             calc_async = all([service.asynchronous for service in self.services])
-            super(ServiceGroup, self).__init__(wrappers, timeout, async_flag, calc_async, start_condition, name)
+            super(ServiceGroup, self).__init__(wrappers, timeout, asynchronous, calc_async, start_condition, name)
         else:
             raise Exception(f"Unknown type for ServiceGroup {services}")
 
     async def _run_services_group(self, ctx: Context, actor: Actor) -> Context:
         self._set_state(ctx, ComponentExecutionState.RUNNING)
 
-        service_futures = [service(ctx, actor) for service in self.services]
+        service_futures = [service(ctx, actor) if self.asynchronous else service for service in self.services]
         for service, future in zip(
-            self.services, as_completed(service_futures) if self.asynchronous else service_futures
+            self.services, asyncio.as_completed(service_futures) if self.asynchronous else service_futures
         ):
             try:
-                service_result = await future
+                service_result = await future if self.asynchronous else await future(ctx, actor)
                 if not service.asynchronous and isinstance(service_result, Context):
                     ctx = service_result
                 elif service.asynchronous and isinstance(service_result, Awaitable):
                     await service_result
-            except TimeoutError:
+            except asyncio.TimeoutError:
                 logger.warning(f"{type(service).__name__} '{service.name}' timed out!")
 
         failed = any([service.get_state(ctx) == ComponentExecutionState.FAILED for service in self.services])
@@ -91,7 +100,7 @@ class ServiceGroup(PipelineComponent):
             wrapper.run_stage(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
         return ctx if not self.asynchronous else None
 
-    def get_subgroups_and_services(self, prefix: str = "", recursion_level: int = 99) -> List[Tuple[str, Service]]:  # FIXME: Why not recursion? Why 99? Is that efficiency __really__ that important?
+    def get_subgroups_and_services(self, prefix: str = "", recursion_level: int = 99) -> List[Tuple[str, Service]]:
         """
         Returns a copy of created inner services flat array used during actual pipeline running.
         Breadth First Algorithm

@@ -1,5 +1,5 @@
 import logging
-from inspect import signature
+import inspect
 from typing import Optional
 
 from df_engine.core import Context, Actor
@@ -19,7 +19,7 @@ class Wrapper:
 
     def __init__(
         self,
-        pre_func: Optional[WrapperFunction] = None,  # NAMING: ('proprocess', 'postprocess'), ('before', 'after')
+        pre_func: Optional[WrapperFunction] = None,  # RENAME: ('before', 'after')
         post_func: Optional[WrapperFunction] = None,
         name: Optional[str] = None,
     ):
@@ -39,7 +39,7 @@ class Wrapper:
         if function is None:
             return
 
-        handler_params = len(signature(function).parameters)
+        handler_params = len(inspect.signature(function).parameters)
         if handler_params == 1:
             function(ctx)
         elif handler_params == 2:

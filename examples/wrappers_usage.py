@@ -2,7 +2,7 @@ from typing import Any
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIProvider, Wrapper, Pipeline, ServiceGroup, with_wrappers
+from df_runner import CLIMessageInterface, Wrapper, Pipeline, ServiceGroup, with_wrappers
 from examples import basic_example
 
 actor = Actor(
@@ -40,8 +40,8 @@ class ActorWrapper(Wrapper):
 
 
 pipeline = {
-    "provider": CLIProvider(),
-    "context_db": dict(),
+    "message_interface": CLIMessageInterface(),
+    "context_storage": dict(),
     "services": [
         ServiceGroup(wrappers=[wrap1], services=[wrapped_service1]),
         ServiceGroup(wrappers=[ActorWrapper()], services=[actor]),

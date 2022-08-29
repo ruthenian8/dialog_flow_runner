@@ -2,7 +2,7 @@ import logging
 import uuid
 from abc import abstractmethod, ABC
 from asyncio import sleep, run
-from typing import Optional, Any, List, Tuple
+from typing import Optional, Any, List, Tuple, TextIO
 
 from df_engine.core import Context
 
@@ -11,16 +11,16 @@ from .types import PipelineRunnerFunction, PollingProviderLoopFunction
 logger = logging.getLogger(__name__)
 
 
-class AbsProvider(ABC):  # NAMING: 'ioproxy', 'interface', 'ioadapter', 'userconnector'
+class MessageInterface(ABC):
     """
-    Class that represents a provider used for communication between pipeline and users.
-    It is responsible for connection between user and provider, as well as for request-response transactions.
+    Class that represents a message interface used for communication between pipeline and users.
+    It is responsible for connection between user and pipeline, as well as for request-response transactions.
     """
 
     @abstractmethod
-    async def run(self, pipeline_runner: PipelineRunnerFunction):  # NAMING: connected to service_handler naming (use word 'connect')
+    async def connect(self, pipeline_runner: PipelineRunnerFunction):
         """
-        Method invoked when provider is instantiated and connection is established.
+        Method invoked when message interface is instantiated and connection is established.
         May be used for sending an introduction message or displaying general bot information.
         :pipeline_runner: - a function that should return pipeline response to user request;
             usually it's a `Pipeline._run_pipeline(request, ctx_id)` function.
@@ -28,9 +28,9 @@ class AbsProvider(ABC):  # NAMING: 'ioproxy', 'interface', 'ioadapter', 'usercon
         raise NotImplementedError
 
 
-class PollingProvider(AbsProvider):
+class PollingMessageInterface(MessageInterface):
     """
-    Polling provider runs in a loop, constantly asking users for a new input.
+    Polling message interface runs in a loop, constantly asking users for a new input.
     """
 
     @abstractmethod
@@ -61,7 +61,7 @@ class PollingProvider(AbsProvider):
         else:
             logger.info(f"{type(self).__name__} has stopped polling.")
 
-    async def run(
+    async def connect(
         self,
         pipeline_runner: PipelineRunnerFunction,
         loop: PollingProviderLoopFunction = lambda: True,
@@ -87,22 +87,22 @@ class PollingProvider(AbsProvider):
                 break
 
 
-class CallbackProvider(AbsProvider):
+class CallbackMessageInterface(MessageInterface):
     """
-    Callback provider is waiting for user input and answers once it gets one.
+    Callback message interface is waiting for user input and answers once it gets one.
     """
 
     def __init__(self):
         self._pipeline_runner: Optional[PipelineRunnerFunction] = None
 
-    async def run(self, pipeline_runner: PipelineRunnerFunction):
+    async def connect(self, pipeline_runner: PipelineRunnerFunction):
         self._pipeline_runner = pipeline_runner
 
     def on_request(self, request: Any, ctx_id: Any) -> Context:
         """
         Method invoked on user input.
         This method works just like `Pipeline.__call__(request, ctx_id)`,
-            however callback provider may contain additional functionality (e.g. for external API accessing).
+            however callback messaging interface may contain additional functionality (e.g. for external API accessing).
         :request: - user input.
         :ctx_id: - any unique id that will be associated with dialog between this user and pipeline.
         Returns context that represents dialog with the user;
@@ -111,28 +111,33 @@ class CallbackProvider(AbsProvider):
         return run(self._pipeline_runner(request, ctx_id))
 
 
-class CLIProvider(PollingProvider):
+class CLIMessageInterface(PollingMessageInterface):
     """
-    Command line provider - the default provider, communicating with user via STDIN/STDOUT.
-    This provider can maintain dialog with one user at a time only.
+    Command line messaging interface - the default messaging interface, communicating with user via STDIN/STDOUT.
+    This messaging interface can maintain dialog with one user at a time only.
     """
 
     def __init__(
-        self, intro: Optional[str] = None, prompt_request: str = "request: ", prompt_response: str = "response: "
+        self,
+        intro: Optional[str] = None,
+        prompt_request: str = "request: ",
+        prompt_response: str = "response: ",
+        out_descriptor: TextIO = None,
     ):
         super().__init__()
         self._ctx_id: Optional[Any] = None
         self._intro: Optional[str] = intro
         self._prompt_request: str = prompt_request
         self._prompt_response: str = prompt_response
+        self._descriptor: TextIO = out_descriptor
 
     def _request(self) -> List[Tuple[Any, Any]]:
         return [(input(self._prompt_request), self._ctx_id)]
 
     def _respond(self, response: List[Context]):
-        print(f"{self._prompt_response}{response[0].last_response}")  # TODO: maybe setup output?
+        print(f"{self._prompt_response}{response[0].last_response}", file=self._descriptor)
 
-    async def run(self, pipeline_runner: PipelineRunnerFunction, **kwargs):
+    async def connect(self, pipeline_runner: PipelineRunnerFunction, **kwargs):
         """
         The CLIProvider generates new dialog id used to user identification on each `run` call.
         :kwargs: - argument, added for compatibility with super class, it shouldn't be used normally.
@@ -140,4 +145,4 @@ class CLIProvider(PollingProvider):
         self._ctx_id = uuid.uuid4()
         if self._intro is not None:
             print(self._intro)
-        await super().run(pipeline_runner, **kwargs)
+        await super().connect(pipeline_runner, **kwargs)

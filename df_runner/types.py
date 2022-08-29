@@ -71,7 +71,7 @@ Accepts string (service name) and any (service result, if any by that point).
 CallbackFunction = Callable[[str, Any], None]
 
 """
-A function type for provider-to-client interaction.
+A function type for messaging_interface-to-client interaction.
 Accepts string (user input), returns string (answer from pipeline).
 """
 PipelineRunnerFunction = Callable[[Any, Any], Awaitable[Context]]
@@ -96,6 +96,7 @@ ServiceRuntimeInfo = TypedDict(
     "ServiceRuntimeInfo",
     {
         "name": str,
+        "path": str,
         "timeout": Optional[int],
         "asynchronous": bool,
         "execution_state": Dict[str, ComponentExecutionState],
@@ -145,7 +146,7 @@ ServiceBuilder = Union[
     TypedDict(
         "ServiceDict",
         {
-            "service_handler": "ServiceBuilder",
+            "handler": "ServiceBuilder",
             "wrappers": NotRequired[Optional[List[_ForwardServiceWrapper]]],
             "timeout": NotRequired[Optional[int]],
             "asynchronous": NotRequired[bool],
@@ -173,8 +174,8 @@ ServiceGroupBuilder = Union[
 PipelineBuilder = TypedDict(
     "PipelineBuilder",
     {
-        "provider": NotRequired[Optional[_ForwardProvider]],
-        "context_db": NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
+        "message_interface": NotRequired[Optional[_ForwardProvider]],
+        "context_storage": NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
         "services": ServiceGroupBuilder,
         "wrappers": NotRequired[Optional[List[_ForwardServiceWrapper]]],
         "optimization_warnings": NotRequired[bool],
