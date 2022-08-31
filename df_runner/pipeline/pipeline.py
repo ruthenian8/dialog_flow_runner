@@ -66,7 +66,11 @@ class Pipeline:
         blacklist: Optional[List[str]] = None,
     ):
         def condition(name: str) -> bool:
-            return (whitelist is not None and name in whitelist) and (blacklist is not None and name not in blacklist)
+            return (whitelist is None or name in whitelist) and (blacklist is None or name not in blacklist)
+
+        if callback_type is CallbackType.BEFORE_ALL or callback_type is CallbackType.AFTER_ALL:
+            whitelist = ['pipeline']
+            callback_type = CallbackType.BEFORE if callback_type is CallbackType.BEFORE_ALL else CallbackType.AFTER
 
         self._services_pipeline.add_callback_wrapper(callback_type, callback, condition)
 

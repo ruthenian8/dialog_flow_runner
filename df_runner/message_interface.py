@@ -76,15 +76,15 @@ class PollingMessageInterface(MessageInterface):
         :timeout: - a time interval between polls (in seconds).
         """
         while loop():
-            try:
+            #try:
                 user_updates = self._request()
                 responses = [await pipeline_runner(request, ctx_id) for request, ctx_id in user_updates]
                 self._respond(responses)
                 await sleep(timeout)
 
-            except BaseException as e:
-                self._on_exception(e)
-                break
+            #except BaseException as e:
+            #    self._on_exception(e)
+            #    break
 
 
 class CallbackMessageInterface(MessageInterface):

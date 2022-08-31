@@ -158,11 +158,12 @@ class ServiceGroup(PipelineComponent):
     ):
         super().add_callback_wrapper(callback_type, callback)
         for service in self.services:
-            if condition(service.name):
-                if isinstance(service, Service):
-                    service.add_callback_wrapper(callback_type, callback)
-                else:
-                    service.add_callback_wrapper(callback_type, callback, condition)
+            if not condition(service.path):
+                continue
+            if isinstance(service, Service):
+                service.add_callback_wrapper(callback_type, callback)
+            else:
+                service.add_callback_wrapper(callback_type, callback, condition)
 
     @property
     def info_dict(self) -> dict:
