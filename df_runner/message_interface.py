@@ -34,7 +34,7 @@ class PollingMessageInterface(MessageInterface):
     """
 
     @abstractmethod
-    def _request(self) -> List[Tuple[Any, Any]]:
+    def _request(self) -> List[Tuple[Any, Hashable]]:
         """
         Method used for sending users request for their input.
         Returns a list of tuples: user inputs and context ids (any user ids) associated with inputs.
@@ -42,10 +42,10 @@ class PollingMessageInterface(MessageInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def _respond(self, response: List[Context]):
+    def _respond(self, responses: List[Context]):
         """
         Method used for sending users responses for their last input.
-        :response: - a list of contexts, representing dialogs with the users;
+        :responses: - a list of contexts, representing dialogs with the users;
             `last_response`, `id` and some dialog info can be extracted from there.
         """
         raise NotImplementedError

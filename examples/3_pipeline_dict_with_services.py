@@ -66,7 +66,7 @@ def postprocess(ctx: Context):
     logger.info(f"resulting misc looks like: {ctx.misc}")
 
 
-pipeline = {
+pipeline_dict = {
     "message_interface": CLIMessageInterface(
         intro="Hi, this is a brand new Pipeline running!", prompt_request="Request: ", prompt_response="Response: "
     ),  # `CLIMessageInterface` has the following constructor parameters:
@@ -89,5 +89,7 @@ pipeline = {
 }
 
 
+pipeline = Pipeline.from_dict(pipeline_dict)
+
 if __name__ == "__main__":
-    Pipeline.from_dict(pipeline).run()
+    pipeline.run()

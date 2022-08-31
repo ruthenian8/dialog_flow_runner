@@ -34,7 +34,7 @@ class Pipeline:
         context_storage: Optional[Union[DBAbstractConnector, Dict]] = None,
         services: ServiceGroupBuilder = None,
         wrappers: Optional[List[Wrapper]] = None,
-        timeout: int = -1,
+        timeout: Optional[int] = None,
         optimization_warnings: bool = False,
     ):
         self.message_interface = CLIMessageInterface() if message_interface is None else message_interface

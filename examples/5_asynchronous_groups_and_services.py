@@ -5,7 +5,7 @@ import urllib.request
 
 from df_engine.core import Actor, Context
 
-from df_runner import ServiceGroup, Pipeline
+from df_runner import ServiceGroup, Pipeline, ServiceRuntimeInfo
 from examples._utils import SCRIPT
 
 logging.basicConfig(level="INFO")
@@ -47,7 +47,7 @@ actor = Actor(
 )
 
 
-async def simple_asynchronous_service(_, __, info: dict):
+async def simple_asynchronous_service(_, __, info: ServiceRuntimeInfo):
     logger.info(f"Service '{info['name']}' is running")
 
 
@@ -56,7 +56,7 @@ async def time_consuming_service(_):
 
 
 def meta_web_querying_service(photo_number: int):  # This function returns services, a service factory
-    async def web_querying_service(ctx: Context, _, info: dict):
+    async def web_querying_service(ctx: Context, _, info: ServiceRuntimeInfo):
         if ctx.misc.get(f"web_query", None) is None:
             ctx.misc[f"web_query"] = {}
         with urllib.request.urlopen(f"https://jsonplaceholder.typicode.com/photos/{photo_number}") as webpage:
@@ -71,7 +71,7 @@ def context_printing_service(ctx: Context):
     logger.info(f"Context misc: {ctx.misc}")
 
 
-pipeline = {
+pipeline_dict = {
     "optimization_warnings": True,  # There are no warnings - pipeline is well-optimized
     "services": [
         ServiceGroup(
@@ -93,5 +93,7 @@ pipeline = {
 }
 
 
+pipeline = Pipeline.from_dict(pipeline_dict)
+
 if __name__ == "__main__":
-    Pipeline.from_dict(pipeline).run()
+    pipeline.run()

@@ -126,9 +126,9 @@ class Service(PipelineComponent):
         return representation
 
 
-def wrap_with(pre_func: Optional[WrapperFunction] = None, post_func: Optional[WrapperFunction] = None):
+def wrap_with(before: Optional[WrapperFunction] = None, after: Optional[WrapperFunction] = None, name: Optional[str] = None):
     def inner(handler: ServiceBuilder) -> Service:
-        return Service(handler=handler, wrappers=[Wrapper(pre_func, post_func)])
+        return Service(handler=handler, wrappers=[Wrapper(before, after, name)])
 
     return inner
 

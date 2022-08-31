@@ -1,7 +1,7 @@
 import logging
 from df_engine.core import Actor
 
-from df_runner import Service, Pipeline, ServiceGroup, not_condition, service_successful_condition, all_condition
+from df_runner import Service, Pipeline, ServiceGroup, not_condition, service_successful_condition, all_condition, ServiceRuntimeInfo
 from examples._utils import SCRIPT
 
 logging.basicConfig(level="INFO")
@@ -66,19 +66,19 @@ actor = Actor(
 )
 
 
-def simple_service(_, __, info: dict):
+def simple_service(_, __, info: ServiceRuntimeInfo):
     logger.info(f"Service '{info['name']}' is running...")
 
 
-def never_running_service(_, __, info: dict):
+def never_running_service(_, __, info: ServiceRuntimeInfo):
     raise Exception(f"Oh no! The '{info['name']}' service is running!")
 
 
-def runtime_info_printing_service(_, __, info: dict):
+def runtime_info_printing_service(_, __, info: ServiceRuntimeInfo):
     logger.info(f"Service '{info['name']}' runtime execution info: {info}")
 
 
-pipeline = {
+pipeline_dict = {
     "services": [
         [
             simple_service,  # This simple service will be named `simple_service_0`
@@ -109,7 +109,8 @@ pipeline = {
 }
 
 
+pipeline = Pipeline.from_dict(pipeline_dict)
+
 if __name__ == "__main__":
-    pipe = Pipeline.from_dict(pipeline)
-    logger.info(f"Pipeline structure:\n{pipe.pretty_format()}")
-    pipe.run()
+    logger.info(f"Pipeline structure:\n{pipeline.pretty_format()}")
+    pipeline.run()

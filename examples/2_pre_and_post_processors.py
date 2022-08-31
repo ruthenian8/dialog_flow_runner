@@ -16,15 +16,16 @@ These can be any ServiceBuilder objects (defined in `types` module) - callables,
 They are being turned into special Service objects (see example №3), that will be run before or after Actor respectively.
 These services can be used to access external APIs, annotate user input, etc.
 
+Service callable signature can be one of the following: [ctx], [ctx, actor] or [ctx, actor, info], where:
+    `ctx` - Context of the current dialog
+    `actor` - Actor of the pipeline
+    `info` - dictionary, containing information about current service and pipeline execution state (see example №4)
+
 Here a preprocessor ("ping") and a postprocessor ("pong") are added to pipeline.
 They share data in `context.misc` - a common place for sharing data between services and actor.
 """
 
 
-# Callable signature can be one of the following: [ctx], [ctx, actor] or [ctx, actor, info], where:
-#     ctx: Context - context of the current dialog
-#     actor: Actor - actor of the pipeline
-#     info: dict - dictionary, containing information about current pipeline execution state (see example №4)
 def ping_processor(ctx: Context):
     ctx.misc["ping"] = True
 

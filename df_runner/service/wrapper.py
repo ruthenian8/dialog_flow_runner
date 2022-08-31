@@ -19,12 +19,12 @@ class Wrapper:
 
     def __init__(
         self,
-        pre_func: Optional[WrapperFunction] = None,  # RENAME: ('before', 'after')
-        post_func: Optional[WrapperFunction] = None,
+        before: Optional[WrapperFunction] = None,
+        after: Optional[WrapperFunction] = None,
         name: Optional[str] = None,
     ):
-        self._pre_func = pre_func
-        self._post_func = post_func
+        self._before = before
+        self._after = after
         self.name = name
 
     def _get_runtime_info(self, stage: WrapperStage, service_info: ServiceRuntimeInfo) -> WrapperRuntimeInfo:
@@ -35,7 +35,7 @@ class Wrapper:
         }
 
     def run_stage(self, stage: WrapperStage, ctx: Context, actor: Actor, service_info: ServiceRuntimeInfo):
-        function = self._pre_func if stage is WrapperStage.PREPROCESSING else self._post_func
+        function = self._before if stage is WrapperStage.PREPROCESSING else self._after
         if function is None:
             return
 
@@ -56,6 +56,6 @@ class Wrapper:
         return {
             "type": type(self).__name__,
             "name": self.name,
-            "pre_func": self._pre_func.__name__,
-            "post_func": self._post_func.__name__,
+            "pre_func": self._before.__name__,
+            "post_func": self._after.__name__,
         }
