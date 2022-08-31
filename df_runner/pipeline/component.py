@@ -2,13 +2,14 @@ import logging
 import abc
 import asyncio
 import copy
+import uuid
 from typing import Optional, List, Union, Awaitable, Tuple, Any, Mapping
 
 from df_engine.core import Context, Actor
 
 from ..service.wrapper import Wrapper
 from ..conditions import always_start_condition
-from ..types import PIPELINE_STATE_KEY, StartConditionCheckerFunction, ComponentExecutionState, ServiceRuntimeInfo
+from ..types import PIPELINE_STATE_KEY, StartConditionCheckerFunction, ComponentExecutionState, ServiceRuntimeInfo, CallbackType, CallbackFunction
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,17 @@ class PipelineComponent(abc.ABC):
             return asyncio.wait_for(task, timeout=self.timeout)
         else:
             return await self._run(ctx, actor)
+
+    def add_callback_wrapper(self, callback_type: CallbackType, callback: CallbackFunction):
+        before = callback_type is CallbackType.BEFORE_ALL or callback_type is CallbackType.BEFORE
+        for_all = callback_type is CallbackType.BEFORE_ALL or callback_type is CallbackType.AFTER_ALL
+        self.wrappers += [
+            Wrapper(
+                name=f'{uuid.uuid4()}_{"before" if before else "after"}{"_all" if for_all else ""}_stats_wrapper',
+                before=lambda _, __, info: callback(info) if before else None,
+                after=None if before else lambda _, __, info: callback(info),
+            )
+        ]
 
     def _get_runtime_info(self, ctx: Context) -> ServiceRuntimeInfo:
         return {

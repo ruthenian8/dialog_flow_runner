@@ -10,7 +10,7 @@ from ..types import (
     StartConditionCheckerFunction,
     ComponentExecutionState,
     ServiceGroupBuilder,
-    ServiceBuilder,
+    ServiceBuilder, CallbackType, CallbackFunction, CallbackConditionFunction,
 )
 from .service import Service
 from ..conditions import always_start_condition
@@ -149,6 +149,20 @@ class ServiceGroup(PipelineComponent):
                             "however contains synchronous services in it!",
                         )
                 service.log_optimization_warnings()
+
+    def add_callback_wrapper(
+        self,
+        callback_type: CallbackType,
+        callback: CallbackFunction,
+        condition: CallbackConditionFunction = lambda _: True,
+    ):
+        super().add_callback_wrapper(callback_type, callback)
+        for service in self.services:
+            if condition(service.name):
+                if isinstance(service, Service):
+                    service.add_callback_wrapper(callback_type, callback)
+                else:
+                    service.add_callback_wrapper(callback_type, callback, condition)
 
     @property
     def info_dict(self) -> dict:

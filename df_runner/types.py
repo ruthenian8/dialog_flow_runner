@@ -63,13 +63,6 @@ RUNNER: storage for services and groups execution status
 """
 PIPELINE_STATE_KEY = "PIPELINE"
 
-
-"""
-A function type for attaching to different stages of pipeline execution.
-Accepts string (service name) and any (service result, if any by that point).
-"""
-CallbackFunction = Callable[[str, Any], None]
-
 """
 A function type for messaging_interface-to-client interaction.
 Accepts string (user input), returns string (answer from pipeline).
@@ -87,6 +80,9 @@ A function type for creating start_conditions for services.
 Accepts context and actor (current pipeline state), returns boolean (whether service can be launched).
 """
 StartConditionCheckerAggregationFunction = Callable[[Iterable[bool]], bool]
+
+
+CallbackConditionFunction = Callable[[str], bool]
 
 
 PollingProviderLoopFunction = Callable[[], bool]
@@ -112,6 +108,13 @@ WrapperRuntimeInfo = TypedDict(
         "service": ServiceRuntimeInfo,
     },
 )
+
+
+"""
+A function type for attaching to different stages of pipeline execution.
+Accepts string (service name) and any (service result, if any by that point).
+"""
+CallbackFunction = Callable[[ServiceRuntimeInfo], None]
 
 
 """

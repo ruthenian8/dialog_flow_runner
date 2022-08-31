@@ -10,7 +10,7 @@ from ..service.service import Service
 from ..service.wrapper import Wrapper
 from ..message_interface import MessageInterface, CLIMessageInterface
 from ..service.group import ServiceGroup
-from ..types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder
+from ..types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder, CallbackType, CallbackFunction
 from ..types import PIPELINE_STATE_KEY
 from .utils import resolve_components_name_collisions, print_component_info_dict
 
@@ -57,6 +57,18 @@ class Pipeline:
         self.actor = actor[0] if actor is not None and len(actor) == 1 else None
         if not isinstance(self.actor, Actor):
             raise Exception("Actor not found or more than one actor found")
+
+    def add_callback(
+        self,
+        callback_type: CallbackType,
+        callback: CallbackFunction,
+        whitelist: Optional[List[str]] = None,
+        blacklist: Optional[List[str]] = None,
+    ):
+        def condition(name: str) -> bool:
+            return (whitelist is not None and name in whitelist) and (blacklist is not None and name not in blacklist)
+
+        self._services_pipeline.add_callback_wrapper(callback_type, callback, condition)
 
     @property
     def info_dict(self) -> dict:
