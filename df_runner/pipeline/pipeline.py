@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any, Union, List, Dict, Optional
+from typing import Any, Union, List, Dict, Optional, Hashable
 
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor, Script, Context
@@ -54,9 +54,9 @@ class Pipeline:
         flat_services = self._services_pipeline.get_subgroups_and_services()
         flat_services = [serv for _, serv in flat_services if isinstance(serv, Service)]
         actor = [serv.handler for serv in flat_services if isinstance(serv.handler, Actor)]
-        self.actor = actor[0] if actor is not None and len(actor) > 0 else None
+        self.actor = actor[0] if actor is not None and len(actor) == 1 else None
         if not isinstance(self.actor, Actor):
-            raise Exception("Actor not found.")
+            raise Exception("Actor not found or more than one actor found")
 
     @property
     def info_dict(self) -> dict:
@@ -94,7 +94,7 @@ class Pipeline:
     def from_dict(cls, dictionary: PipelineBuilder) -> "Pipeline":
         return cls(**dictionary)
 
-    async def _run_pipeline(self, request: Any, ctx_id: Optional[Any] = None) -> Context:
+    async def _run_pipeline(self, request: Any, ctx_id: Optional[Hashable] = None) -> Context:
         ctx = self.context_storage.get(ctx_id, Context(id=ctx_id))
 
         ctx.framework_states[PIPELINE_STATE_KEY] = {}
@@ -113,5 +113,5 @@ class Pipeline:
         """
         asyncio.run(self.message_interface.connect(self._run_pipeline))
 
-    def __call__(self, request: Any, ctx_id: Any) -> Context:
+    def __call__(self, request: Any, ctx_id: Hashable) -> Context:
         return asyncio.run(self._run_pipeline(request, ctx_id))

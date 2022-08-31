@@ -1,6 +1,6 @@
 from abc import ABC
 from enum import unique, Enum, auto
-from typing import Callable, Any, Union, Awaitable, Dict, List, TypedDict, Optional, NewType, Iterable
+from typing import Callable, Any, Union, Awaitable, Dict, List, TypedDict, Optional, NewType, Iterable, Hashable
 
 from df_db_connector import DBAbstractConnector
 from df_engine.core import Context, Actor
@@ -74,7 +74,7 @@ CallbackFunction = Callable[[str, Any], None]
 A function type for messaging_interface-to-client interaction.
 Accepts string (user input), returns string (answer from pipeline).
 """
-PipelineRunnerFunction = Callable[[Any, Any], Awaitable[Context]]
+PipelineRunnerFunction = Callable[[Any, Hashable], Awaitable[Context]]
 
 """
 A function type for creating start_conditions for services.

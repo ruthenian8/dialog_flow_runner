@@ -95,7 +95,7 @@ class ServiceGroup(PipelineComponent):
             if self.start_condition(ctx, actor):
                 ctx = await self._run_services_group(ctx, actor)
             else:
-                self._set_state(ctx, ComponentExecutionState.FAILED)
+                self._set_state(ctx, ComponentExecutionState.NOT_RUN)
 
         except Exception as e:
             self._set_state(ctx, ComponentExecutionState.FAILED)

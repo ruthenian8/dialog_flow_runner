@@ -17,7 +17,7 @@ def always_start_condition(_: Context, __: Actor) -> bool:
     return True
 
 
-def service_successful_condition(name: Optional[str] = None) -> StartConditionCheckerFunction:
+def service_successful_condition(path: Optional[str] = None) -> StartConditionCheckerFunction:
     """
     Condition that allows service execution, only if the other service was executed successfully.
     :name: - the name of the condition service or group
@@ -28,8 +28,8 @@ def service_successful_condition(name: Optional[str] = None) -> StartConditionCh
         Function that checks single service ServiceState and returns ConditionState for this service.
         """
 
-        state = ctx.framework_states[PIPELINE_STATE_KEY].get(name, ComponentExecutionState.NOT_RUN)
-        return state == ComponentExecutionState.FINISHED
+        state = ctx.framework_states[PIPELINE_STATE_KEY].get(path, ComponentExecutionState.NOT_RUN.name)
+        return ComponentExecutionState[state] == ComponentExecutionState.FINISHED
 
     return check_service_state
 
@@ -45,7 +45,10 @@ def aggregate_condition(
     aggregator: StartConditionCheckerAggregationFunction, *functions: StartConditionCheckerFunction
 ) -> StartConditionCheckerFunction:
     def aggregation_fun(ctx: Context, actor: Actor):
-        return aggregator([function(ctx, actor) for function in functions])
+        res0 = functions[0](ctx, actor)
+        res1 = functions[1](ctx, actor)
+        res = aggregator([function(ctx, actor) for function in functions])
+        return res
 
     return aggregation_fun
 

@@ -4,13 +4,12 @@ from df_engine.core import Context, Actor
 from flask import Flask, request
 
 from df_runner import Pipeline, Service, CallbackMessageInterface
-from examples import basic_example
+from examples._utils import SCRIPT
 
 
 app = Flask(__name__)
-actor = Actor(
-    basic_example.SCRIPT, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node")
-)
+
+actor = Actor(SCRIPT, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node"))
 
 
 async def preprocess(ctx: Context, actor: Actor) -> Any:

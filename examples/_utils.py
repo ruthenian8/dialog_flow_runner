@@ -1,9 +1,5 @@
 from df_engine.core.keywords import TRANSITIONS, RESPONSE
 import df_engine.conditions as cnd
-from df_engine.core import Context
-
-
-from df_runner import Pipeline
 
 
 SCRIPT = {
@@ -31,15 +27,3 @@ SCRIPT = {
         },
     }
 }
-
-pipeline = Pipeline.from_script(
-    SCRIPT,
-    start_label=("greeting_flow", "start_node"),
-    fallback_label=("greeting_flow", "fallback_node"),
-)
-
-
-if __name__ == "__main__":
-    while True:
-        ctx: Context = pipeline(input("Send request: "), 0)
-        print(ctx.last_response)

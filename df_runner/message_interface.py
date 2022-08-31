@@ -2,7 +2,7 @@ import logging
 import uuid
 from abc import abstractmethod, ABC
 from asyncio import sleep, run
-from typing import Optional, Any, List, Tuple, TextIO
+from typing import Optional, Any, List, Tuple, TextIO, Hashable
 
 from df_engine.core import Context
 
@@ -98,7 +98,7 @@ class CallbackMessageInterface(MessageInterface):
     async def connect(self, pipeline_runner: PipelineRunnerFunction):
         self._pipeline_runner = pipeline_runner
 
-    def on_request(self, request: Any, ctx_id: Any) -> Context:
+    def on_request(self, request: Any, ctx_id: Hashable) -> Context:
         """
         Method invoked on user input.
         This method works just like `Pipeline.__call__(request, ctx_id)`,
@@ -125,7 +125,7 @@ class CLIMessageInterface(PollingMessageInterface):
         out_descriptor: TextIO = None,
     ):
         super().__init__()
-        self._ctx_id: Optional[Any] = None
+        self._ctx_id: Optional[Hashable] = None
         self._intro: Optional[str] = intro
         self._prompt_request: str = prompt_request
         self._prompt_response: str = prompt_response

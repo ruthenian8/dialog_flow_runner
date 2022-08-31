@@ -3,11 +3,10 @@ from typing import Any
 from df_engine.core import Context, Actor
 
 from df_runner import CLIMessageInterface, Wrapper, Pipeline, ServiceGroup, with_wrappers
-from examples import basic_example
+from examples._utils import SCRIPT
 
-actor = Actor(
-    basic_example.SCRIPT, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node")
-)
+
+actor = Actor(SCRIPT, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node"))
 
 
 @with_wrappers(

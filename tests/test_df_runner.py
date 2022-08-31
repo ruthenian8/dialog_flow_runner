@@ -6,8 +6,7 @@ import importlib
 import pytest
 
 
-# uncomment the following line, if you want to run your examples during the test suite or import from them
-
+# Uncomment the following line, if you want to run your examples during the test suite or import from them
 # pytest.skip(allow_module_level=True)
 
 import pathlib
@@ -36,7 +35,7 @@ def run_pipeline_test(pipeline: Pipeline):
 
 
 @pytest.mark.parametrize(
-    "module_path", [file for file in pathlib.Path("examples").glob("*.py") if file.stem != "__init__"]
+    "module_path", [file for file in pathlib.Path("examples").glob("*.py") if not file.stem.startswith("_")]
 )
 def test_examples(module_path):
     module = importlib.import_module(f"examples.{module_path.stem}")

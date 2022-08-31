@@ -56,15 +56,14 @@ def rename_component_incrementing(
 
 def resolve_components_name_collisions(service_group: ServiceGroup):
     name_scope_level = 0
-    checked_names = 0
+    checked_names = []
     while True:
         name_scope_level += 1
         flat_services = service_group.get_subgroups_and_services(recursion_level=name_scope_level)
-        flat_services = flat_services[checked_names:]
+        flat_services = [(path, service) for path, service in flat_services if service.name not in checked_names]
         if len(flat_services) == 0:
             break
 
-        checked_names += len(flat_services)
         flat_services = [
             (f"{prefix}.{serv.name if serv.name is not None else ''}", serv) for prefix, serv in flat_services
         ]
@@ -80,4 +79,6 @@ def resolve_components_name_collisions(service_group: ServiceGroup):
                     raise Exception(f"User defined service name collision ({path})!!")
             else:
                 service.path = path
+
+        checked_names += [service.name for _, service in flat_services]
     return service_group

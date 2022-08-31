@@ -88,7 +88,7 @@ class Service(PipelineComponent):
                 await self._run_handler(ctx, actor)
                 self._set_state(ctx, ComponentExecutionState.FINISHED)
             else:
-                self._set_state(ctx, ComponentExecutionState.FAILED)
+                self._set_state(ctx, ComponentExecutionState.NOT_RUN)
         except Exception as e:
             self._set_state(ctx, ComponentExecutionState.FAILED)
             logger.error(f"Service '{self.name}' execution failed!\n{e}")
