@@ -35,13 +35,11 @@ Two services are used to process request:
 
 app = Flask(__name__)
 
-actor = Actor(
-    SCRIPT,
-    start_label=("greeting_flow", "start_node"),
-    fallback_label=("greeting_flow", "fallback_node")
-)
+actor = Actor(SCRIPT, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node"))
 
-message_interface = CallbackMessageInterface()  # For this simple case of Flask, CallbackMessageInterface may not be overridden
+message_interface = (
+    CallbackMessageInterface()
+)  # For this simple case of Flask, CallbackMessageInterface may not be overridden
 
 
 def construct_webpage_by_response(response: str):
@@ -87,12 +85,15 @@ pipeline_dict = {
     "services": [
         {
             "handler": purify_request,
-            "start_condition": not_condition(lambda _, __: running_tests)  # Runs only if not running_tests
+            "start_condition": not_condition(lambda _, __: running_tests),  # Runs only if not running_tests
         },
-        {"handler": actor, "name": "encapsulated-actor"},  # Actor here is encapsulated in another service with specific name
+        {
+            "handler": actor,
+            "name": "encapsulated-actor",
+        },  # Actor here is encapsulated in another service with specific name
         {
             "handler": markdown_request,
-            "start_condition": not_condition(lambda _, __: running_tests)  # Runs only if not running_tests
+            "start_condition": not_condition(lambda _, __: running_tests),  # Runs only if not running_tests
         },
     ],
 }

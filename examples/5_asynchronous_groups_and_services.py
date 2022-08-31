@@ -61,7 +61,9 @@ def meta_web_querying_service(photo_number: int):  # This function returns servi
             ctx.misc[f"web_query"] = {}
         with urllib.request.urlopen(f"https://jsonplaceholder.typicode.com/photos/{photo_number}") as webpage:
             web_content = webpage.read().decode(webpage.headers.get_content_charset())
-            ctx.misc[f"web_query"].update({f"{ctx.last_request}:photo_number_{photo_number}": json.loads(web_content)['title']})
+            ctx.misc[f"web_query"].update(
+                {f"{ctx.last_request}:photo_number_{photo_number}": json.loads(web_content)["title"]}
+            )
         logger.info(f"Service '{info['name']}' has completed HTTPS request")
 
     return web_querying_service
@@ -79,10 +81,7 @@ pipeline_dict = {
             asynchronous=False,
             services=[
                 simple_asynchronous_service,
-                ServiceGroup(
-                    timeout=2,
-                    services=[time_consuming_service for _ in range(0, 6)]
-                ),
+                ServiceGroup(timeout=2, services=[time_consuming_service for _ in range(0, 6)]),
                 simple_asynchronous_service,
             ],
         ),

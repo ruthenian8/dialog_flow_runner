@@ -56,6 +56,6 @@ class Wrapper:
         return {
             "type": type(self).__name__,
             "name": self.name,
-            "before": '[None]' if self._before is None else self._before.__name__,
-            "after": '[None]' if self._after is None else self._after.__name__,
+            "before": "[None]" if self._before is None else self._before.__name__,
+            "after": "[None]" if self._after is None else self._after.__name__,
         }

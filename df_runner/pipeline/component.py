@@ -9,7 +9,15 @@ from df_engine.core import Context, Actor
 
 from ..service.wrapper import Wrapper
 from ..conditions import always_start_condition
-from ..types import PIPELINE_STATE_KEY, StartConditionCheckerFunction, ComponentExecutionState, ServiceRuntimeInfo, CallbackType, CallbackFunction, WrapperRuntimeInfo
+from ..types import (
+    PIPELINE_STATE_KEY,
+    StartConditionCheckerFunction,
+    ComponentExecutionState,
+    ServiceRuntimeInfo,
+    CallbackType,
+    CallbackFunction,
+    WrapperRuntimeInfo,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +90,7 @@ class PipelineComponent(abc.ABC):
 
     def add_callback_wrapper(self, callback_type: CallbackType, callback: CallbackFunction):
         def invoke_callback(_, __, info: WrapperRuntimeInfo):
-            callback(info['service'])
+            callback(info["service"])
 
         self.wrappers += [
             Wrapper(

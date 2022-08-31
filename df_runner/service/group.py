@@ -10,7 +10,10 @@ from ..types import (
     StartConditionCheckerFunction,
     ComponentExecutionState,
     ServiceGroupBuilder,
-    ServiceBuilder, CallbackType, CallbackFunction, CallbackConditionFunction,
+    ServiceBuilder,
+    CallbackType,
+    CallbackFunction,
+    CallbackConditionFunction,
 )
 from .service import Service
 from ..conditions import always_start_condition

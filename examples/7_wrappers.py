@@ -43,7 +43,9 @@ Another `time_measure_wrapper` measures total amount of time taken by all of the
 """
 
 
-def get_wrapper_misc_field(info: WrapperRuntimeInfo, postfix: str) -> str:  # This method calculates `misc` field name dedicated to wrapper based on its and its service name
+def get_wrapper_misc_field(
+    info: WrapperRuntimeInfo, postfix: str
+) -> str:  # This method calculates `misc` field name dedicated to wrapper based on its and its service name
     return f"{info['service']['name']}-{postfix}"
 
 
@@ -57,13 +59,22 @@ memory_heap = dict()  # This object plays part of some memory heap
 
 time_measure_wrapper = Wrapper(
     before=lambda ctx, _, info: ctx.misc.update({get_wrapper_misc_field(info, "time"): datetime.now()}),
-    after=lambda ctx, _, info: ctx.misc.update({get_wrapper_misc_field(info, "time"): datetime.now() - ctx.misc[get_wrapper_misc_field(info, "time")]}),
+    after=lambda ctx, _, info: ctx.misc.update(
+        {get_wrapper_misc_field(info, "time"): datetime.now() - ctx.misc[get_wrapper_misc_field(info, "time")]}
+    ),
     name="time_measure_wrapper",
 )
 
 ram_measure_wrapper = Wrapper(
-    before=lambda ctx, _, info: ctx.misc.update({get_wrapper_misc_field(info, "ram"): psutil.virtual_memory().available}),
-    after=lambda ctx, _, info: ctx.misc.update({get_wrapper_misc_field(info, "ram"): ctx.misc[get_wrapper_misc_field(info, "ram")] - psutil.virtual_memory().available}),
+    before=lambda ctx, _, info: ctx.misc.update(
+        {get_wrapper_misc_field(info, "ram"): psutil.virtual_memory().available}
+    ),
+    after=lambda ctx, _, info: ctx.misc.update(
+        {
+            get_wrapper_misc_field(info, "ram"): ctx.misc[get_wrapper_misc_field(info, "ram")]
+            - psutil.virtual_memory().available
+        }
+    ),
     name="ram_measure_wrapper",
 )
 
@@ -77,7 +88,11 @@ def heavy_service(ctx: Context):
     memory_heap[ctx.last_request] = [random.randint(0, num) for num in range(0, 100000)]
 
 
-@wrap_with(before=json_encoder_wrapper, after=lambda ctx, _, info: ctx.misc.pop(get_wrapper_misc_field(info, "str")), name="json_converter")  # `after` wrapper deletes `misc` field
+@wrap_with(
+    before=json_encoder_wrapper,
+    after=lambda ctx, _, info: ctx.misc.pop(get_wrapper_misc_field(info, "str")),
+    name="json_converter",
+)  # `after` wrapper deletes `misc` field
 def logging_service(ctx: Context, _, info: ServiceRuntimeInfo):
     str_misc = ctx.misc[f"{info['name']}-str"]
     assert isinstance(str_misc, str)
@@ -86,10 +101,7 @@ def logging_service(ctx: Context, _, info: ServiceRuntimeInfo):
 
 pipeline_dict = {
     "services": [
-        ServiceGroup(
-            wrappers=[time_measure_wrapper],
-            services=[heavy_service for _ in range(0, 5)]
-        ),
+        ServiceGroup(wrappers=[time_measure_wrapper], services=[heavy_service for _ in range(0, 5)]),
         actor,
         logging_service,
     ],

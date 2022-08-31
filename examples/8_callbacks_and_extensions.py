@@ -44,31 +44,33 @@ actor = Actor(
     fallback_label=("greeting_flow", "fallback_node"),
 )
 
-start_times = dict()
-pipeline_info = dict()
+start_times = dict()  # Place to temporarily store service start times
+pipeline_info = dict()  # Pipeline information storage
 
 
 def before_all(info: ServiceRuntimeInfo):
     global start_times, pipeline_info
     now = datetime.now()
-    pipeline_info = {'start_time': now}
-    start_times = {info['path']: now}
+    pipeline_info = {"start_time": now}
+    start_times = {info["path"]: now}
 
 
 def before(info: ServiceRuntimeInfo):
-    start_times.update({info['path']: datetime.now()})
+    start_times.update({info["path"]: datetime.now()})
 
 
 def after(info: ServiceRuntimeInfo):
-    start_time = start_times[info['path']]
-    pipeline_info.update({
-        f"{info['path']}_duration": datetime.now() - start_time,
-        f"{info['path']}_success": info['execution_state'].get(info['path'], ComponentExecutionState.NOT_RUN.name)
-    })
+    start_time = start_times[info["path"]]
+    pipeline_info.update(
+        {
+            f"{info['path']}_duration": datetime.now() - start_time,
+            f"{info['path']}_success": info["execution_state"].get(info["path"], ComponentExecutionState.NOT_RUN.name),
+        }
+    )
 
 
 def after_all(info: ServiceRuntimeInfo):
-    pipeline_info.update({f'total_time': datetime.now() - start_times[info['path']]})
+    pipeline_info.update({f"total_time": datetime.now() - start_times[info["path"]]})
     logger.info(f"Pipeline stats:\n{json.dumps(pipeline_info, indent=4, default=str)}")
 
 
