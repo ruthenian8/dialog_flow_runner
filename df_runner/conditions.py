@@ -45,10 +45,7 @@ def aggregate_condition(
     aggregator: StartConditionCheckerAggregationFunction, *functions: StartConditionCheckerFunction
 ) -> StartConditionCheckerFunction:
     def aggregation_fun(ctx: Context, actor: Actor):
-        res0 = functions[0](ctx, actor)
-        res1 = functions[1](ctx, actor)
-        res = aggregator([function(ctx, actor) for function in functions])
-        return res
+        return aggregator([function(ctx, actor) for function in functions])
 
     return aggregation_fun
 
