@@ -2,9 +2,9 @@ import logging
 
 from df_engine.core import Context, Actor
 from df_engine.core.context import get_last_index
-from flask import Flask, request
+from flask import Flask, request, Request
 
-from df_runner import Pipeline, CallbackMessageInterface, not_condition
+from df_runner import Pipeline, CallbackMessageInterface
 from examples._utils import SCRIPT
 
 logging.basicConfig(level="INFO")
@@ -42,7 +42,7 @@ message_interface = (
 )  # For this simple case of Flask, CallbackMessageInterface may not be overridden
 
 
-def construct_webpage_by_response(response: str):
+def construct_webpage_by_response(response: str) -> str:
     return f"""
     <!DOCTYPE html>
     <html>
@@ -67,9 +67,15 @@ def construct_webpage_by_response(response: str):
 
 def purify_request(ctx: Context):
     last_request = ctx.last_request  # TODO: add _really_ nice ways to modify user request and response
-    logger.info(f"Capturing request from: {last_request.base_url}")
     last_index = get_last_index(ctx.requests)
-    ctx.requests[last_index] = last_request.args.get("request")
+    if isinstance(last_request, Request):
+        logger.info(f"Capturing request from: {last_request.base_url}")
+        ctx.requests[last_index] = last_request.args.get("request")
+    elif isinstance(last_request, str):
+        logger.info(f"Capturing request from CLI")
+        ctx.requests[last_index] = last_request
+    else:
+        raise Exception(f"Request of type {type(last_request)} can not be purified!")
 
 
 def markdown_request(ctx: Context):
@@ -78,23 +84,15 @@ def markdown_request(ctx: Context):
     ctx.responses[last_index] = construct_webpage_by_response(last_response)
 
 
-running_tests = True  # Protects request from being extracted and response from being wrapped into HTML when pipeline is used with tests
-
 pipeline_dict = {
     "message_interface": message_interface,
     "services": [
-        {
-            "handler": purify_request,
-            "start_condition": not_condition(lambda _, __: running_tests),  # Runs only if not running_tests
-        },
+        purify_request,
         {
             "handler": actor,
             "name": "encapsulated-actor",
         },  # Actor here is encapsulated in another service with specific name
-        {
-            "handler": markdown_request,
-            "start_condition": not_condition(lambda _, __: running_tests),  # Runs only if not running_tests
-        },
+        markdown_request,
     ],
 }
 
@@ -107,7 +105,6 @@ async def route():
 pipeline = Pipeline(**pipeline_dict)
 
 if __name__ == "__main__":
-    running_tests = False  # TODO: add pipeline-wide arguments storage available to services amd conditions
     pipeline.run()
     app.run()
     # Navigate to http://127.0.0.1:5000/pipeline_web_interface?request={REQUEST} to receive response

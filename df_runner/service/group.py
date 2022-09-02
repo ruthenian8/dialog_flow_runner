@@ -11,9 +11,9 @@ from ..types import (
     ComponentExecutionState,
     ServiceGroupBuilder,
     ServiceBuilder,
-    CallbackType,
-    CallbackFunction,
+    GlobalWrapperType,
     CallbackConditionFunction,
+    WrapperFunction,
 )
 from .service import Service
 from ..conditions import always_start_condition
@@ -153,20 +153,20 @@ class ServiceGroup(PipelineComponent):
                         )
                 service.log_optimization_warnings()
 
-    def add_callback_wrapper(
+    def add_wrapper(
         self,
-        callback_type: CallbackType,
-        callback: CallbackFunction,
+        global_wrapper_type: GlobalWrapperType,
+        wrapper: WrapperFunction,
         condition: CallbackConditionFunction = lambda _: True,
     ):
-        super().add_callback_wrapper(callback_type, callback)
+        super().add_wrapper(global_wrapper_type, wrapper)
         for service in self.services:
             if not condition(service.path):
                 continue
             if isinstance(service, Service):
-                service.add_callback_wrapper(callback_type, callback)
+                service.add_wrapper(global_wrapper_type, wrapper)
             else:
-                service.add_callback_wrapper(callback_type, callback, condition)
+                service.add_wrapper(global_wrapper_type, wrapper, condition)
 
     @property
     def info_dict(self) -> dict:

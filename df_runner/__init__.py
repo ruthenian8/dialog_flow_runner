@@ -8,7 +8,7 @@ nest_asyncio.apply()
 
 from .types import (
     ComponentExecutionState,
-    CallbackType,
+    GlobalWrapperType,
     WrapperStage,
     StartConditionCheckerFunction,
     ServiceRuntimeInfo,

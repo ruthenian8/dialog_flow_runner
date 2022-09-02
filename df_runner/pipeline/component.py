@@ -14,9 +14,8 @@ from ..types import (
     StartConditionCheckerFunction,
     ComponentExecutionState,
     ServiceRuntimeInfo,
-    CallbackType,
-    CallbackFunction,
-    WrapperRuntimeInfo,
+    GlobalWrapperType,
+    WrapperFunction,
 )
 
 logger = logging.getLogger(__name__)
@@ -88,15 +87,13 @@ class PipelineComponent(abc.ABC):
         else:
             return await self._run(ctx, actor)
 
-    def add_callback_wrapper(self, callback_type: CallbackType, callback: CallbackFunction):
-        def invoke_callback(_, __, info: WrapperRuntimeInfo):
-            callback(info["service"])
-
+    def add_wrapper(self, global_wrapper_type: GlobalWrapperType, wrapper: WrapperFunction):
+        before = global_wrapper_type is GlobalWrapperType.BEFORE
         self.wrappers += [
             Wrapper(
-                name=f'{uuid.uuid4()}_{"before" if callback_type is CallbackType.BEFORE else "after"}_stats_wrapper',
-                before=invoke_callback if callback_type is CallbackType.BEFORE else None,
-                after=None if callback_type is CallbackType.BEFORE else invoke_callback,
+                name=f'{uuid.uuid4()}_{"before" if before else "after"}_stats_wrapper',
+                before=wrapper if before else None,
+                after=None if before else wrapper,
             )
         ]
 

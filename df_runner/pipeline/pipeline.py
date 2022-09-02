@@ -10,7 +10,7 @@ from ..service.service import Service
 from ..service.wrapper import Wrapper
 from ..message_interface import MessageInterface, CLIMessageInterface
 from ..service.group import ServiceGroup
-from ..types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder, CallbackType, CallbackFunction
+from ..types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder, GlobalWrapperType, WrapperFunction
 from ..types import PIPELINE_STATE_KEY
 from .utils import resolve_components_name_collisions, print_component_info_dict
 
@@ -58,21 +58,25 @@ class Pipeline:
         if not isinstance(self.actor, Actor):
             raise Exception("Actor not found or more than one actor found")
 
-    def add_callback(
+    def add_global_wrapper(
         self,
-        callback_type: CallbackType,
-        callback: CallbackFunction,
+        global_wrapper_type: GlobalWrapperType,
+        wrapper: WrapperFunction,
         whitelist: Optional[List[str]] = None,
         blacklist: Optional[List[str]] = None,
     ):
         def condition(name: str) -> bool:
             return (whitelist is None or name in whitelist) and (blacklist is None or name not in blacklist)
 
-        if callback_type is CallbackType.BEFORE_ALL or callback_type is CallbackType.AFTER_ALL:
+        if global_wrapper_type is GlobalWrapperType.BEFORE_ALL or global_wrapper_type is GlobalWrapperType.AFTER_ALL:
             whitelist = ["pipeline"]
-            callback_type = CallbackType.BEFORE if callback_type is CallbackType.BEFORE_ALL else CallbackType.AFTER
+            global_wrapper_type = (
+                GlobalWrapperType.BEFORE
+                if global_wrapper_type is GlobalWrapperType.BEFORE_ALL
+                else GlobalWrapperType.AFTER
+            )
 
-        self._services_pipeline.add_callback_wrapper(callback_type, callback, condition)
+        self._services_pipeline.add_wrapper(global_wrapper_type, wrapper, condition)
 
     @property
     def info_dict(self) -> dict:

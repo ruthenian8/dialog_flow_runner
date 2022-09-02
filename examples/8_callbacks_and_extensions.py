@@ -6,31 +6,31 @@ from datetime import datetime
 
 from df_engine.core import Actor
 
-from df_runner import Pipeline, ServiceRuntimeInfo, ComponentExecutionState, CallbackType
+from df_runner import Pipeline, ComponentExecutionState, GlobalWrapperType, WrapperRuntimeInfo, ServiceRuntimeInfo
 from examples._utils import SCRIPT
 
 logging.basicConfig(level="INFO")
 logger = logging.getLogger(__name__)
 
 """
-The following example shows how pipeline can be extended by callbacks and custom functions.
+The following example shows how pipeline can be extended by global wrappers and custom functions.
 
-Pipeline functionality can be extended by callbacks.
-Callbacks are special functions that are called on some stages of pipeline execution.
-There are 4 types of callbacks:
+Pipeline functionality can be extended by global wrappers.
+Global wrappers are special wrappers that are called on some stages of pipeline execution.
+There are 4 types of global wrappers:
     `BEFORE_ALL` - is called before pipeline execution
     `BEFORE` - is called before each service and service group execution
     `AFTER` - is called after each service and service group execution
     `AFTER_ALL` - is called after pipeline execution
-Callbacks accept a single argument - ServiceRuntimeInfo, info about the service they are attached to and return None
+Global wrappers have the same signature as regular wrappers.
 Actually `BEFORE_ALL` and `AFTER_ALL` are attached to root service group named 'pipeline', so they return its runtime info
 
-Callbacks are run via wrappers, so all the wrappers warnings (see example №7) are applicable to them.
-Pipeline `add_callback` function is used to register all callbacks. It accepts following arguments:
-    `callback_type` (required) - a CallbackType instance, indicates callback type to add
-    `callback` (required) - the callback function itself
-    `whitelist` - an optional list of paths, if it's not None the callback will be applied to specified pipeline components only
-    `blacklist` - an optional list of paths, if it's not None the callback will be applied to all pipeline components except specified
+All wrappers warnings (see example №7) are applicable to global wrappers.
+Pipeline `add_global_wrapper` function is used to register global wrappers. It accepts following arguments:
+    `global_wrapper_type` (required) - a GlobalWrapperType instance, indicates wrapper type to add
+    `wrapper` (required) - the wrapper function itself
+    `whitelist` - an optional list of paths, if it's not None the wrapper will be applied to specified pipeline components only
+    `blacklist` - an optional list of paths, if it's not None the wrapper will be applied to all pipeline components except specified
 
 Here basic functionality of `df-node-stats` library is emulated.
 Information about pipeline component execution time and result is collected and printed to info log after pipeline execution.
@@ -48,29 +48,31 @@ start_times = dict()  # Place to temporarily store service start times
 pipeline_info = dict()  # Pipeline information storage
 
 
-def before_all(info: ServiceRuntimeInfo):
+def before_all(_, __, info: WrapperRuntimeInfo):
     global start_times, pipeline_info
     now = datetime.now()
     pipeline_info = {"start_time": now}
-    start_times = {info["path"]: now}
+    start_times = {info["service"]["path"]: now}
 
 
-def before(info: ServiceRuntimeInfo):
-    start_times.update({info["path"]: datetime.now()})
+def before(_, __, info: WrapperRuntimeInfo):
+    start_times.update({info["service"]["path"]: datetime.now()})
 
 
-def after(info: ServiceRuntimeInfo):
-    start_time = start_times[info["path"]]
+def after(_, __, info: WrapperRuntimeInfo):
+    start_time = start_times[info["service"]["path"]]
     pipeline_info.update(
         {
-            f"{info['path']}_duration": datetime.now() - start_time,
-            f"{info['path']}_success": info["execution_state"].get(info["path"], ComponentExecutionState.NOT_RUN.name),
+            f"{info['service']['path']}_duration": datetime.now() - start_time,
+            f"{info['service']['path']}_success": info["service"]["execution_state"].get(
+                info["service"]["path"], ComponentExecutionState.NOT_RUN.name
+            ),
         }
     )
 
 
-def after_all(info: ServiceRuntimeInfo):
-    pipeline_info.update({f"total_time": datetime.now() - start_times[info["path"]]})
+def after_all(_, __, info: WrapperRuntimeInfo):
+    pipeline_info.update({f"total_time": datetime.now() - start_times[info["service"]["path"]]})
     logger.info(f"Pipeline stats:\n{json.dumps(pipeline_info, indent=4, default=str)}")
 
 
@@ -90,10 +92,10 @@ pipeline_dict = {
 
 pipeline = Pipeline(**pipeline_dict)
 
-pipeline.add_callback(CallbackType.BEFORE_ALL, before_all)
-pipeline.add_callback(CallbackType.BEFORE, before)
-pipeline.add_callback(CallbackType.AFTER, after)
-pipeline.add_callback(CallbackType.AFTER_ALL, after_all)
+pipeline.add_global_wrapper(GlobalWrapperType.BEFORE_ALL, before_all)
+pipeline.add_global_wrapper(GlobalWrapperType.BEFORE, before)
+pipeline.add_global_wrapper(GlobalWrapperType.AFTER, after)
+pipeline.add_global_wrapper(GlobalWrapperType.AFTER_ALL, after_all)
 
 if __name__ == "__main__":
     pipeline.run()

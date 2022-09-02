@@ -3,7 +3,7 @@ import urllib.request
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIMessageInterface, Service, Pipeline
+from df_runner import CLIMessageInterface, Service, Pipeline, ServiceRuntimeInfo
 from examples._utils import SCRIPT
 
 logging.basicConfig(level="INFO")
@@ -34,8 +34,9 @@ ServiceBuilder object can be defined either with callable (see example №2) or 
 Not only Pipeline can be run using `__call__` method, for most cases `run` method should be used.
 It starts pipeline asynchronously and connects to provided message interface.
 
-Here pipeline contains of 4 services, defined in 4 different ways.
-First two of them write sample feature detection data to `ctx.misc`, first uses a constant expression and second fetches from `example.com`.
+Here pipeline contains 4 services, defined in 4 different ways with different signatures.
+First two of them write sample feature detection data to `ctx.misc`.
+The first uses a constant expression and the second fetches from `example.com`.
 Third one is Actor (it acts like a _special_ service here). Final service logs `ctx.misc` dict.
 """
 
@@ -54,16 +55,20 @@ def prepreprocess(ctx: Context):
     }  # Similar syntax can be used to access service output dedicated to current pipeline rum
 
 
-def preprocess(ctx: Context):
-    logger.info(f"another preprocession web-based annotator Service (defined as a callable)")
+def preprocess(ctx: Context, _, info: ServiceRuntimeInfo):
+    logger.info(f"another preprocession web-based annotator Service (defined as a callable), named '{info['name']}'")
     with urllib.request.urlopen("https://example.com/") as webpage:
         web_content = webpage.read().decode(webpage.headers.get_content_charset())
         ctx.misc["another_detection"] = {ctx.last_request: "online" if "Example Domain" in web_content else "offline"}
 
 
-def postprocess(ctx: Context):
+def postprocess(ctx: Context, actor: Actor):
     logger.info(f"postprocession Service (defined as an object)")
     logger.info(f"resulting misc looks like: {ctx.misc}")
+    fallback_flow, fallback_node, _ = actor.fallback_label
+    logger.info(
+        f"actor is{'' if actor.script[fallback_flow][fallback_node].response == ctx.last_response else ' not'} in fallback node"
+    )
 
 
 pipeline_dict = {

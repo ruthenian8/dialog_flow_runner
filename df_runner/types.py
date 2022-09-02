@@ -32,7 +32,7 @@ class ComponentExecutionState(Enum):
 
 
 @unique
-class CallbackType(Enum):
+class GlobalWrapperType(Enum):
     """
     Enum, representing types of callbacks, that can be set applied for a pipeline.
     The following types are supported:
@@ -108,13 +108,6 @@ WrapperRuntimeInfo = TypedDict(
         "service": ServiceRuntimeInfo,
     },
 )
-
-
-"""
-A function type for attaching to different stages of pipeline execution.
-Accepts string (service name) and any (service result, if any by that point).
-"""
-CallbackFunction = Callable[[ServiceRuntimeInfo], None]
 
 
 """
