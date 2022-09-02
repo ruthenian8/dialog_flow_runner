@@ -58,25 +58,21 @@ class Pipeline:
         if not isinstance(self.actor, Actor):
             raise Exception("Actor not found or more than one actor found")
 
-    def add_global_wrapper(
+    def add_callback(
         self,
-        global_wrapper_type: GlobalWrapperType,
-        wrapper: WrapperFunction,
+        callback_type: CallbackType,
+        callback: CallbackFunction,
         whitelist: Optional[List[str]] = None,
         blacklist: Optional[List[str]] = None,
     ):
         def condition(name: str) -> bool:
             return (whitelist is None or name in whitelist) and (blacklist is None or name not in blacklist)
 
-        if global_wrapper_type is GlobalWrapperType.BEFORE_ALL or global_wrapper_type is GlobalWrapperType.AFTER_ALL:
+        if callback_type is CallbackType.BEFORE_ALL or callback_type is CallbackType.AFTER_ALL:
             whitelist = ["pipeline"]
-            global_wrapper_type = (
-                GlobalWrapperType.BEFORE
-                if global_wrapper_type is GlobalWrapperType.BEFORE_ALL
-                else GlobalWrapperType.AFTER
-            )
+            callback_type = CallbackType.BEFORE if callback_type is CallbackType.BEFORE_ALL else CallbackType.AFTER
 
-        self._services_pipeline.add_wrapper(global_wrapper_type, wrapper, condition)
+        self._services_pipeline.add_callback_wrapper(callback_type, callback, condition)
 
     @property
     def info_dict(self) -> dict:
