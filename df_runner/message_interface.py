@@ -11,7 +11,7 @@ from .types import PipelineRunnerFunction, PollingProviderLoopFunction
 logger = logging.getLogger(__name__)
 
 
-class MessageInterface(ABC):
+class MessageInterface(ABC): # TODO: rename as MessengerI...???
     """
     Class that represents a message interface used for communication between pipeline and users.
     It is responsible for connection between user and pipeline, as well as for request-response transactions.

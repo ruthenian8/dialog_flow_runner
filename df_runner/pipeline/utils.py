@@ -7,7 +7,7 @@ from ..service.service import Service
 from ..service.group import ServiceGroup
 
 
-def print_component_info_dict(
+def print_component_info_dict( # TODO: rename prett...?
     service: dict,
     show_wrappers: bool,
     offset: str = "",

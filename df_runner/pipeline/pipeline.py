@@ -58,7 +58,7 @@ class Pipeline:
         if not isinstance(self.actor, Actor):
             raise Exception("Actor not found or more than one actor found")
 
-    def add_callback(
+    def add_callback( # TODO: rename too
         self,
         callback_type: CallbackType,
         callback: CallbackFunction,

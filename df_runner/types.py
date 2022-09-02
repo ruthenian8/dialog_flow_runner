@@ -32,7 +32,7 @@ class ComponentExecutionState(Enum):
 
 
 @unique
-class CallbackType(Enum):
+class CallbackType(Enum): # TODO: rename WrapperType
     """
     Enum, representing types of callbacks, that can be set applied for a pipeline.
     The following types are supported:
