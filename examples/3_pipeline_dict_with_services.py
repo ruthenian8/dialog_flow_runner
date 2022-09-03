@@ -3,7 +3,7 @@ import urllib.request
 
 from df_engine.core import Context, Actor
 
-from df_runner import CLIMessageInterface, Service, Pipeline, ServiceRuntimeInfo
+from df_runner import CLIMessengerInterface, Service, Pipeline, ServiceRuntimeInfo
 from examples._utils import SCRIPT
 
 logging.basicConfig(level="INFO")
@@ -14,7 +14,7 @@ The following example shows pipeline creation from dict and most important pipel
 
 When Pipeline is created using `from_dict` method, pipeline should be defined as PipelineBuilder objects (defined in `types` module).
 These objects are dictionaries of particular structure:
-    `message_interface` - `MessageInterface` instance, used to connect to channel and transfer IO to user
+    `messenger_interface` - `MessengerInterface` instance, used to connect to channel and transfer IO to user
     `context_storage` - place to store dialog contexts (dictionary or a `DBAbstractConnector` instance)
     `services` (required) - a ServiceGroupBuilder object, basically a list of ServiceBuilder or ServiceGroupBuilder objects, see example №4
     `wrappers` - a list of pipeline wrappers, see example №7
@@ -32,7 +32,7 @@ ServiceBuilder object can be defined either with callable (see example №2) or 
     `name` - custom defined name for the service (keep in mind that names in one ServiceGroup should be unique), see example №4
 
 Not only Pipeline can be run using `__call__` method, for most cases `run` method should be used.
-It starts pipeline asynchronously and connects to provided message interface.
+It starts pipeline asynchronously and connects to provided messenger interface.
 
 Here pipeline contains 4 services, defined in 4 different ways with different signatures.
 First two of them write sample feature detection data to `ctx.misc`.
@@ -72,9 +72,9 @@ def postprocess(ctx: Context, actor: Actor):
 
 
 pipeline_dict = {
-    "message_interface": CLIMessageInterface(
+    "messenger_interface": CLIMessengerInterface(
         intro="Hi, this is a brand new Pipeline running!", prompt_request="Request: ", prompt_response="Response: "
-    ),  # `CLIMessageInterface` has the following constructor parameters:
+    ),  # `CLIMessengerInterface` has the following constructor parameters:
     #     `intro` - a string that will be displayed on connection to interface (on `pipeline.run`)
     #     `prompt_request` - a string that will be displayed before user input
     #     `prompt_response` - an output prefix string

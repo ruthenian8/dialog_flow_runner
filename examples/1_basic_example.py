@@ -8,11 +8,11 @@ The following example shows basic usage of `df_runner` module, as an extension t
 
 Pipeline is an object, that automates Actor execution and context management.
 `from_script` method can be used to create a pipeline of the most basic structure:
-"preprocessors -> actor -> postprocessors" as well as to define `context_storage` and `message_interface`.
+"preprocessors -> actor -> postprocessors" as well as to define `context_storage` and `messenger_interface`.
 These parameters usage will be shown in examples 2, 3 and 6.
 
 Here only required for Actor creating parameters are provided to pipeline.
-`context_storage` will default to simple Python dict and `message_interface` will never be used.
+`context_storage` will default to simple Python dict and `messenger_interface` will never be used.
 pre- and postprocessors lists are empty.
 Pipeline object can be called with user input as first argument and dialog id (any immutable object).
 This call will return Context, its `last_response` property will be actors response.

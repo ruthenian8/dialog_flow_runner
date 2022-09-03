@@ -15,7 +15,7 @@ from .types import (
     WrapperRuntimeInfo,
 )
 
-from .message_interface import CLIMessageInterface, CallbackMessageInterface
+from .messenger_interface import CLIMessengerInterface, CallbackMessengerInterface
 from .conditions import (
     always_start_condition,
     service_successful_condition,

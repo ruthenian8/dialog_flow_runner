@@ -4,30 +4,30 @@ from df_engine.core import Context, Actor
 from df_engine.core.context import get_last_index
 from flask import Flask, request, Request
 
-from df_runner import Pipeline, CallbackMessageInterface
+from df_runner import Pipeline, CallbackMessengerInterface
 from examples._utils import SCRIPT
 
 logging.basicConfig(level="INFO")
 logger = logging.getLogger(__name__)
 
 """
-The following example shows message interfaces usage.
+The following example shows messenger interfaces usage.
 
-Message interfaces are used for providing a way for communication between user and pipeline.
+Messenger interfaces are used for providing a way for communication between user and pipeline.
 They manage message channel initialization and termination as well as pipeline execution on every user request.
-There are two built-in message interface types (that may be overridden):
-    `PollingMessageInterface` - starts polling for user request in a loop upon initialization, it has following methods:
+There are two built-in messenger interface types (that may be overridden):
+    `PollingMessengerInterface` - starts polling for user request in a loop upon initialization, it has following methods:
         `_request()` - method that is executed in a loop, should return list of tuples: (user request, unique dialog id)
         `_respond(responses)` - method that is executed in a loop after all user requests processing, accepts list of dialog Contexts
         `_on_exception(e)` - method that is called on exception that happens in the loop, should catch the exception (it is also called on pipeline termination)
         `connect(pipeline_runner, loop, timeout)` - method that is called on connection to message channel, accepts pipeline_runner (a callback, running pipeline)
             loop - a function to be called on each loop execution (should return True to continue polling)
             timeout - time in seconds to wait between loop executions
-    `CallbackMessageInterface` - creates message channel and provides a callback for pipeline execution, it has following methods:
+    `CallbackMessengerInterface` - creates message channel and provides a callback for pipeline execution, it has following methods:
         `on_request(request, ctx_id)` - method that should be called each time user provides new input to pipeline, returns dialog Context
-`CLIMessageInterface` is also a message interface that overrides `PollingMessageInterface` and provides default message channel between pipeline and console/file IO
+`CLIMessengerInterface` is also a messenger interface that overrides `PollingMessengerInterface` and provides default message channel between pipeline and console/file IO
 
-Here a default `CallbackMessageInterface` is used to setup communication between pipeline and Flask server.
+Here a default `CallbackMessengerInterface` is used to setup communication between pipeline and Flask server.
 Two services are used to process request:
     `purify_request` extracts user request from Flask HTTP request
     `construct_webpage_by_response` wraps actor response in webpage and adds response-based image to it
@@ -37,9 +37,9 @@ app = Flask(__name__)
 
 actor = Actor(SCRIPT, start_label=("greeting_flow", "start_node"), fallback_label=("greeting_flow", "fallback_node"))
 
-message_interface = (
-    CallbackMessageInterface()
-)  # For this simple case of Flask, CallbackMessageInterface may not be overridden
+messenger_interface = (
+    CallbackMessengerInterface()
+)  # For this simple case of Flask, CallbackMessengerInterface may not be overridden
 
 
 def construct_webpage_by_response(response: str) -> str:
@@ -85,7 +85,7 @@ def markdown_request(ctx: Context):
 
 
 pipeline_dict = {
-    "message_interface": message_interface,
+    "messenger_interface": messenger_interface,
     "services": [
         purify_request,
         {
@@ -99,7 +99,7 @@ pipeline_dict = {
 
 @app.route("/pipeline_web_interface")
 async def route():
-    return message_interface.on_request(request, 0).last_response
+    return messenger_interface.on_request(request, 0).last_response
 
 
 pipeline = Pipeline(**pipeline_dict)

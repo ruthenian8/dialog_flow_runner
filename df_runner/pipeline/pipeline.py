@@ -8,11 +8,11 @@ from df_engine.core.types import NodeLabel2Type
 
 from ..service.service import Service
 from ..service.wrapper import Wrapper
-from ..message_interface import MessageInterface, CLIMessageInterface
+from ..messenger_interface import MessengerInterface, CLIMessengerInterface
 from ..service.group import ServiceGroup
 from ..types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder, GlobalWrapperType, WrapperFunction
 from ..types import PIPELINE_STATE_KEY
-from .utils import resolve_components_name_collisions, print_component_info_dict
+from .utils import resolve_components_name_collisions, pretty_format_component_info_dict
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +30,14 @@ class Pipeline:
 
     def __init__(
         self,
-        message_interface: Optional[MessageInterface] = None,
+        messenger_interface: Optional[MessengerInterface] = None,
         context_storage: Optional[Union[DBAbstractConnector, Dict]] = None,
         services: ServiceGroupBuilder = None,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: Optional[int] = None,
         optimization_warnings: bool = False,
     ):
-        self.message_interface = CLIMessageInterface() if message_interface is None else message_interface
+        self.messenger_interface = CLIMessengerInterface() if messenger_interface is None else messenger_interface
         self.context_storage = {} if context_storage is None else context_storage
         self._services_pipeline = ServiceGroup(
             services,
@@ -58,33 +58,37 @@ class Pipeline:
         if not isinstance(self.actor, Actor):
             raise Exception("Actor not found or more than one actor found")
 
-    def add_callback(
+    def add_global_wrapper(
         self,
-        callback_type: CallbackType,
-        callback: CallbackFunction,
+        global_wrapper_type: GlobalWrapperType,
+        wrapper: WrapperFunction,
         whitelist: Optional[List[str]] = None,
         blacklist: Optional[List[str]] = None,
     ):
         def condition(name: str) -> bool:
             return (whitelist is None or name in whitelist) and (blacklist is None or name not in blacklist)
 
-        if callback_type is CallbackType.BEFORE_ALL or callback_type is CallbackType.AFTER_ALL:
+        if global_wrapper_type is GlobalWrapperType.BEFORE_ALL or global_wrapper_type is GlobalWrapperType.AFTER_ALL:
             whitelist = ["pipeline"]
-            callback_type = CallbackType.BEFORE if callback_type is CallbackType.BEFORE_ALL else CallbackType.AFTER
+            global_wrapper_type = (
+                GlobalWrapperType.BEFORE
+                if global_wrapper_type is GlobalWrapperType.BEFORE_ALL
+                else GlobalWrapperType.AFTER
+            )
 
-        self._services_pipeline.add_callback_wrapper(callback_type, callback, condition)
+        self._services_pipeline.add_wrapper(global_wrapper_type, wrapper, condition)
 
     @property
     def info_dict(self) -> dict:
         return {
             "type": type(self).__name__,
-            "message_interface": f"Instance of {type(self.message_interface).__name__}",
+            "messenger_interface": f"Instance of {type(self.messenger_interface).__name__}",
             "context_storage": f"Instance of {type(self.context_storage).__name__}",
             "services": [self._services_pipeline.info_dict],
         }
 
     def pretty_format(self, show_wrappers: bool = False, indent: int = 4) -> str:
-        return print_component_info_dict(self.info_dict, show_wrappers, indent=indent)
+        return pretty_format_component_info_dict(self.info_dict, show_wrappers, indent=indent)
 
     @classmethod
     def from_script(
@@ -93,7 +97,7 @@ class Pipeline:
         start_label: NodeLabel2Type,
         fallback_label: Optional[NodeLabel2Type] = None,
         context_storage: Optional[Union[DBAbstractConnector, Dict]] = None,
-        message_interface: MessageInterface = CLIMessageInterface(),
+        messenger_interface: MessengerInterface = CLIMessengerInterface(),
         pre_services: Optional[List[ServiceBuilder]] = None,
         post_services: Optional[List[ServiceBuilder]] = None,
     ):
@@ -101,7 +105,7 @@ class Pipeline:
         pre_services = [] if pre_services is None else pre_services
         post_services = [] if post_services is None else post_services
         return cls(
-            message_interface=message_interface,
+            messenger_interface=messenger_interface,
             context_storage=context_storage if context_storage is None else context_storage,
             services=[*pre_services, actor, *post_services],
         )
@@ -127,7 +131,7 @@ class Pipeline:
         Since one pipeline always has only one messaging interface, there is no need for thread management here.
         Use this in async context, await will not work in sync.
         """
-        asyncio.run(self.message_interface.connect(self._run_pipeline))
+        asyncio.run(self.messenger_interface.connect(self._run_pipeline))
 
     def __call__(self, request: Any, ctx_id: Hashable) -> Context:
         return asyncio.run(self._run_pipeline(request, ctx_id))

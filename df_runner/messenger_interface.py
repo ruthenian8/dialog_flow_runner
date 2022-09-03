@@ -11,7 +11,7 @@ from .types import PipelineRunnerFunction, PollingProviderLoopFunction
 logger = logging.getLogger(__name__)
 
 
-class MessageInterface(ABC): # TODO: rename as MessengerI...???
+class MessengerInterface(ABC):
     """
     Class that represents a message interface used for communication between pipeline and users.
     It is responsible for connection between user and pipeline, as well as for request-response transactions.
@@ -28,7 +28,7 @@ class MessageInterface(ABC): # TODO: rename as MessengerI...???
         raise NotImplementedError
 
 
-class PollingMessageInterface(MessageInterface):
+class PollingMessengerInterface(MessengerInterface):
     """
     Polling message interface runs in a loop, constantly asking users for a new input.
     """
@@ -87,7 +87,7 @@ class PollingMessageInterface(MessageInterface):
                 break
 
 
-class CallbackMessageInterface(MessageInterface):
+class CallbackMessengerInterface(MessengerInterface):
     """
     Callback message interface is waiting for user input and answers once it gets one.
     """
@@ -111,7 +111,7 @@ class CallbackMessageInterface(MessageInterface):
         return run(self._pipeline_runner(request, ctx_id))
 
 
-class CLIMessageInterface(PollingMessageInterface):
+class CLIMessengerInterface(PollingMessengerInterface):
     """
     Command line messaging interface - the default messaging interface, communicating with user via STDIN/STDOUT.
     This messaging interface can maintain dialog with one user at a time only.

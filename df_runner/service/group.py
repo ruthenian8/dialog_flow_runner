@@ -12,7 +12,7 @@ from ..types import (
     ServiceGroupBuilder,
     ServiceBuilder,
     GlobalWrapperType,
-    CallbackConditionFunction,
+    WrapperConditionFunction,
     WrapperFunction,
 )
 from .service import Service
@@ -157,7 +157,7 @@ class ServiceGroup(PipelineComponent):
         self,
         global_wrapper_type: GlobalWrapperType,
         wrapper: WrapperFunction,
-        condition: CallbackConditionFunction = lambda _: True,
+        condition: WrapperConditionFunction = lambda _: True,
     ):
         super().add_wrapper(global_wrapper_type, wrapper)
         for service in self.services:

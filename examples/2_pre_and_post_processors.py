@@ -2,7 +2,7 @@ import logging
 
 from df_engine.core import Context
 
-from df_runner import Pipeline, CLIMessageInterface
+from df_runner import Pipeline, CLIMessengerInterface
 from examples._utils import SCRIPT
 
 logging.basicConfig(level="INFO")
@@ -40,7 +40,7 @@ pipeline = Pipeline.from_script(
     ("greeting_flow", "start_node"),
     ("greeting_flow", "fallback_node"),
     {},  # `context_storage` - a dictionary or a `DBAbstractConnector` instance, a place to store dialog contexts
-    CLIMessageInterface(),  # `message_interface` - a message channel adapter, it's not used in this example
+    CLIMessengerInterface(),  # `messenger_interface` - a message channel adapter, it's not used in this example
     [ping_processor],
     [pong_processor],
 )

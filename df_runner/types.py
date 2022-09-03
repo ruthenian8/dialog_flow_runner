@@ -82,7 +82,7 @@ Accepts context and actor (current pipeline state), returns boolean (whether ser
 StartConditionCheckerAggregationFunction = Callable[[Iterable[bool]], bool]
 
 
-CallbackConditionFunction = Callable[[str], bool]
+WrapperConditionFunction = Callable[[str], bool]
 
 
 PollingProviderLoopFunction = Callable[[], bool]
@@ -170,7 +170,7 @@ ServiceGroupBuilder = Union[
 PipelineBuilder = TypedDict(
     "PipelineBuilder",
     {
-        "message_interface": NotRequired[Optional[_ForwardProvider]],
+        "messenger_interface": NotRequired[Optional[_ForwardProvider]],
         "context_storage": NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
         "services": ServiceGroupBuilder,
         "wrappers": NotRequired[Optional[List[_ForwardServiceWrapper]]],

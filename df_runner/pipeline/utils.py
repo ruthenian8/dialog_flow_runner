@@ -7,7 +7,7 @@ from ..service.service import Service
 from ..service.group import ServiceGroup
 
 
-def print_component_info_dict( # TODO: rename prett...?
+def pretty_format_component_info_dict(
     service: dict,
     show_wrappers: bool,
     offset: str = "",
@@ -25,7 +25,7 @@ def print_component_info_dict( # TODO: rename prett...?
             if isinstance(value, List):
                 if len(value) > 0:
                     values = [
-                        print_component_info_dict(instance, show_wrappers, f"{indent * 2}{offset}")
+                        pretty_format_component_info_dict(instance, show_wrappers, f"{indent * 2}{offset}")
                         for instance in value
                     ]
                     value_str = "\n%s" % "\n".join(values)
