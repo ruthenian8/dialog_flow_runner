@@ -24,7 +24,7 @@ These objects are dictionaries of particular structure:
 On pipeline execution services from `services` list are run without difference between pre- and postprocessors.
 If Actor instance is not found among `services` pipeline creation fails. There can be only one actor in the pipeline.
 ServiceBuilder object can be defined either with callable (see example №2) or with dict of following structure / object with following constructor arguments:
-    `handler` (required) - ServiceBuilder, if handler is n object or a dict itself, it will be used instead of base ServiceBuilder
+    `handler` (required) - ServiceBuilder, if handler is an object or a dict itself, it will be used instead of base ServiceBuilder
     `wrappers` - a list of service wrappers, see example №7
     `timeout` - service timeout, see example №5
     `asynchronous` - whether or not this service _should_ be asynchronous (keep in mind that not all services _can_ be asynchronous), see example №5

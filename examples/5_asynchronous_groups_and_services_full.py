@@ -70,7 +70,7 @@ def meta_web_querying_service(photo_number: int):  # This function returns servi
 
 
 def context_printing_service(ctx: Context):
-    logger.info(f"Context misc: {ctx.misc}")
+    logger.info(f"Context misc: {json.dumps(ctx.misc, indent=4, default=str)}")
 
 
 pipeline_dict = {

@@ -1,3 +1,4 @@
+import json
 import logging
 from df_engine.core import Actor
 
@@ -61,7 +62,7 @@ There are following built-in condition functions:
     `any_condition(*functions)` - function that returns True if any of the given `functions` (condition functions) return True
 NB! Actor service ALWAYS runs unconditionally.
 
-Here there are two a service, named `running_service` is executed only if both `simple_services` in `service_group_0` are finished successfully.
+Here there are two conditionally executed services: a service named `running_service` is executed only if both `simple_services` in `service_group_0` are finished successfully.
 `never_running_service` is executed only if `running_service` is not finished, this should never happen.
 `context_printing_service` prints pipeline runtime information, that contains execution state of all previously run services.
 """
@@ -83,7 +84,7 @@ def never_running_service(_, __, info: ServiceRuntimeInfo):
 
 
 def runtime_info_printing_service(_, __, info: ServiceRuntimeInfo):
-    logger.info(f"Service '{info['name']}' runtime execution info: {info}")
+    logger.info(f"Service '{info['name']}' runtime execution info: {json.dumps(info, indent=4, default=str)}")
 
 
 pipeline_dict = {
