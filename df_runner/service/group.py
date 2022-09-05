@@ -72,9 +72,8 @@ class ServiceGroup(PipelineComponent):
         It doesn't include wrappers execution, start condition checking or error handling - pure execution only.
         Executes components inside the group based on its `asynchronous` property.
         Collects information about their execution state - group is finished successfully only if all components in it finished successfully.
-        Accepts two arguments:
-            `ctx` - current dialog context
-            `actor` - actor, associated with the pipeline
+        :ctx: - current dialog context.
+        :actor: - actor, associated with the pipeline.
         Returns current dialog context.
         """
         self._set_state(ctx, ComponentExecutionState.RUNNING)
@@ -107,11 +106,10 @@ class ServiceGroup(PipelineComponent):
         actor: Actor = None,
     ) -> Optional[Context]:
         """
-        Method for handling this group's execution.
+        Method for handling this group execution.
         Executes before and after execution wrappers, checks start condition and catches runtime exceptions.
-        Accepts two arguments:
-            `ctx` - current dialog context
-            `actor` - actor, associated with the pipeline
+        :ctx: - current dialog context.
+        :actor: - actor, associated with the pipeline.
         Returns current dialog context if synchronous, else None.
         """
         for wrapper in self.wrappers:
@@ -137,9 +135,8 @@ class ServiceGroup(PipelineComponent):
         """
         Method, that returns a flat array of inner components and their paths used during pipeline initialization.
         Uses breadth first algorithm.
-        Accepts from zero to two arguments:
-            `prefix` - path prefix of the current group
-            `recursion_level` - how many inner service groups to enter (99 by default)
+        :prefix: - path prefix of the current group.
+        :recursion_level: - how many inner service groups to enter (99 by default).
         Returns list of tuples: (path to component, component).
         """
         prefix += f".{self.name}"
@@ -194,10 +191,9 @@ class ServiceGroup(PipelineComponent):
         Adds wrapper to itself and propagates it to all inner components.
         Uses a special condition function to determine whether to add wrapper to any particular inner component or not.
         Condition checks components path to be in whitelist (if defined) and not to be in blacklist (if defined).
-        Accepts from two to three arguments:
-            `global_wrapper_type` - a type of wrapper to add
-            `wrapper` - a WrapperFunction to add as a wrapper
-            `condition` - a condition function
+        :global_wrapper_type: - a type of wrapper to add.
+        :wrapper: - a WrapperFunction to add as a wrapper.
+        :condition: - a condition function.
         Returns None.
         """
         super().add_wrapper(global_wrapper_type, wrapper)
@@ -225,7 +221,7 @@ class ServiceGroup(PipelineComponent):
         Utility method, used to create inner components, judging by their nature.
         Services are created from services and dictionaries.
         ServiceGroups are created from service groups and lists.
-        Accepts `services` - ServiceGroupBuilder object (a ServiceGroup instance or a list).
+        :services: - ServiceGroupBuilder object (a ServiceGroup instance or a list).
         Returns list of services and service groups.
         """
         handled_services = []

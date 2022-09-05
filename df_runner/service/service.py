@@ -12,7 +12,6 @@ from ..types import (
     StartConditionCheckerFunction,
     ComponentExecutionState,
     WrapperStage,
-    WrapperFunction,
 )
 from ..pipeline.component import PipelineComponent
 from ..conditions import always_start_condition
@@ -27,7 +26,7 @@ class Service(PipelineComponent):
     Service group can be synchronous or asynchronous.
     Service can be asynchronous only if its handler is a coroutine.
     Actor wrapping service can be synchronous only.
-    It accepts:
+    It accepts constructor parameters:
         `handler` - a service function or an actor
         `wrappers` - list of Wrappers to add to the service
         `timeout` - timeout to add to the group
@@ -67,7 +66,15 @@ class Service(PipelineComponent):
 
     async def _run_handler(self, ctx: Context, actor: Actor):
         """
-
+        Method for service `handler` execution.
+        Handler has three possible signatures, so this method picks the right one to invoke.
+        These possible signatures are:
+            1. (ctx: Context) - accepts current dialog context only
+            2. (ctx: Context, actor: Actor) - accepts context and actor, associated with the pipeline
+            3. (ctx: Context, actor: Actor, info: ServiceRuntimeInfo) - accepts context, actor and service runtime info dict.
+        :ctx: - current dialog context only.
+        :actor: - actor, associated with the pipeline.
+        Returns None.
         """
         handler_params = len(inspect.signature(self.handler).parameters)
         if handler_params == 1:
@@ -80,6 +87,12 @@ class Service(PipelineComponent):
             raise Exception(f"Too many parameters required for service '{self.name}' handler: {handler_params}!")
 
     def _run_as_actor(self, ctx: Context):
+        """
+        Method for running this service if its handler is an Actor.
+        Catches runtime exceptions.
+        :ctx: - current dialog context.
+        Returns context, mutated by actor.
+        """
         try:
             ctx = self.handler(ctx)
             self._set_state(ctx, ComponentExecutionState.FINISHED)
@@ -89,6 +102,13 @@ class Service(PipelineComponent):
         return ctx
 
     async def _run_as_service(self, ctx: Context, actor: Actor):
+        """
+        Method for running this service if its handler is not an Actor.
+        Checks start condition and catches runtime exceptions.
+        :ctx: - current dialog context.
+        :actor: - current pipeline's actor.
+        Returns None.
+        """
         try:
             if self.start_condition(ctx, actor):
                 self._set_state(ctx, ComponentExecutionState.RUNNING)
@@ -102,9 +122,11 @@ class Service(PipelineComponent):
 
     async def _run(self, ctx: Context, actor: Optional[Actor] = None) -> Optional[Context]:
         """
-        Service may be executed, as actor in case it's an actor or as function in case it's an annotator function.
-        It also sets named variables in context.framework_states for other services start_conditions.
-        If execution fails the error is caught here.
+        Method for handling this service execution.
+        Executes before and after execution wrappers, launches `_run_as_actor` or `_run_as_service` method.
+        :ctx: (required) - current dialog context.
+        :actor: - actor, associated with the pipeline.
+        Returns context if this service's handler is an Actor else None.
         """
         for wrapper in self.wrappers:
             wrapper.run_stage(WrapperStage.PREPROCESSING, ctx, actor, self._get_runtime_info(ctx))
@@ -122,6 +144,10 @@ class Service(PipelineComponent):
 
     @property
     def info_dict(self) -> dict:
+        """
+        See `Component.info_dict` property.
+        Adds `handler` key to base info dictionary.
+        """
         representation = super(Service, self).info_dict
         if isinstance(self.handler, Actor):
             service_representation = f"Instance of {type(self.handler).__name__}"
@@ -133,23 +159,26 @@ class Service(PipelineComponent):
         return representation
 
 
-def wrap_with(
-    before: Optional[WrapperFunction] = None, after: Optional[WrapperFunction] = None, name: Optional[str] = None
+def to_service(
+    wrappers: Optional[List[Wrapper]] = None,
+    timeout: Optional[int] = None,
+    asynchronous: Optional[bool] = None,
+    start_condition: StartConditionCheckerFunction = always_start_condition,
+    name: Optional[str] = None,
 ):
-    def inner(handler: ServiceBuilder) -> Service:
-        return Service(handler=handler, wrappers=[Wrapper(before, after, name)])
-
-    return inner
-
-
-def with_wrappers(*wrappers: Wrapper):
     """
-    A wrapper wrapping function that creates WrappedService from any service function.
-    Target function will no longer be a function after wrapping; it will become a WrappedService object.
-    :wrappers: - wrappers to surround the function.
+    Function for decorating a function as a Service.
+    Returns a Service, constructed from this function (taken as a handler).
+    All arguments are passed directly to Service constructor.
     """
-
     def inner(handler: ServiceBuilder) -> Service:
-        return Service(handler=handler, wrappers=list(wrappers))
+        return Service(
+            handler=handler,
+            wrappers=wrappers,
+            timeout=timeout,
+            asynchronous=asynchronous,
+            start_condition=start_condition,
+            name=name,
+        )
 
     return inner

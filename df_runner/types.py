@@ -17,12 +17,13 @@ _ForwardProvider = NewType("ABCProvider", ABC)
 @unique
 class ComponentExecutionState(Enum):
     """
-    Enum, representing service in a pipeline state.
+    Enum, representing pipeline component execution state.
+    These states are stored in `ctx.framework_keys[PIPELINE_STATE_KEY]` and should always be requested with `NOT_RUN` being default fallback.
     The following states are supported:
-        NOT_RUN: service has not been executed yet (the default one)
-        PENDING: service depends on other currently running service and can not be executed right now
-        FINISHED: service executed successfully
-        FAILED: service execution failed for some reason
+        NOT_RUN: component has not been executed yet (the default one)
+        RUNNING: component is currently being executed
+        FINISHED: component executed successfully
+        FAILED: component execution failed
     """
 
     NOT_RUN = auto()
@@ -34,12 +35,12 @@ class ComponentExecutionState(Enum):
 @unique
 class GlobalWrapperType(Enum):
     """
-    Enum, representing types of callbacks, that can be set applied for a pipeline.
+    Enum, representing types of globall wrappers, that can be set applied for a pipeline.
     The following types are supported:
-        BEFORE_ALL: function called before each turn
-        BEFORE: function called before each service
-        AFTER: function called after each service
-        AFTER_ALL: function called after each turn
+        BEFORE_ALL: function called before each pipeline call
+        BEFORE: function called before each component
+        AFTER: function called after each component
+        AFTER_ALL: function called after each pipeline call
     """
 
     BEFORE_ALL = auto()
@@ -52,6 +53,9 @@ class GlobalWrapperType(Enum):
 class WrapperStage(Enum):
     """
     Enum, representing wrapper type, pre- or postprocessing.
+    The following types are supported:
+        PREPROCESSING: wrapper function called before component
+        POSTPROCESSING: wrapper function called after component
     """
 
     PREPROCESSING = auto()
@@ -59,35 +63,53 @@ class WrapperStage(Enum):
 
 
 """
-RUNNER: storage for services and groups execution status
+PIPELINE: storage for services and groups execution status.
+Should be used in `ctx.framework_keys[PIPELINE_STATE_KEY]`.
 """
 PIPELINE_STATE_KEY = "PIPELINE"
 
+
 """
-A function type for messaging_interface-to-client interaction.
-Accepts string (user input), returns string (answer from pipeline).
+A function type for messenger_interface-to-client interaction.
+Accepts anything (user input) and hashable vaklue (current dialog id), returns string (answer from pipeline).
 """
 PipelineRunnerFunction = Callable[[Any, Hashable], Awaitable[Context]]
 
+
 """
-A function type for creating start_conditions for services.
+A function type for components start_conditions.
 Accepts context and actor (current pipeline state), returns boolean (whether service can be launched).
 """
 StartConditionCheckerFunction = Callable[[Context, Actor], bool]
 
+
 """
-A function type for creating start_conditions for services.
-Accepts context and actor (current pipeline state), returns boolean (whether service can be launched).
+A function type for creating aggregation start_conditions for components.
+Accepts list of functions (other start_conditions to aggregate), returns boolean (whether service can be launched).
 """
 StartConditionCheckerAggregationFunction = Callable[[Iterable[bool]], bool]
 
 
+"""
+A function type used during global wrappers initialization to determine whether wrapper should be applied to component with given path or not.
+Checks components path to be in whitelist (if defined) and not to be in blacklist (if defined).
+Accepts str (component path), returns boolean (whether wrapper should be applied).
+"""
 WrapperConditionFunction = Callable[[str], bool]
 
 
+"""
+A function type used in PollingMessengerInterface to control polling loop.
+Returns boolean (whether polling should be continued).
+"""
 PollingProviderLoopFunction = Callable[[], bool]
 
 
+"""
+Type of dictionary, that is passed to components in runtime.
+Contains current component info (`name`, `path`, `timeout`, `asynchronous`).
+Also contains `execution_state` - a dictionary, containing other pipeline components execution stats mapped to their paths.
+"""
 ServiceRuntimeInfo = TypedDict(
     "ServiceRuntimeInfo",
     {
@@ -100,19 +122,24 @@ ServiceRuntimeInfo = TypedDict(
 )
 
 
+"""
+Type of dictionary, that is passed to wrappers in runtime.
+Contains current wrapper info (`name`, `stage`).
+Also contains `component` - runtime info dictionary of the component this wrapper is attached to.
+"""
 WrapperRuntimeInfo = TypedDict(
     "WrapperRuntimeInfo",
     {
         "name": Optional[str],
         "stage": WrapperStage,
-        "service": ServiceRuntimeInfo,
+        "component": ServiceRuntimeInfo,
     },
 )
 
 
 """
-A function type for creating wrappers (pre- and postprocessing).
-Accepts context, actor (current pipeline state), name of the wrapped service and returns anything.
+A function type for creating wrappers (before and after functions).
+Can accept current dialog context, actor, attached to the pipeline, and current wrapper info dictionary.
 """
 WrapperFunction = Union[
     Callable[[Context], None],
@@ -121,6 +148,11 @@ WrapperFunction = Union[
 ]
 
 
+"""
+A function type for creating service handlers.
+Can accept current dialog context, actor, attached to the pipeline, and current service info dictionary.
+Can be both sybchronous and asynchronous.
+"""
 ServiceFunction = Union[
     Callable[[Context], None],
     Callable[[Context], Awaitable[None]],
@@ -132,8 +164,12 @@ ServiceFunction = Union[
 
 
 """
-A function type for creating services.
-Accepts context, returns nothing.
+A type, representing anything that can be transformed to service.
+It can be:
+    ServiceFunction (will become handler)
+    Service object (will be spread and recreated)
+    Actor (will be wrapped in a Service as a handler)
+    Dictionary, containing keys that are present in Service constructor parameters
 """
 ServiceBuilder = Union[
     ServiceFunction,
@@ -152,21 +188,23 @@ ServiceBuilder = Union[
     ),
 ]
 
+
+"""
+A type, representing anything that can be transformed to service group.
+It can be:
+    List of ServiceBuilders, ServiceGroup objects and lists (recursive)
+    ServiceGroup object (will be spread and recreated)
+"""
 ServiceGroupBuilder = Union[
     List[Union[ServiceBuilder, List[ServiceBuilder], _ForwardServiceGroup]],
-    TypedDict(
-        "ServiceGroupDict",
-        {
-            "services": "ServiceGroupBuilder",
-            "wrappers": NotRequired[Optional[List[_ForwardServiceWrapper]]],
-            "timeout": NotRequired[Optional[int]],
-            "asynchronous": NotRequired[bool],
-            "start_condition": NotRequired[StartConditionCheckerFunction],
-            "name": Optional[str],
-        },
-    ),
+    _ForwardServiceGroup,
 ]
 
+
+"""
+A type, representing anything that can be transformed to pipeline.
+It can be Dictionary, containing keys that are present in Pipeline constructor parameters.
+"""
 PipelineBuilder = TypedDict(
     "PipelineBuilder",
     {

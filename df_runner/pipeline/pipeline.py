@@ -76,11 +76,10 @@ class Pipeline:
         Different types of global wrappers are called before/after pipeline execution or before/after each pipeline component.
         They can be used for pipeline statistics collection or other functionality extensions.
         NB! Global wrappers are still wrappers, they shouldn't be used for much time-consuming tasks (see ../service/wrapper.py).
-        It accepts from two to four arguments:
-            `global_wrapper_type` (required) - GlobalWrapperType indication where the wrapper function should be executed
-            `wrapper` (required) - wrapper function itself
-            `whitelist` - a list of services to only add this wrapper to
-            `blacklist` - a list of services to not add this wrapper to
+        :global_wrapper_type: (required) - GlobalWrapperType indication where the wrapper function should be executed.
+        :wrapper: (required) - wrapper function itself.
+        :whitelist: - a list of services to only add this wrapper to.
+        :blacklist: - a list of services to not add this wrapper to.
         Returns None.
         """
         def condition(name: str) -> bool:
@@ -115,9 +114,8 @@ class Pipeline:
         Method for receiving pretty-formatted string description of the pipeline.
         Resulting string structure is somewhat similar to YAML string.
         Should be used in debugging/logging purposes and should not be parsed.
-        It accepts from zero to two arguments:
-            `show_wrappers` - whether to include Wrappers or not (could be many and/or generated)
-            `indent` - offset from new line to add before component children
+        :show_wrappers: - whether to include Wrappers or not (could be many and/or generated).
+        :indent: - offset from new line to add before component children.
         """
         return pretty_format_component_info_dict(self.info_dict, show_wrappers, indent=indent)
 
@@ -138,14 +136,13 @@ class Pipeline:
         NB! It is generally not designed for projects with complex structure.
             Service and ServiceGroup customization becomes not as obvious as it could be with it.
             Should be preferred for simple workflows with Actor auto-execution.
-        Accepts following arguments:
-            `script` (required) - a Script instance (object or dict)
-            `start_label` (required) - Actor start label
-            `fallback_label` - Actor fallback label
-            `context_storage` - an DBAbstractConnector instance for this pipeline or a dict to store dialog Contexts
-            `messenger_interface` - an AbsMessagingInterface instance for this pipeline
-            `pre_services` - list of ServiceBuilder or ServiceGroupBuilder that will be executed before Actor
-            `post_services` - list of ServiceBuilder or ServiceGroupBuilder that will be executed after Actor
+        :script: (required) - a Script instance (object or dict).
+        :start_label: (required) - Actor start label.
+        :fallback_label: - Actor fallback label.
+        :context_storage: - an DBAbstractConnector instance for this pipeline or a dict to store dialog Contexts.
+        :messenger_interface: - an AbsMessagingInterface instance for this pipeline.
+        :pre_services: - list of ServiceBuilder or ServiceGroupBuilder that will be executed before Actor.
+        :post_services: - list of ServiceBuilder or ServiceGroupBuilder that will be executed after Actor.
         It constructs root service group by merging `pre_services` + actor + `post_services`.
         """
         actor = Actor(script, start_label, fallback_label)
@@ -168,9 +165,8 @@ class Pipeline:
     async def _run_pipeline(self, request: Any, ctx_id: Optional[Hashable] = None) -> Context:
         """
         Method that runs pipeline once for user request.
-        Accepts from one to two arguments:
-            `request` (required) - any user request
-            `ctx_id` - current dialog id; if None, new dialog will be created
+        :request: (required) - any user request.
+        :ctx_id: - current dialog id; if None, new dialog will be created.
         Returns dialog Context.
         """
         ctx = self.context_storage.get(ctx_id, Context(id=ctx_id))
@@ -197,9 +193,8 @@ class Pipeline:
         Method that executes pipeline once.
         Basically, it is a shortcut for `_run_pipeline`.
         NB! When pipeline is executed this way, `messenger_interface` won't be initiated nor connected.
-        Accepts two arguments:
-            `request` - any user request
-            `ctx_id` - current dialog id
+        :request: - any user request.
+        :ctx_id: - current dialog id.
         Returns dialog Context.
         """
         return asyncio.run(self._run_pipeline(request, ctx_id))

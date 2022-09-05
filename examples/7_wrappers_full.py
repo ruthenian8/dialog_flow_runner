@@ -6,7 +6,7 @@ from datetime import datetime
 import psutil
 from df_engine.core import Context, Actor
 
-from df_runner import Wrapper, Pipeline, ServiceGroup, with_wrappers, WrapperRuntimeInfo, ServiceRuntimeInfo, wrap_with
+from df_runner import Wrapper, Pipeline, ServiceGroup, to_service, WrapperRuntimeInfo, ServiceRuntimeInfo
 from examples._utils import SCRIPT
 
 logging.basicConfig(level="INFO")
@@ -79,20 +79,19 @@ ram_measure_wrapper = Wrapper(
 )
 
 
-def json_encoder_wrapper(ctx: Context, _, info: WrapperRuntimeInfo):
-    ctx.misc[get_wrapper_misc_field(info, "str")] = json.dumps(ctx.misc, indent=4, default=str)
+json_convertor_service = Wrapper(
+    before=lambda ctx, _, info: ctx.misc.update({get_wrapper_misc_field(info, "str"): json.dumps(ctx.misc, indent=4, default=str)}),
+    after=lambda ctx, _, info: ctx.misc.pop(get_wrapper_misc_field(info, "str")),
+    name="json_converter",
+)
 
 
-@with_wrappers(time_measure_wrapper, ram_measure_wrapper)
+@to_service(wrappers=[time_measure_wrapper, ram_measure_wrapper])
 def heavy_service(ctx: Context):
     memory_heap[ctx.last_request] = [random.randint(0, num) for num in range(0, 100000)]
 
 
-@wrap_with(
-    before=json_encoder_wrapper,
-    after=lambda ctx, _, info: ctx.misc.pop(get_wrapper_misc_field(info, "str")),
-    name="json_converter",
-)  # `after` wrapper deletes `misc` field
+@to_service(wrappers=[json_convertor_service])
 def logging_service(ctx: Context, _, info: ServiceRuntimeInfo):
     str_misc = ctx.misc[f"{info['name']}-str"]
     assert isinstance(str_misc, str)

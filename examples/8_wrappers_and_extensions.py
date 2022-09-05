@@ -52,27 +52,27 @@ def before_all(_, __, info: WrapperRuntimeInfo):
     global start_times, pipeline_info
     now = datetime.now()
     pipeline_info = {"start_time": now}
-    start_times = {info["service"]["path"]: now}
+    start_times = {info["component"]["path"]: now}
 
 
 def before(_, __, info: WrapperRuntimeInfo):
-    start_times.update({info["service"]["path"]: datetime.now()})
+    start_times.update({info["component"]["path"]: datetime.now()})
 
 
 def after(_, __, info: WrapperRuntimeInfo):
-    start_time = start_times[info["service"]["path"]]
+    start_time = start_times[info["component"]["path"]]
     pipeline_info.update(
         {
-            f"{info['service']['path']}_duration": datetime.now() - start_time,
-            f"{info['service']['path']}_success": info["service"]["execution_state"].get(
-                info["service"]["path"], ComponentExecutionState.NOT_RUN.name
+            f"{info['component']['path']}_duration": datetime.now() - start_time,
+            f"{info['component']['path']}_success": info["component"]["execution_state"].get(
+                info["component"]["path"], ComponentExecutionState.NOT_RUN.name
             ),
         }
     )
 
 
 def after_all(_, __, info: WrapperRuntimeInfo):
-    pipeline_info.update({f"total_time": datetime.now() - start_times[info["service"]["path"]]})
+    pipeline_info.update({f"total_time": datetime.now() - start_times[info["component"]["path"]]})
     logger.info(f"Pipeline stats:\n{json.dumps(pipeline_info, indent=4, default=str)}")
 
 

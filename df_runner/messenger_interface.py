@@ -1,7 +1,7 @@
+import abc
+import asyncio
 import logging
 import uuid
-from abc import abstractmethod, ABC
-from asyncio import sleep, run
 from typing import Optional, Any, List, Tuple, TextIO, Hashable
 
 from df_engine.core import Context
@@ -11,13 +11,13 @@ from .types import PipelineRunnerFunction, PollingProviderLoopFunction
 logger = logging.getLogger(__name__)
 
 
-class MessengerInterface(ABC):
+class MessengerInterface(abc.ABC):
     """
     Class that represents a message interface used for communication between pipeline and users.
     It is responsible for connection between user and pipeline, as well as for request-response transactions.
     """
 
-    @abstractmethod
+    @abc.abstractmethod
     async def connect(self, pipeline_runner: PipelineRunnerFunction):
         """
         Method invoked when message interface is instantiated and connection is established.
@@ -33,7 +33,7 @@ class PollingMessengerInterface(MessengerInterface):
     Polling message interface runs in a loop, constantly asking users for a new input.
     """
 
-    @abstractmethod
+    @abc.abstractmethod
     def _request(self) -> List[Tuple[Any, Hashable]]:
         """
         Method used for sending users request for their input.
@@ -41,7 +41,7 @@ class PollingMessengerInterface(MessengerInterface):
         """
         raise NotImplementedError
 
-    @abstractmethod
+    @abc.abstractmethod
     def _respond(self, responses: List[Context]):
         """
         Method used for sending users responses for their last input.
@@ -80,7 +80,7 @@ class PollingMessengerInterface(MessengerInterface):
                 user_updates = self._request()
                 responses = [await pipeline_runner(request, ctx_id) for request, ctx_id in user_updates]
                 self._respond(responses)
-                await sleep(timeout)
+                await asyncio.sleep(timeout)
 
             except BaseException as e:
                 self._on_exception(e)
@@ -102,19 +102,19 @@ class CallbackMessengerInterface(MessengerInterface):
         """
         Method invoked on user input.
         This method works just like `Pipeline.__call__(request, ctx_id)`,
-            however callback messaging interface may contain additional functionality (e.g. for external API accessing).
+            however callback message interface may contain additional functionality (e.g. for external API accessing).
         :request: - user input.
         :ctx_id: - any unique id that will be associated with dialog between this user and pipeline.
         Returns context that represents dialog with the user;
             `last_response`, `id` and some dialog info can be extracted from there.
         """
-        return run(self._pipeline_runner(request, ctx_id))
+        return asyncio.run(self._pipeline_runner(request, ctx_id))
 
 
 class CLIMessengerInterface(PollingMessengerInterface):
     """
-    Command line messaging interface - the default messaging interface, communicating with user via STDIN/STDOUT.
-    This messaging interface can maintain dialog with one user at a time only.
+    Command line message interface - the default message interface, communicating with user via STDIN/STDOUT.
+    This message interface can maintain dialog with one user at a time only.
     """
 
     def __init__(
@@ -139,7 +139,7 @@ class CLIMessengerInterface(PollingMessengerInterface):
 
     async def connect(self, pipeline_runner: PipelineRunnerFunction, **kwargs):
         """
-        The CLIProvider generates new dialog id used to user identification on each `run` call.
+        The CLIProvider generates new dialog id used to user identification on each `connect` call.
         :kwargs: - argument, added for compatibility with super class, it shouldn't be used normally.
         """
         self._ctx_id = uuid.uuid4()

@@ -70,10 +70,9 @@ class PipelineComponent(abc.ABC):
         Sometimes during Pipeline construction Services (or ServiceGroups) should be rebuilt, e.g. in case of some fields overriding.
         This method can be customized to return a dict, that can be spread (** operator) and passed to Service or ServiceGroup constructor.
         Base dict is formed via `vars` built-in function. All "private" or "dunder" fields are omitted.
-        Then this dict is customized with arguments:
-            `drop_attrs` - a tuple of key names that should be removed from the resulting dict
-            `replace_attrs` - a mapping, that should be replaced in the resulting dict
-            `add_attrs` - a mapping, that should be added to the resulting dict
+        :drop_attrs: - a tuple of key names that should be removed from the resulting dict.
+        :replace_attrs: - a mapping, that should be replaced in the resulting dict.
+        :add_attrs: - a mapping, that should be added to the resulting dict.
         Returns resulting dict.
         """
         drop_attrs = () if drop_attrs is None else drop_attrs
@@ -92,9 +91,8 @@ class PipelineComponent(abc.ABC):
     def _set_state(self, ctx: Context, value: ComponentExecutionState):
         """
         Method for component runtime state setting, state is preserved in `ctx.framework_states` dict, in subdict, dedicated to this library.
-        Accepts two arguments:
-            `ctx` - context to keep state in
-            `value` - state to set
+        :ctx: - context to keep state in.
+        :value: - state to set.
         Returns None.
         """
         if PIPELINE_STATE_KEY not in ctx.framework_states:
@@ -104,9 +102,8 @@ class PipelineComponent(abc.ABC):
     def get_state(self, ctx: Context, default: Optional[ComponentExecutionState] = None) -> ComponentExecutionState:
         """
         Method for component runtime state getting, state is preserved in `ctx.framework_states` dict, in subdict, dedicated to this library.
-        Accepts from one to two arguments:
-            `ctx` (required) - context to get state from
-            `default` - default to return if no record found (usually it's `ComponentExecutionState.NOT_RUN`)
+        :ctx: (required) - context to get state from.
+        :default: - default to return if no record found (usually it's `ComponentExecutionState.NOT_RUN`).
         Returns ComponentExecutionState of this service or default if not found.
         """
         return ComponentExecutionState[
@@ -131,9 +128,8 @@ class PipelineComponent(abc.ABC):
         """
         A method for running pipeline component, it is overridden in all its children.
         This method is run after the component's timeout is set (if needed).
-        Accepts from one to two arguments:
-            `ctx` (required) - current dialog Context
-            `actor` - this Pipeline Actor or None if this is a service, that wraps Actor
+        :ctx: (required) - current dialog Context.
+        :actor: - this Pipeline Actor or None if this is a service, that wraps Actor.
         Returns Context if this is a synchronous service or None, asynchronous services shouldn't modify Context.
         """
         raise NotImplementedError
@@ -142,9 +138,8 @@ class PipelineComponent(abc.ABC):
         """
         A method for calling pipeline components.
         It sets up timeout if this component is asynchronous and executes it using `_run` method.
-        Accepts from one to two arguments:
-            `ctx` (required) - current dialog Context
-            `actor` - this Pipeline Actor or None if this is a service, that wraps Actor
+        :ctx: (required) - current dialog Context.
+        :actor: - this Pipeline Actor or None if this is a service, that wraps Actor.
         Returns Context if this is a synchronous service or Awaitable if this is an asynchronous component or None.
         """
         if self.asynchronous:
@@ -157,9 +152,8 @@ class PipelineComponent(abc.ABC):
         """
         Method for adding a global wrapper to this particular component.
         Wrapper is automatically named using `uuid.uuid4()` and depending on wrapper type for debugging/logging purposes.
-        Accepts two arguments:
-            `global_wrapper_type` - a type of wrapper to add
-            `wrapper` - a WrapperFunction to add to the component as a wrapper
+        :global_wrapper_type: - a type of wrapper to add.
+        :wrapper: - a WrapperFunction to add to the component as a wrapper.
         Returns None.
         """
         before = global_wrapper_type is GlobalWrapperType.BEFORE
@@ -174,7 +168,7 @@ class PipelineComponent(abc.ABC):
     def _get_runtime_info(self, ctx: Context) -> ServiceRuntimeInfo:
         """
         Method for retrieving runtime info about this component.
-        Accepts `ctx` - current dialog Context.
+        :ctx: - current dialog Context.
         Returns a ServiceRuntimeInfo dict where all not set fields are replaced with '[None]'.
         """
         return {

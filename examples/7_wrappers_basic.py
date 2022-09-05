@@ -29,11 +29,11 @@ In the end `ctx.misc` is logged to info channel.
 
 
 def collect_timestamp_before(ctx: Context, _, info: WrapperRuntimeInfo):
-    ctx.misc.update({f"{info['service']['name']}": datetime.now()})
+    ctx.misc.update({f"{info['component']['name']}": datetime.now()})
 
 
 def collect_timestamp_after(ctx: Context, _, info: WrapperRuntimeInfo):
-    ctx.misc.update({f"{info['service']['name']}": datetime.now() - ctx.misc[f"{info['service']['name']}"]})
+    ctx.misc.update({f"{info['component']['name']}": datetime.now() - ctx.misc[f"{info['component']['name']}"]})
 
 
 actor = Actor(

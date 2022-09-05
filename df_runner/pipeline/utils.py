@@ -20,14 +20,13 @@ def pretty_format_component_info_dict(
     Function for dumping any pipeline components info dictionary (received from `info_dict` property) as a string.
     Resulting string is formatted with YAML-like format, however it's not strict and shouldn't be parsed.
     However, most preferable usage is via `pipeline.pretty_format`.
-    Accepts from two up to seven arguments:
-        `service` (required) - pipeline components info dictionary
-        `show_wrappers` (required) - whether to include Wrappers or not (could be many and/or generated)
-        `offset` - current level new line offset
-        `wrappers_key` - key that is mapped to Wrappers lists
-        `wrappers_key` - key that is mapped to components type name
-        `wrappers_key` - key that is mapped to components name
-        `indent` - current level new line offset (whitespace number)
+    :service: (required) - pipeline components info dictionary.
+    :show_wrappers: (required) - whether to include Wrappers or not (could be many and/or generated).
+    :offset: - current level new line offset.
+    :wrappers_key: - key that is mapped to Wrappers lists.
+    :type_key: - key that is mapped to components type name.
+    :name_key: - key that is mapped to components name.
+    :indent: - current level new line offset (whitespace number).
     Returns formatted string.
     """
     indent = " " * indent
@@ -62,9 +61,8 @@ def rename_component_incrementing(
         3. If it's a service group, it is named 'service_group'
         4. Otherwise, it is names 'noname_service'
         5. After that, '_[NUMBER]' is added to the resulting name, where number is number of components with the same name in current service group.
-    Accepts two arguments:
-        `service` - service to be renamed
-        `collisions` - services in the same service group as service
+    :service: - service to be renamed.
+    :collisions: - services in the same service group as service.
     Returns string - generated name.
     """
     if isinstance(service, Service) and isinstance(service.handler, Actor):
@@ -89,7 +87,7 @@ def resolve_components_name_collisions(service_group: ServiceGroup):  # TODO: re
     Each turn it steps one step deeper into the components tree, renaming the components that haven't already been visited.
     It also keeps names of the components that have already been visited not to rename them again.
     Components are renamed only if user didn't set a name for them. Their paths are also generated here.
-    Accepts `service_group` - service group to resolve name collisions in.
+    :service_group: - service group to resolve name collisions in.
     Returns None.
     """
     name_scope_level = 0

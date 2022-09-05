@@ -27,7 +27,7 @@ from .conditions import (
 
 from .pipeline.component import PipelineComponent
 from .service.wrapper import Wrapper
-from .service.service import Service, with_wrappers, wrap_with
+from .service.service import Service, to_service
 from .service.group import ServiceGroup
 from .pipeline.pipeline import Pipeline
 
