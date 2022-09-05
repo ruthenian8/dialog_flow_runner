@@ -22,14 +22,18 @@ logger = logging.getLogger(__name__)
 
 class Service(PipelineComponent):
     """
-    Extension class for annotation functions, may be created from dict.
-
+    This class represents a service.
+    Service can be included into pipeline as object or a dictionary.
+    Service group can be synchronous or asynchronous.
+    Service can be asynchronous only if its handler is a coroutine.
+    Actor wrapping service can be synchronous only.
     It accepts:
-        handler - an annotation function or an actor
-        name (optionally) - custom service name (used for identification)
-            NB! if name is not provided, it will be generated from Actor, Function or dict.
-        timeout (optionally) - the time period after that the service will be killed on exception, default: 1000 ms
-        start_condition (optionally) - requirement for service to start, default: always_start_condition
+        `handler` - a service function or an actor
+        `wrappers` - list of Wrappers to add to the service
+        `timeout` - timeout to add to the group
+        `asynchronous` - requested asynchronous property
+        `start_condition` - StartConditionCheckerFunction that is invoked before each service execution; service is executed only if it returns True
+        `name` - requested service name
     """
 
     def __init__(
@@ -62,6 +66,9 @@ class Service(PipelineComponent):
             raise Exception(f"Unknown type of service handler: {handler}")
 
     async def _run_handler(self, ctx: Context, actor: Actor):
+        """
+
+        """
         handler_params = len(inspect.signature(self.handler).parameters)
         if handler_params == 1:
             await wrap_sync_function_in_async(self.handler, ctx)

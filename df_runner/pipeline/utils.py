@@ -16,6 +16,20 @@ def pretty_format_component_info_dict(
     name_key: str = "name",
     indent: int = 4,
 ) -> str:
+    """
+    Function for dumping any pipeline components info dictionary (received from `info_dict` property) as a string.
+    Resulting string is formatted with YAML-like format, however it's not strict and shouldn't be parsed.
+    However, most preferable usage is via `pipeline.pretty_format`.
+    Accepts from two up to seven arguments:
+        `service` (required) - pipeline components info dictionary
+        `show_wrappers` (required) - whether to include Wrappers or not (could be many and/or generated)
+        `offset` - current level new line offset
+        `wrappers_key` - key that is mapped to Wrappers lists
+        `wrappers_key` - key that is mapped to components type name
+        `wrappers_key` - key that is mapped to components name
+        `indent` - current level new line offset (whitespace number)
+    Returns formatted string.
+    """
     indent = " " * indent
     representation = f"{offset}{service.get(type_key, '[None]')}%s:\n" % (
         f" '{service.get(name_key, '[None]')}'" if name_key in service else ""
@@ -40,6 +54,19 @@ def pretty_format_component_info_dict(
 def rename_component_incrementing(
     service: Union[Service, ServiceGroup], collisions: List[Union[Service, ServiceGroup]]
 ):
+    """
+    Function for generating new name for a pipeline component, that has similar name with other components in the same group.
+    The name is generated according to these rules:
+        1. If service's handler is Actor, it is named 'actor'
+        2. If service's handler is Callable, it is named after this callable
+        3. If it's a service group, it is named 'service_group'
+        4. Otherwise, it is names 'noname_service'
+        5. After that, '_[NUMBER]' is added to the resulting name, where number is number of components with the same name in current service group.
+    Accepts two arguments:
+        `service` - service to be renamed
+        `collisions` - services in the same service group as service
+    Returns string - generated name.
+    """
     if isinstance(service, Service) and isinstance(service.handler, Actor):
         base_name = "actor"
     elif isinstance(service, Service) and isinstance(service.handler, Callable):
@@ -54,7 +81,17 @@ def rename_component_incrementing(
     return f"{base_name}_{name_index}"
 
 
-def resolve_components_name_collisions(service_group: ServiceGroup):
+def resolve_components_name_collisions(service_group: ServiceGroup):  # TODO: revise.
+    # TODO: This might be inefficient, each turn it steps deeper into the tree, collecting info about all nodes UP TO this level.
+    # TODO: possible fix: at least iterate services level-by-level, or even naively use depth-based search.
+    """
+    Function that iterates through a service group (and all its subgroups), finalizing component's names and paths in it.
+    Each turn it steps one step deeper into the components tree, renaming the components that haven't already been visited.
+    It also keeps names of the components that have already been visited not to rename them again.
+    Components are renamed only if user didn't set a name for them. Their paths are also generated here.
+    Accepts `service_group` - service group to resolve name collisions in.
+    Returns None.
+    """
     name_scope_level = 0
     checked_names = []
     while True:
@@ -76,9 +113,8 @@ def resolve_components_name_collisions(service_group: ServiceGroup):
                     service.name = rename_component_incrementing(service, services)
                     service.path = f"{path}{service.name}"
                 else:
-                    raise Exception(f"User defined service name collision ({path})!!")
+                    raise Exception(f"User defined service name collision ({path})!")
             else:
                 service.path = path
 
         checked_names += [service.name for _, service in flat_services]
-    return service_group

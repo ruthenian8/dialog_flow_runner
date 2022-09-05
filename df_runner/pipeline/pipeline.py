@@ -19,14 +19,20 @@ logger = logging.getLogger(__name__)
 
 class Pipeline:
     """
-    Class that automates service execution and creates pipeline from dict and execution.
-    It also allows actor and annotators wrapping with special services, which enables more control over execution.
-    It accepts:
-        services - a Service list for this pipeline, should include Actor
-        messaging interface (optionally) - an AbsMessagingInterface instance for this pipeline
-        connector (optionally) - an DBAbstractConnector instance for this pipeline or a dict
-        wrappers (optionally) - Wrapper classes array to add to all pipeline services
-    """  # AFTER: upd description
+    Class that automates service execution and creates service pipeline.
+    It accepts constructor parameters:
+        `messenger_interface` - an AbsMessagingInterface instance for this pipeline
+        `context_storage` - an DBAbstractConnector instance for this pipeline or a dict to store dialog Contexts
+        `services` (required) - a ServiceGroupBuilder object, that will be transformed to root service group
+            NB! It should include Actor, but only once (raises exception otherwise)
+            NB! It will always be named "pipeline"
+        `wrappers` - list of Wrappers to add to pipeline root service group
+        `timeout` - timeout to add to pipeline root service group
+        `optimization_warnings` - asynchronous pipeline optimization check request flag; warnings will be sent to logs
+    Additionally it has some calculated fields:
+        `_services_pipeline` - pipeline root ServiceGroup object
+        `actor` - pipeline actor, found among services
+    """
 
     def __init__(
         self,
@@ -43,10 +49,10 @@ class Pipeline:
             services,
             wrappers=[] if wrappers is None else wrappers,
             timeout=timeout,
-            name="pipeline",
         )
+        self._services_pipeline.name = "pipeline"
         self._services_pipeline.path = ".pipeline"
-        self._services_pipeline = resolve_components_name_collisions(self._services_pipeline)
+        resolve_components_name_collisions(self._services_pipeline)
 
         if optimization_warnings:
             self._services_pipeline.log_optimization_warnings()
@@ -65,6 +71,18 @@ class Pipeline:
         whitelist: Optional[List[str]] = None,
         blacklist: Optional[List[str]] = None,
     ):
+        """
+        Method for adding global wrappers to pipeline.
+        Different types of global wrappers are called before/after pipeline execution or before/after each pipeline component.
+        They can be used for pipeline statistics collection or other functionality extensions.
+        NB! Global wrappers are still wrappers, they shouldn't be used for much time-consuming tasks (see ../service/wrapper.py).
+        It accepts from two to four arguments:
+            `global_wrapper_type` (required) - GlobalWrapperType indication where the wrapper function should be executed
+            `wrapper` (required) - wrapper function itself
+            `whitelist` - a list of services to only add this wrapper to
+            `blacklist` - a list of services to not add this wrapper to
+        Returns None.
+        """
         def condition(name: str) -> bool:
             return (whitelist is None or name in whitelist) and (blacklist is None or name not in blacklist)
 
@@ -80,6 +98,11 @@ class Pipeline:
 
     @property
     def info_dict(self) -> dict:
+        """
+        Property for retrieving info dictionary about this pipeline.
+        Returns info dict, containing most important component public fields as well as its type.
+        All complex or unserializable fields here are replaced with 'Instance of [type]'.
+        """
         return {
             "type": type(self).__name__,
             "messenger_interface": f"Instance of {type(self.messenger_interface).__name__}",
@@ -88,6 +111,14 @@ class Pipeline:
         }
 
     def pretty_format(self, show_wrappers: bool = False, indent: int = 4) -> str:
+        """
+        Method for receiving pretty-formatted string description of the pipeline.
+        Resulting string structure is somewhat similar to YAML string.
+        Should be used in debugging/logging purposes and should not be parsed.
+        It accepts from zero to two arguments:
+            `show_wrappers` - whether to include Wrappers or not (could be many and/or generated)
+            `indent` - offset from new line to add before component children
+        """
         return pretty_format_component_info_dict(self.info_dict, show_wrappers, indent=indent)
 
     @classmethod
@@ -98,9 +129,25 @@ class Pipeline:
         fallback_label: Optional[NodeLabel2Type] = None,
         context_storage: Optional[Union[DBAbstractConnector, Dict]] = None,
         messenger_interface: MessengerInterface = CLIMessengerInterface(),
-        pre_services: Optional[List[ServiceBuilder]] = None,
-        post_services: Optional[List[ServiceBuilder]] = None,
+        pre_services: Optional[List[Union[ServiceBuilder, ServiceGroupBuilder]]] = None,
+        post_services: Optional[List[Union[ServiceBuilder, ServiceGroupBuilder]]] = None,
     ):
+        """
+        Pipeline script-based constructor.
+        It creates Actor object and wraps it with pipeline.
+        NB! It is generally not designed for projects with complex structure.
+            Service and ServiceGroup customization becomes not as obvious as it could be with it.
+            Should be preferred for simple workflows with Actor auto-execution.
+        Accepts following arguments:
+            `script` (required) - a Script instance (object or dict)
+            `start_label` (required) - Actor start label
+            `fallback_label` - Actor fallback label
+            `context_storage` - an DBAbstractConnector instance for this pipeline or a dict to store dialog Contexts
+            `messenger_interface` - an AbsMessagingInterface instance for this pipeline
+            `pre_services` - list of ServiceBuilder or ServiceGroupBuilder that will be executed before Actor
+            `post_services` - list of ServiceBuilder or ServiceGroupBuilder that will be executed after Actor
+        It constructs root service group by merging `pre_services` + actor + `post_services`.
+        """
         actor = Actor(script, start_label, fallback_label)
         pre_services = [] if pre_services is None else pre_services
         post_services = [] if post_services is None else post_services
@@ -112,9 +159,20 @@ class Pipeline:
 
     @classmethod
     def from_dict(cls, dictionary: PipelineBuilder) -> "Pipeline":
+        """
+        Pipeline dictionary-based constructor.
+        Dictionary should have the fields defined in Pipeline main constructor, it will be split and passed to it as **kwargs.
+        """
         return cls(**dictionary)
 
     async def _run_pipeline(self, request: Any, ctx_id: Optional[Hashable] = None) -> Context:
+        """
+        Method that runs pipeline once for user request.
+        Accepts from one to two arguments:
+            `request` (required) - any user request
+            `ctx_id` - current dialog id; if None, new dialog will be created
+        Returns dialog Context.
+        """
         ctx = self.context_storage.get(ctx_id, Context(id=ctx_id))
 
         ctx.framework_states[PIPELINE_STATE_KEY] = {}
@@ -127,11 +185,21 @@ class Pipeline:
 
     def run(self):
         """
-        Method for starting a pipeline, sets up corresponding messaging interface callback.
-        Since one pipeline always has only one messaging interface, there is no need for thread management here.
-        Use this in async context, await will not work in sync.
+        Method that starts a pipeline and connects to `messenger_interface`.
+        It passes `_run_pipeline` to `messenger_interface` as a callbacks, so every time user request is received, `_run_pipeline` will be called.
+        This method can be both blocking and non-blocking - depending on current `messenger_interface` nature.
+        Message interfaces that run in a loop block current thread.
         """
         asyncio.run(self.messenger_interface.connect(self._run_pipeline))
 
     def __call__(self, request: Any, ctx_id: Hashable) -> Context:
+        """
+        Method that executes pipeline once.
+        Basically, it is a shortcut for `_run_pipeline`.
+        NB! When pipeline is executed this way, `messenger_interface` won't be initiated nor connected.
+        Accepts two arguments:
+            `request` - any user request
+            `ctx_id` - current dialog id
+        Returns dialog Context.
+        """
         return asyncio.run(self._run_pipeline(request, ctx_id))

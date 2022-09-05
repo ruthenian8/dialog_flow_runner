@@ -10,7 +10,6 @@ from ..types import (
     StartConditionCheckerFunction,
     ComponentExecutionState,
     ServiceGroupBuilder,
-    ServiceBuilder,
     GlobalWrapperType,
     WrapperConditionFunction,
     WrapperFunction,
@@ -23,14 +22,20 @@ logger = logging.getLogger(__name__)
 
 class ServiceGroup(PipelineComponent):
     """
-    An instance that represents a service group.
-    Group can be also defined in pipeline dict as a nested service list.
-    Instance of this class provides possibility to define group name and wrappers.
-    It accepts:
-        name - custom group name (used for identification)
-            NB! if name is not provided, it will be generated.
-        services - a Service list in this group, may include Actor
-        wrappers (optionally) - Wrapper classes array to add to all group services
+    This class represents a service group.
+    Service group can be included into pipeline as object or a pipeline component list.
+    Service group can be synchronous or asynchronous.
+    Components in synchronous groups are executed consequently (no matter is they are synchronous or asynchronous).
+    Components in asynchronous groups are executed simultaneously.
+    Group can be asynchronous only if all components in it are asynchronous.
+    Group containing actor can be synchronous only.
+    It accepts constructor parameters:
+        `services` (required) - a ServiceGroupBuilder object, that will be added to the group
+        `wrappers` - list of Wrappers to add to the group
+        `timeout` - timeout to add to the group
+        `asynchronous` - requested asynchronous property
+        `start_condition` - StartConditionCheckerFunction that is invoked before each group execution; group is executed only if it returns True
+        `name` - requested group name
     """
 
     def __init__(
@@ -62,6 +67,16 @@ class ServiceGroup(PipelineComponent):
             raise Exception(f"Unknown type for ServiceGroup {services}")
 
     async def _run_services_group(self, ctx: Context, actor: Actor) -> Context:
+        """
+        Method for running this service group.
+        It doesn't include wrappers execution, start condition checking or error handling - pure execution only.
+        Executes components inside the group based on its `asynchronous` property.
+        Collects information about their execution state - group is finished successfully only if all components in it finished successfully.
+        Accepts two arguments:
+            `ctx` - current dialog context
+            `actor` - actor, associated with the pipeline
+        Returns current dialog context.
+        """
         self._set_state(ctx, ComponentExecutionState.RUNNING)
 
         if self.asynchronous:
@@ -89,8 +104,16 @@ class ServiceGroup(PipelineComponent):
     async def _run(
         self,
         ctx: Context,
-        actor: Optional[Actor] = None,
+        actor: Actor = None,
     ) -> Optional[Context]:
+        """
+        Method for handling this group's execution.
+        Executes before and after execution wrappers, checks start condition and catches runtime exceptions.
+        Accepts two arguments:
+            `ctx` - current dialog context
+            `actor` - actor, associated with the pipeline
+        Returns current dialog context if synchronous, else None.
+        """
         for wrapper in self.wrappers:
             wrapper.run_stage(WrapperStage.PREPROCESSING, ctx, actor, self._get_runtime_info(ctx))
 
@@ -109,9 +132,15 @@ class ServiceGroup(PipelineComponent):
         return ctx if not self.asynchronous else None
 
     def get_subgroups_and_services(self, prefix: str = "", recursion_level: int = 99) -> List[Tuple[str, Service]]:
+        # TODO: no need for path collection, paths are set during naming collisions resolving and kept in a separate field.
+        # TODO: refactor or remove completely.
         """
-        Returns a copy of created inner services flat array used during actual pipeline running.
-        Breadth First Algorithm
+        Method, that returns a flat array of inner components and their paths used during pipeline initialization.
+        Uses breadth first algorithm.
+        Accepts from zero to two arguments:
+            `prefix` - path prefix of the current group
+            `recursion_level` - how many inner service groups to enter (99 by default)
+        Returns list of tuples: (path to component, component).
         """
         prefix += f".{self.name}"
         services = []
@@ -124,6 +153,15 @@ class ServiceGroup(PipelineComponent):
         return services
 
     def log_optimization_warnings(self):
+        """
+        Method for logging service group optimization warnings for all this groups inner components (NOT this group itself!).
+        Warnings are basically messages, that indicate service group inefficiency or explicitly defined parameters mismatch.
+        These are cases for warnings issuing:
+            1. Service can be asynchronous, however is marked synchronous explicitly
+            2. Service is not asynchronous, however has a timeout defined
+            3. Group is not marked synchronous explicitly and contains both synchronous and asynchronous components
+        Returns None.
+        """
         for service in self.services:
             if isinstance(service, Service):
                 if (
@@ -131,10 +169,7 @@ class ServiceGroup(PipelineComponent):
                     and service.requested_async_flag is not None
                     and not service.requested_async_flag
                 ):
-                    logger.warning(
-                        f"Service '{service.name}' could be asynchronous"
-                        "or should be marked as synchronous explicitly!",
-                    )
+                    logger.warning(f"Service '{service.name}' could be asynchronous!")
                 if not service.asynchronous and service.timeout is not None:
                     logger.warning(f"Timeout can not be applied for Service '{service.name}': it's not asynchronous!")
             else:
@@ -146,11 +181,6 @@ class ServiceGroup(PipelineComponent):
                             f"ServiceGroup '{service.name}' contains both sync and async services, "
                             "it should be split or marked as synchronous explicitly!",
                         )
-                    elif service.requested_async_flag:
-                        logger.warning(
-                            f"ServiceGroup '{service.name}' is marked asynchronous,"
-                            "however contains synchronous services in it!",
-                        )
                 service.log_optimization_warnings()
 
     def add_wrapper(
@@ -159,6 +189,17 @@ class ServiceGroup(PipelineComponent):
         wrapper: WrapperFunction,
         condition: WrapperConditionFunction = lambda _: True,
     ):
+        """
+        Method for adding a global wrapper to this group.
+        Adds wrapper to itself and propagates it to all inner components.
+        Uses a special condition function to determine whether to add wrapper to any particular inner component or not.
+        Condition checks components path to be in whitelist (if defined) and not to be in blacklist (if defined).
+        Accepts from two to three arguments:
+            `global_wrapper_type` - a type of wrapper to add
+            `wrapper` - a WrapperFunction to add as a wrapper
+            `condition` - a condition function
+        Returns None.
+        """
         super().add_wrapper(global_wrapper_type, wrapper)
         for service in self.services:
             if not condition(service.path):
@@ -170,12 +211,23 @@ class ServiceGroup(PipelineComponent):
 
     @property
     def info_dict(self) -> dict:
+        """
+        See `Component.info_dict` property.
+        Adds `services` key to base info dictionary.
+        """
         representation = super(ServiceGroup, self).info_dict
         representation.update({"services": [service.info_dict for service in self.services]})
         return representation
 
     @staticmethod
-    def _create_components(services: ServiceGroupBuilder) -> List[Union[ServiceBuilder, ServiceGroupBuilder]]:
+    def _create_components(services: ServiceGroupBuilder) -> List[Union[Service, "ServiceGroup"]]:
+        """
+        Utility method, used to create inner components, judging by their nature.
+        Services are created from services and dictionaries.
+        ServiceGroups are created from service groups and lists.
+        Accepts `services` - ServiceGroupBuilder object (a ServiceGroup instance or a list).
+        Returns list of services and service groups.
+        """
         handled_services = []
         for service in services:
             if isinstance(service, List) or isinstance(service, ServiceGroup):

@@ -16,7 +16,7 @@ The following example shows pipeline asynchronous service and service group usag
 
 Services and service groups can be synchronous and asynchronous.
 In synchronous service groups services are executed consequently, some of them (actor) can even return Context object, modifying it.
-In asynchronous service groups all services are executed simultaneously and should not return anything.
+In asynchronous service groups all services are executed simultaneously and should not return anything, neither modify Context.
 
 To become asynchronous service or service group should _be able_ to be asynchronous and should not be marked synchronous.
 Service can be asynchronous if its handler is an async function.
