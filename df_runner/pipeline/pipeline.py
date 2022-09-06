@@ -37,7 +37,7 @@ class Pipeline:
         self,
         messenger_interface: Optional[MessengerInterface] = None,
         context_storage: Optional[Union[DBAbstractConnector, Dict]] = None,
-        services: ServiceGroupBuilder = None,
+        components: ServiceGroupBuilder = None,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: Optional[int] = None,
         optimization_warnings: bool = False,
@@ -45,7 +45,7 @@ class Pipeline:
         self.messenger_interface = CLIMessengerInterface() if messenger_interface is None else messenger_interface
         self.context_storage = {} if context_storage is None else context_storage
         self._services_pipeline = ServiceGroup(
-            services,
+            components,
             wrappers=[] if wrappers is None else wrappers,
             timeout=timeout,
         )
@@ -149,7 +149,7 @@ class Pipeline:
         return cls(
             messenger_interface=messenger_interface,
             context_storage=context_storage if context_storage is None else context_storage,
-            services=[*pre_services, actor, *post_services],
+            components=[*pre_services, actor, *post_services],
         )
 
     @classmethod

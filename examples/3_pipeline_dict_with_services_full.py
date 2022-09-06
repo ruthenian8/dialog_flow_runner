@@ -79,7 +79,7 @@ pipeline_dict = {
     #     `prompt_request` - a string that will be displayed before user input
     #     `prompt_response` - an output prefix string
     "context_storage": {},
-    "services": [
+    "components": [
         {
             "handler": prepreprocess,
             "name": "preprocessor",

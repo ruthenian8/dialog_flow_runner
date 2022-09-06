@@ -88,7 +88,7 @@ def runtime_info_printing_service(_, __, info: ServiceRuntimeInfo):
 
 
 pipeline_dict = {
-    "services": [
+    "components": [
         [
             simple_service,  # This simple service will be named `simple_service_0`
             simple_service,  # This simple service will be named `simple_service_1`
@@ -96,7 +96,7 @@ pipeline_dict = {
         actor,
         ServiceGroup(
             name="named_group",
-            services=[
+            components=[
                 Service(
                     handler=simple_service,
                     start_condition=all_condition(

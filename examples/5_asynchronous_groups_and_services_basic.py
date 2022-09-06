@@ -37,7 +37,7 @@ async def time_consuming_service(_):
 
 
 pipeline_dict = {
-    "services": [
+    "components": [
         [time_consuming_service for _ in range(0, 10)],
         actor,
     ],

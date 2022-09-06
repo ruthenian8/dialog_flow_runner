@@ -46,7 +46,7 @@ def postprocess(_):
 
 
 pipeline_dict = {
-    "services": [
+    "components": [
         {
             "handler": prepreprocess,
         },

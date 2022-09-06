@@ -51,7 +51,7 @@ def runtime_info_printing_service(_, __, info: ServiceRuntimeInfo):
 
 
 pipeline_dict = {
-    "services": [
+    "components": [
         Service(
             handler=always_running_service,
             name="always_running_service",

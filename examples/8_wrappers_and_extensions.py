@@ -83,7 +83,7 @@ async def long_service(_, __, info: ServiceRuntimeInfo):
 
 
 pipeline_dict = {
-    "services": [
+    "components": [
         [long_service for _ in range(0, 25)],
         actor,
     ],

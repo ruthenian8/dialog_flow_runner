@@ -54,10 +54,10 @@ def logging_service(ctx: Context):
 
 
 pipeline_dict = {
-    "services": [
+    "components": [
         ServiceGroup(
             wrappers=[time_measure_wrapper],
-            services=[
+            components=[
                 {
                     "handler": heavy_service,
                     "wrappers": [time_measure_wrapper],

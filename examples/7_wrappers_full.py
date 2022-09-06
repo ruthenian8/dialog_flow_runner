@@ -101,8 +101,8 @@ def logging_service(ctx: Context, _, info: ServiceRuntimeInfo):
 
 
 pipeline_dict = {
-    "services": [
-        ServiceGroup(wrappers=[time_measure_wrapper], services=[heavy_service for _ in range(0, 5)]),
+    "components": [
+        ServiceGroup(wrappers=[time_measure_wrapper], components=[heavy_service for _ in range(0, 5)]),
         actor,
         logging_service,
     ],

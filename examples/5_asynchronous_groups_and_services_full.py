@@ -75,13 +75,13 @@ def context_printing_service(ctx: Context):
 
 pipeline_dict = {
     "optimization_warnings": True,  # There are no warnings - pipeline is well-optimized
-    "services": [
+    "components": [
         ServiceGroup(
             name="balanced_group",
             asynchronous=False,
-            services=[
+            components=[
                 simple_asynchronous_service,
-                ServiceGroup(timeout=2, services=[time_consuming_service for _ in range(0, 6)]),
+                ServiceGroup(timeout=2, components=[time_consuming_service for _ in range(0, 6)]),
                 simple_asynchronous_service,
             ],
         ),

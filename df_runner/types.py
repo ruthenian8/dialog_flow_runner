@@ -213,7 +213,7 @@ PipelineBuilder = TypedDict(
     {
         "messenger_interface": NotRequired[Optional[_ForwardProvider]],
         "context_storage": NotRequired[Optional[Union[DBAbstractConnector, Dict]]],
-        "services": ServiceGroupBuilder,
+        "components": ServiceGroupBuilder,
         "wrappers": NotRequired[Optional[List[_ForwardServiceWrapper]]],
         "optimization_warnings": NotRequired[bool],
     },

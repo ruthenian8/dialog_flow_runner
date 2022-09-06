@@ -41,16 +41,16 @@ class ServiceGroup(PipelineComponent):
 
     def __init__(
         self,
-        services: ServiceGroupBuilder,
+        components: ServiceGroupBuilder,
         wrappers: Optional[List[Wrapper]] = None,
         timeout: Optional[int] = None,
         asynchronous: Optional[bool] = None,
         start_condition: StartConditionCheckerFunction = always_start_condition,
         name: Optional[str] = None,
     ):
-        if isinstance(services, ServiceGroup):
+        if isinstance(components, ServiceGroup):
             self.__init__(
-                **services.get_attrs_with_updates(
+                **components.get_attrs_with_updates(
                     (
                         "calculated_async_flag",
                         "path",
@@ -58,14 +58,14 @@ class ServiceGroup(PipelineComponent):
                     {"requested_async_flag": "asynchronous"},
                 )
             )
-        elif isinstance(services, dict):
-            self.__init__(**services)
-        elif isinstance(services, List):
-            self.services = self._create_components(services)
-            calc_async = all([service.asynchronous for service in self.services])
+        elif isinstance(components, dict):
+            self.__init__(**components)
+        elif isinstance(components, List):
+            self.components = self._create_components(components)
+            calc_async = all([service.asynchronous for service in self.components])
             super(ServiceGroup, self).__init__(wrappers, timeout, asynchronous, calc_async, start_condition, name)
         else:
-            raise Exception(f"Unknown type for ServiceGroup {services}")
+            raise Exception(f"Unknown type for ServiceGroup {components}")
 
     async def _run_services_group(self, ctx: Context, actor: Actor) -> Context:
         """
@@ -81,8 +81,8 @@ class ServiceGroup(PipelineComponent):
         self._set_state(ctx, ComponentExecutionState.RUNNING)
 
         if self.asynchronous:
-            service_futures = [service(ctx, actor) for service in self.services]
-            for service, future in zip(self.services, asyncio.as_completed(service_futures)):
+            service_futures = [service(ctx, actor) for service in self.components]
+            for service, future in zip(self.components, asyncio.as_completed(service_futures)):
                 try:
                     service_result = await future
                     if service.asynchronous and isinstance(service_result, Awaitable):
@@ -91,14 +91,14 @@ class ServiceGroup(PipelineComponent):
                     logger.warning(f"{type(service).__name__} '{service.name}' timed out!")
 
         else:
-            for service in self.services:
+            for service in self.components:
                 service_result = await service(ctx, actor)
                 if not service.asynchronous and isinstance(service_result, Context):
                     ctx = service_result
                 elif service.asynchronous and isinstance(service_result, Awaitable):
                     await service_result
 
-        failed = any([service.get_state(ctx) == ComponentExecutionState.FAILED for service in self.services])
+        failed = any([service.get_state(ctx) == ComponentExecutionState.FAILED for service in self.components])
         self._set_state(ctx, ComponentExecutionState.FAILED if failed else ComponentExecutionState.FINISHED)
         return ctx
 
@@ -143,7 +143,7 @@ class ServiceGroup(PipelineComponent):
             3. Group is not marked synchronous explicitly and contains both synchronous and asynchronous components
         Returns None.
         """
-        for service in self.services:
+        for service in self.components:
             if isinstance(service, Service):
                 if (
                     service.calculated_async_flag
@@ -156,7 +156,7 @@ class ServiceGroup(PipelineComponent):
             else:
                 if not service.calculated_async_flag:
                     if service.requested_async_flag is None and any(
-                        [sub_service.asynchronous for sub_service in service.services]
+                        [sub_service.asynchronous for sub_service in service.components]
                     ):
                         logger.warning(
                             f"ServiceGroup '{service.name}' contains both sync and async services, "
@@ -181,7 +181,7 @@ class ServiceGroup(PipelineComponent):
         Returns None.
         """
         super().add_wrapper(global_wrapper_type, wrapper)
-        for service in self.services:
+        for service in self.components:
             if not condition(service.path):
                 continue
             if isinstance(service, Service):
@@ -196,7 +196,7 @@ class ServiceGroup(PipelineComponent):
         Adds `services` key to base info dictionary.
         """
         representation = super(ServiceGroup, self).info_dict
-        representation.update({"services": [service.info_dict for service in self.services]})
+        representation.update({"services": [service.info_dict for service in self.components]})
         return representation
 
     @staticmethod

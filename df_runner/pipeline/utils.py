@@ -97,11 +97,11 @@ def finalize_service_group(service_group: ServiceGroup, path: str = ".") -> Acto
     Returns Actor.
     """
     actor = None
-    names_counter = collections.Counter([component.name for component in service_group.services])
-    for component in service_group.services:
+    names_counter = collections.Counter([component.name for component in service_group.components])
+    for component in service_group.components:
         if names_counter[component.name] > 1:
             if component.name is None:
-                component.name = rename_component_incrementing(component, service_group.services)
+                component.name = rename_component_incrementing(component, service_group.components)
             else:
                 raise Exception(f"User defined service name collision ({path})!")
         component.path = f"{path}.{component.name}"

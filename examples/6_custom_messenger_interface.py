@@ -86,7 +86,7 @@ def markdown_request(ctx: Context):
 
 pipeline_dict = {
     "messenger_interface": messenger_interface,
-    "services": [
+    "components": [
         purify_request,
         {
             "handler": actor,
