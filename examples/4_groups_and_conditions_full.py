@@ -22,7 +22,7 @@ The following example shows pipeline service group usage and start conditions.
 Pipeline can contain not only single services, but also service groups.
 Service groups can be defined as lists of ServiceBuilders (in fact, all of the pipeline services are combined into root service group named "pipeline").
 Alternatively, the groups can be defined as objects with following constructor arguments:
-    `services` (required) - a list of ServiceBuilder objects, ServiceGroup objects and lists of them
+    `components` (required) - a list of ServiceBuilder objects, ServiceGroup objects and lists of them
     `wrappers` - a list of pipeline wrappers, see example №7
     `timeout` - pipeline timeout, see example №5
     `asynchronous` - whether or not this service group _should_ be asynchronous (keep in mind that not all service groups _can_ be asynchronous), see example №5

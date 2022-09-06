@@ -4,6 +4,7 @@ from typing import Optional, List, Union, Awaitable
 
 from df_engine.core import Actor, Context
 
+from .utils import collect_defined_constructor_parameters_to_dict
 from .wrapper import WrapperStage, Wrapper
 from ..pipeline.component import PipelineComponent
 from ..types import (
@@ -15,7 +16,6 @@ from ..types import (
     WrapperFunction,
 )
 from .service import Service
-from ..conditions import always_start_condition
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class ServiceGroup(PipelineComponent):
     Group can be asynchronous only if all components in it are asynchronous.
     Group containing actor can be synchronous only.
     It accepts constructor parameters:
-        `services` (required) - a ServiceGroupBuilder object, that will be added to the group
+        `components` (required) - a ServiceGroupBuilder object, that will be added to the group
         `wrappers` - list of Wrappers to add to the group
         `timeout` - timeout to add to the group
         `asynchronous` - requested asynchronous property
@@ -45,20 +45,23 @@ class ServiceGroup(PipelineComponent):
         wrappers: Optional[List[Wrapper]] = None,
         timeout: Optional[int] = None,
         asynchronous: Optional[bool] = None,
-        start_condition: StartConditionCheckerFunction = always_start_condition,
+        start_condition: Optional[StartConditionCheckerFunction] = None,
         name: Optional[str] = None,
     ):
+        overridden_parameters = collect_defined_constructor_parameters_to_dict(wrappers, timeout, asynchronous, start_condition, name)
         if isinstance(components, ServiceGroup):
             self.__init__(
-                **components.get_attrs_with_updates(
+                **components._get_attrs_with_updates(
                     (
                         "calculated_async_flag",
                         "path",
                     ),
                     {"requested_async_flag": "asynchronous"},
+                    overridden_parameters,
                 )
             )
         elif isinstance(components, dict):
+            components.update(overridden_parameters)
             self.__init__(**components)
         elif isinstance(components, List):
             self.components = self._create_components(components)

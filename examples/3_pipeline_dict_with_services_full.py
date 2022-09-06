@@ -25,6 +25,7 @@ On pipeline execution services from `services` list are run without difference b
 If Actor instance is not found among `services` pipeline creation fails. There can be only one actor in the pipeline.
 ServiceBuilder object can be defined either with callable (see example №2) or with dict of following structure / object with following constructor arguments:
     `handler` (required) - ServiceBuilder, if handler is an object or a dict itself, it will be used instead of base ServiceBuilder
+        NB! Fields of nested ServiceBuilder will be overridden by defined fields of the base ServiceBuilder
     `wrappers` - a list of service wrappers, see example №7
     `timeout` - service timeout, see example №5
     `asynchronous` - whether or not this service _should_ be asynchronous (keep in mind that not all services _can_ be asynchronous), see example №5
@@ -81,9 +82,12 @@ pipeline_dict = {
     "context_storage": {},
     "components": [
         {
-            "handler": prepreprocess,
+            "handler": {
+                "handler": prepreprocess,
+                "name": "silly_service_name",
+            },
             "name": "preprocessor",
-        },
+        },  # This service will be named `preprocessor`, handler name will be overridden
         preprocess,
         actor,
         Service(

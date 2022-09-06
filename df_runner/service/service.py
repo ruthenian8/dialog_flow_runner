@@ -5,7 +5,7 @@ from typing import List, Optional, Callable
 
 from df_engine.core import Actor, Context
 
-from .utils import wrap_sync_function_in_async
+from .utils import wrap_sync_function_in_async, collect_defined_constructor_parameters_to_dict
 from .wrapper import Wrapper
 from ..types import (
     ServiceBuilder,
@@ -14,7 +14,6 @@ from ..types import (
     WrapperStage,
 )
 from ..pipeline.component import PipelineComponent
-from ..conditions import always_start_condition
 
 logger = logging.getLogger(__name__)
 
@@ -42,19 +41,22 @@ class Service(PipelineComponent):
         wrappers: Optional[List[Wrapper]] = None,
         timeout: Optional[int] = None,
         asynchronous: Optional[bool] = None,
-        start_condition: StartConditionCheckerFunction = always_start_condition,
+        start_condition: Optional[StartConditionCheckerFunction] = None,
         name: Optional[str] = None,
     ):
+        overridden_parameters = collect_defined_constructor_parameters_to_dict(wrappers, timeout, asynchronous, start_condition, name)
         if isinstance(handler, dict):
+            handler.update(overridden_parameters)
             self.__init__(**handler)
         elif isinstance(handler, Service):
             self.__init__(
-                **handler.get_attrs_with_updates(
+                **handler._get_attrs_with_updates(
                     (
                         "calculated_async_flag",
                         "path",
                     ),
                     {"requested_async_flag": "asynchronous"},
+                    overridden_parameters,
                 )
             )
         elif isinstance(handler, Callable):
@@ -165,7 +167,7 @@ def to_service(
     wrappers: Optional[List[Wrapper]] = None,
     timeout: Optional[int] = None,
     asynchronous: Optional[bool] = None,
-    start_condition: StartConditionCheckerFunction = always_start_condition,
+    start_condition: Optional[StartConditionCheckerFunction] = None,
     name: Optional[str] = None,
 ):
     """

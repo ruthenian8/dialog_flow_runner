@@ -44,7 +44,7 @@ class PipelineComponent(abc.ABC):
         timeout: Optional[int] = None,
         requested_async_flag: Optional[bool] = None,
         calculated_async_flag: bool = False,
-        start_condition: StartConditionCheckerFunction = always_start_condition,
+        start_condition: Optional[StartConditionCheckerFunction] = None,
         name: Optional[str] = None,
         path: Optional[str] = None,
     ):
@@ -52,7 +52,7 @@ class PipelineComponent(abc.ABC):
         self.timeout = timeout
         self.requested_async_flag = requested_async_flag
         self.calculated_async_flag = calculated_async_flag
-        self.start_condition = start_condition
+        self.start_condition = always_start_condition if start_condition is None else start_condition
         self.name = name
         self.path = path
 
@@ -62,7 +62,7 @@ class PipelineComponent(abc.ABC):
         if not calculated_async_flag and requested_async_flag:
             raise Exception(f"{type(self).__name__} '{name}' can't be asynchronous!")
 
-    def get_attrs_with_updates(
+    def _get_attrs_with_updates(
         self,
         drop_attrs: Optional[Tuple[str, ...]] = None,
         replace_attrs: Optional[Mapping[str, str]] = None,
