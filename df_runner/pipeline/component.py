@@ -26,15 +26,18 @@ class PipelineComponent(abc.ABC):
     This class represents a pipeline component - a service or a service group.
     It contains some fields that they have in common:
         `wrappers` - list of Wrappers, associated with this component
-        `timeout` (for asynchronous only!) - maximum component execution time (in seconds), if it exceeds this time, it is interrupted
+        `timeout` (for asynchronous only!) - maximum component execution time (in seconds),
+            if it exceeds this time, it is interrupted
         `requested_async_flag` - requested asynchronous property; if not defined, calculated_async_flag is used instead
         `calculated_async_flag` - whether the component can be asynchronous or not
             - for Service: whether its `handler` is asynchronous or not
             - for ServiceGroup: whether all its `services` are asynchronous or not
-        `start_condition` - StartConditionCheckerFunction that is invoked before each component execution; component is executed only if it returns True
+        `start_condition` - StartConditionCheckerFunction that is invoked before each component execution;
+            component is executed only if it returns True
         `name` - component name (should be unique in single ServiceGroup), should not be blank or contain '.' symbol
         `path` - dot-separated path to component, is universally unique
     """
+
     def __init__(
         self,
         wrappers: Optional[List[Wrapper]] = None,
@@ -67,8 +70,10 @@ class PipelineComponent(abc.ABC):
     ) -> dict:
         """
         Advanced customizable version of built-in `__dict__` property.
-        Sometimes during Pipeline construction Services (or ServiceGroups) should be rebuilt, e.g. in case of some fields overriding.
-        This method can be customized to return a dict, that can be spread (** operator) and passed to Service or ServiceGroup constructor.
+        Sometimes during Pipeline construction Services (or ServiceGroups) should be rebuilt,
+            e.g. in case of some fields overriding.
+        This method can be customized to return a dict,
+            that can be spread (** operator) and passed to Service or ServiceGroup constructor.
         Base dict is formed via `vars` built-in function. All "private" or "dunder" fields are omitted.
         :drop_attrs: - a tuple of key names that should be removed from the resulting dict.
         :replace_attrs: - a mapping, that should be replaced in the resulting dict.
@@ -90,7 +95,8 @@ class PipelineComponent(abc.ABC):
 
     def _set_state(self, ctx: Context, value: ComponentExecutionState):
         """
-        Method for component runtime state setting, state is preserved in `ctx.framework_states` dict, in subdict, dedicated to this library.
+        Method for component runtime state setting, state is preserved in `ctx.framework_states` dict,
+            in subdict, dedicated to this library.
         :ctx: - context to keep state in.
         :value: - state to set.
         Returns None.
@@ -101,7 +107,8 @@ class PipelineComponent(abc.ABC):
 
     def get_state(self, ctx: Context, default: Optional[ComponentExecutionState] = None) -> ComponentExecutionState:
         """
-        Method for component runtime state getting, state is preserved in `ctx.framework_states` dict, in subdict, dedicated to this library.
+        Method for component runtime state getting, state is preserved in `ctx.framework_states` dict,
+            in subdict, dedicated to this library.
         :ctx: (required) - context to get state from.
         :default: - default to return if no record found (usually it's `ComponentExecutionState.NOT_RUN`).
         Returns ComponentExecutionState of this service or default if not found.
@@ -118,7 +125,8 @@ class PipelineComponent(abc.ABC):
             1. If component can be asynchronous and `requested_async_flag` is set, it returns `requested_async_flag`
             2. If component can be asynchronous and `requested_async_flag` isn't set, it returns True
             3. If component can't be asynchronous and `requested_async_flag` is False or not set, it returns False
-            4. If component can't be asynchronous and `requested_async_flag` is True, an Exception is thrown in constructor
+            4. If component can't be asynchronous and `requested_async_flag` is True,
+                an Exception is thrown in constructor
         Returns bool.
         """
         return self.calculated_async_flag if self.requested_async_flag is None else self.requested_async_flag
@@ -151,7 +159,8 @@ class PipelineComponent(abc.ABC):
     def add_wrapper(self, global_wrapper_type: GlobalWrapperType, wrapper: WrapperFunction):
         """
         Method for adding a global wrapper to this particular component.
-        Wrapper is automatically named using `uuid.uuid4()` and depending on wrapper type for debugging/logging purposes.
+        Wrapper is automatically named using `uuid.uuid4()`
+            and depending on wrapper type for debugging/logging purposes.
         :global_wrapper_type: - a type of wrapper to add.
         :wrapper: - a WrapperFunction to add to the component as a wrapper.
         Returns None.

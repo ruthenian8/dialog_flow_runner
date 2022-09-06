@@ -31,7 +31,8 @@ class Service(PipelineComponent):
         `wrappers` - list of Wrappers to add to the service
         `timeout` - timeout to add to the group
         `asynchronous` - requested asynchronous property
-        `start_condition` - StartConditionCheckerFunction that is invoked before each service execution; service is executed only if it returns True
+        `start_condition` - StartConditionCheckerFunction that is invoked before each service execution;
+            service is executed only if it returns True
         `name` - requested service name
     """
 
@@ -71,7 +72,8 @@ class Service(PipelineComponent):
         These possible signatures are:
             1. (ctx: Context) - accepts current dialog context only
             2. (ctx: Context, actor: Actor) - accepts context and actor, associated with the pipeline
-            3. (ctx: Context, actor: Actor, info: ServiceRuntimeInfo) - accepts context, actor and service runtime info dict.
+            3. (ctx: Context, actor: Actor, info: ServiceRuntimeInfo) - accepts context,
+                actor and service runtime info dictionary.
         :ctx: - current dialog context only.
         :actor: - actor, associated with the pipeline.
         Returns None.
@@ -171,6 +173,7 @@ def to_service(
     Returns a Service, constructed from this function (taken as a handler).
     All arguments are passed directly to Service constructor.
     """
+
     def inner(handler: ServiceBuilder) -> Service:
         return Service(
             handler=handler,

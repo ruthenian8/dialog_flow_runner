@@ -6,13 +6,12 @@ from df_db_connector import DBAbstractConnector
 from df_engine.core import Actor, Script, Context
 from df_engine.core.types import NodeLabel2Type
 
-from ..service.service import Service
 from ..service.wrapper import Wrapper
 from ..messenger_interface import MessengerInterface, CLIMessengerInterface
 from ..service.group import ServiceGroup
 from ..types import ServiceBuilder, ServiceGroupBuilder, PipelineBuilder, GlobalWrapperType, WrapperFunction
 from ..types import PIPELINE_STATE_KEY
-from .utils import resolve_components_name_collisions, pretty_format_component_info_dict
+from .utils import finalize_service_group, pretty_format_component_info_dict
 
 logger = logging.getLogger(__name__)
 
@@ -50,19 +49,15 @@ class Pipeline:
             wrappers=[] if wrappers is None else wrappers,
             timeout=timeout,
         )
+
         self._services_pipeline.name = "pipeline"
         self._services_pipeline.path = ".pipeline"
-        resolve_components_name_collisions(self._services_pipeline)
+        self.actor = finalize_service_group(self._services_pipeline, path=self._services_pipeline.path)
+        if self.actor is None:
+            raise Exception("Actor not found in pipeline!")
 
         if optimization_warnings:
             self._services_pipeline.log_optimization_warnings()
-
-        flat_services = self._services_pipeline.get_subgroups_and_services()
-        flat_services = [serv for _, serv in flat_services if isinstance(serv, Service)]
-        actor = [serv.handler for serv in flat_services if isinstance(serv.handler, Actor)]
-        self.actor = actor[0] if actor is not None and len(actor) == 1 else None
-        if not isinstance(self.actor, Actor):
-            raise Exception("Actor not found or more than one actor found")
 
     def add_global_wrapper(
         self,
@@ -73,15 +68,18 @@ class Pipeline:
     ):
         """
         Method for adding global wrappers to pipeline.
-        Different types of global wrappers are called before/after pipeline execution or before/after each pipeline component.
+        Different types of global wrappers are called before/after pipeline execution
+            or before/after each pipeline component.
         They can be used for pipeline statistics collection or other functionality extensions.
-        NB! Global wrappers are still wrappers, they shouldn't be used for much time-consuming tasks (see ../service/wrapper.py).
+        NB! Global wrappers are still wrappers,
+            they shouldn't be used for much time-consuming tasks (see ../service/wrapper.py).
         :global_wrapper_type: (required) - GlobalWrapperType indication where the wrapper function should be executed.
         :wrapper: (required) - wrapper function itself.
         :whitelist: - a list of services to only add this wrapper to.
         :blacklist: - a list of services to not add this wrapper to.
         Returns None.
         """
+
         def condition(name: str) -> bool:
             return (whitelist is None or name in whitelist) and (blacklist is None or name not in blacklist)
 
@@ -158,7 +156,8 @@ class Pipeline:
     def from_dict(cls, dictionary: PipelineBuilder) -> "Pipeline":
         """
         Pipeline dictionary-based constructor.
-        Dictionary should have the fields defined in Pipeline main constructor, it will be split and passed to it as **kwargs.
+        Dictionary should have the fields defined in Pipeline main constructor,
+            it will be split and passed to it as **kwargs.
         """
         return cls(**dictionary)
 
@@ -182,7 +181,8 @@ class Pipeline:
     def run(self):
         """
         Method that starts a pipeline and connects to `messenger_interface`.
-        It passes `_run_pipeline` to `messenger_interface` as a callbacks, so every time user request is received, `_run_pipeline` will be called.
+        It passes `_run_pipeline` to `messenger_interface` as a callbacks,
+            so every time user request is received, `_run_pipeline` will be called.
         This method can be both blocking and non-blocking - depending on current `messenger_interface` nature.
         Message interfaces that run in a loop block current thread.
         """

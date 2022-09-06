@@ -56,6 +56,7 @@ def aggregate_condition(
     :*functions: - functions to aggregate.
     Returns StartConditionCheckerFunction.
     """
+
     def aggregation_fun(ctx: Context, actor: Actor):
         return aggregator([function(ctx, actor) for function in functions])
 

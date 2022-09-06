@@ -1,5 +1,5 @@
 import collections
-from typing import Union, List, Callable
+from typing import Union, List, Callable, Optional
 
 from df_engine.core import Actor
 
@@ -51,17 +51,20 @@ def pretty_format_component_info_dict(
 
 
 def rename_component_incrementing(
-    service: Union[Service, ServiceGroup], collisions: List[Union[Service, ServiceGroup]]
+    service: Union[Service, ServiceGroup], collisions: Optional[List[Union[Service, ServiceGroup]]] = None
 ):
     """
-    Function for generating new name for a pipeline component, that has similar name with other components in the same group.
+    Function for generating new name for a pipeline component,
+        that has similar name with other components in the same group.
     The name is generated according to these rules:
         1. If service's handler is Actor, it is named 'actor'
         2. If service's handler is Callable, it is named after this callable
         3. If it's a service group, it is named 'service_group'
         4. Otherwise, it is names 'noname_service'
-        5. After that, '_[NUMBER]' is added to the resulting name, where number is number of components with the same name in current service group.
-    :service: - service to be renamed.
+        5. After that, '_[NUMBER]' is added to the resulting name,
+            where number is number of components with the same name in current service group.
+            NB! This happens only if `collisions` argument is not None.
+    :service: (required) - service to be renamed.
     :collisions: - services in the same service group as service.
     Returns string - generated name.
     """
@@ -73,46 +76,46 @@ def rename_component_incrementing(
         base_name = "service_group"
     else:
         base_name = "noname_service"
-    name_index = 0
-    while f"{base_name}_{name_index}" in [serv.name for serv in collisions]:
-        name_index += 1
-    return f"{base_name}_{name_index}"
+    if collisions is None:
+        return base_name
+    else:
+        name_index = 0
+        while f"{base_name}_{name_index}" in [serv.name for serv in collisions]:
+            name_index += 1
+        return f"{base_name}_{name_index}"
 
 
-def resolve_components_name_collisions(service_group: ServiceGroup):  # TODO: revise.
-    # TODO: This might be inefficient, each turn it steps deeper into the tree, collecting info about all nodes UP TO this level.
-    # TODO: possible fix: at least iterate services level-by-level, or even naively use depth-based search.
+def finalize_service_group(service_group: ServiceGroup, path: str = ".") -> Actor:
     """
-    Function that iterates through a service group (and all its subgroups), finalizing component's names and paths in it.
-    Each turn it steps one step deeper into the components tree, renaming the components that haven't already been visited.
-    It also keeps names of the components that have already been visited not to rename them again.
+    Function that iterates through a service group (and all its subgroups),
+        finalizing component's names and paths in it.
     Components are renamed only if user didn't set a name for them. Their paths are also generated here.
+    It also searches for Actor in th group, throwing exception if  no actor or multiple actors found.
     :service_group: - service group to resolve name collisions in.
-    Returns None.
+    Returns Actor.
     """
-    name_scope_level = 0
-    checked_names = []
-    while True:
-        name_scope_level += 1
-        flat_services = service_group.get_subgroups_and_services(recursion_level=name_scope_level)
-        flat_services = [(path, service) for path, service in flat_services if service.name not in checked_names]
-        if len(flat_services) == 0:
-            break
+    actor = None
+    names_counter = collections.Counter([component.name for component in service_group.services])
+    for component in service_group.services:
+        if component.name is None:
+            if names_counter[component.name] > 1:
+                component.name = rename_component_incrementing(component, service_group.services)
+            elif names_counter[component.name] == 1:
+                component.name = rename_component_incrementing(component, None)
+        elif names_counter[component.name] > 1:
+            raise Exception(f"User defined service name collision ({path})!")
+        component.path = f"{path}.{component.name}"
 
-        flat_services = [
-            (f"{prefix}.{serv.name if serv.name is not None else ''}", serv) for prefix, serv in flat_services
-        ]
-        paths, services = list(zip(*flat_services))
-        path_counter = collections.Counter(paths)
+        if isinstance(component, Service) and isinstance(component.handler, Actor):
+            current_actor = component.handler
+        elif isinstance(component, ServiceGroup):
+            current_actor = finalize_service_group(component, path)
+        else:
+            current_actor = None
 
-        for path, service in flat_services:
-            if path_counter[path] > 1 or service.name is None:
-                if path.endswith("."):
-                    service.name = rename_component_incrementing(service, services)
-                    service.path = f"{path}{service.name}"
-                else:
-                    raise Exception(f"User defined service name collision ({path})!")
+        if current_actor is not None:
+            if actor is None:
+                actor = current_actor
             else:
-                service.path = path
-
-        checked_names += [service.name for _, service in flat_services]
+                raise Exception(f"More than one actor found in group ({path})!")
+    return actor

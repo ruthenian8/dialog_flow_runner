@@ -39,7 +39,7 @@ If no name is specified for a service or service group, the name will be generat
     2. If service's handler is an callable, service will be named after that callable
     3. Service group will be named 'service_group'
     4. Otherwise, it will be named 'noname_service'
-    5. After that an index will be added to service name
+    5. After that an index will be added to service name (if it's not unique)
 
 To receive serialized information about service, service group or pipeline a property `info_dict` can be used, it returns important object properties as a dict.
 In addition to that `pretty_format` method of Pipeline can be used to get all pipeline properties as a formatted string (e.g. for logging or debugging purposes).
@@ -102,7 +102,7 @@ pipeline_dict = {
                     start_condition=all_condition(
                         service_successful_condition(".pipeline.service_group_0.simple_service_0"),
                         service_successful_condition(".pipeline.service_group_0.simple_service_1"),
-                    ),  # Alternative: service_successful_condition(".pipeline.service_group_0")
+                    ),  # Alternative: service_successful_condition(".pipeline.service_group")
                     name="running_service",
                 ),  # This simple service will be named `running_service`, because its name is manually overridden
                 Service(

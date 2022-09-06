@@ -18,8 +18,9 @@ _ForwardProvider = NewType("ABCProvider", ABC)
 class ComponentExecutionState(Enum):
     """
     Enum, representing pipeline component execution state.
-    These states are stored in `ctx.framework_keys[PIPELINE_STATE_KEY]` and should always be requested with `NOT_RUN` being default fallback.
-    The following states are supported:
+    These states are stored in `ctx.framework_keys[PIPELINE_STATE_KEY]`,
+        thety should always be requested with `NOT_RUN` being default fallback.
+    Following states are supported:
         NOT_RUN: component has not been executed yet (the default one)
         RUNNING: component is currently being executed
         FINISHED: component executed successfully
@@ -35,7 +36,7 @@ class ComponentExecutionState(Enum):
 @unique
 class GlobalWrapperType(Enum):
     """
-    Enum, representing types of globall wrappers, that can be set applied for a pipeline.
+    Enum, representing types of global wrappers, that can be set applied for a pipeline.
     The following types are supported:
         BEFORE_ALL: function called before each pipeline call
         BEFORE: function called before each component
@@ -91,7 +92,8 @@ StartConditionCheckerAggregationFunction = Callable[[Iterable[bool]], bool]
 
 
 """
-A function type used during global wrappers initialization to determine whether wrapper should be applied to component with given path or not.
+A function type used during global wrappers initialization to determine
+    whether wrapper should be applied to component with given path or not.
 Checks components path to be in whitelist (if defined) and not to be in blacklist (if defined).
 Accepts str (component path), returns boolean (whether wrapper should be applied).
 """
@@ -108,7 +110,8 @@ PollingProviderLoopFunction = Callable[[], bool]
 """
 Type of dictionary, that is passed to components in runtime.
 Contains current component info (`name`, `path`, `timeout`, `asynchronous`).
-Also contains `execution_state` - a dictionary, containing other pipeline components execution stats mapped to their paths.
+Also contains `execution_state` - a dictionary,
+    containing other pipeline components execution stats mapped to their paths.
 """
 ServiceRuntimeInfo = TypedDict(
     "ServiceRuntimeInfo",

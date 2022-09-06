@@ -46,7 +46,7 @@ Another `time_measure_wrapper` measures total amount of time taken by all of the
 def get_wrapper_misc_field(
     info: WrapperRuntimeInfo, postfix: str
 ) -> str:  # This method calculates `misc` field name dedicated to wrapper based on its and its service name
-    return f"{info['service']['name']}-{postfix}"
+    return f"{info['component']['name']}-{postfix}"
 
 
 actor = Actor(
@@ -80,7 +80,9 @@ ram_measure_wrapper = Wrapper(
 
 
 json_convertor_service = Wrapper(
-    before=lambda ctx, _, info: ctx.misc.update({get_wrapper_misc_field(info, "str"): json.dumps(ctx.misc, indent=4, default=str)}),
+    before=lambda ctx, _, info: ctx.misc.update(
+        {get_wrapper_misc_field(info, "str"): json.dumps(ctx.misc, indent=4, default=str)}
+    ),
     after=lambda ctx, _, info: ctx.misc.pop(get_wrapper_misc_field(info, "str")),
     name="json_converter",
 )

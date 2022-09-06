@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Optional, List, Union, Tuple, Awaitable
+from typing import Optional, List, Union, Awaitable
 
 from df_engine.core import Actor, Context
 
@@ -34,7 +34,8 @@ class ServiceGroup(PipelineComponent):
         `wrappers` - list of Wrappers to add to the group
         `timeout` - timeout to add to the group
         `asynchronous` - requested asynchronous property
-        `start_condition` - StartConditionCheckerFunction that is invoked before each group execution; group is executed only if it returns True
+        `start_condition` - StartConditionCheckerFunction that is invoked before each group execution;
+            group is executed only if it returns True
         `name` - requested group name
     """
 
@@ -71,7 +72,8 @@ class ServiceGroup(PipelineComponent):
         Method for running this service group.
         It doesn't include wrappers execution, start condition checking or error handling - pure execution only.
         Executes components inside the group based on its `asynchronous` property.
-        Collects information about their execution state - group is finished successfully only if all components in it finished successfully.
+        Collects information about their execution state - group is finished successfully
+            only if all components in it finished successfully.
         :ctx: - current dialog context.
         :actor: - actor, associated with the pipeline.
         Returns current dialog context.
@@ -129,30 +131,12 @@ class ServiceGroup(PipelineComponent):
             wrapper.run_stage(WrapperStage.POSTPROCESSING, ctx, actor, self._get_runtime_info(ctx))
         return ctx if not self.asynchronous else None
 
-    def get_subgroups_and_services(self, prefix: str = "", recursion_level: int = 99) -> List[Tuple[str, Service]]:
-        # TODO: no need for path collection, paths are set during naming collisions resolving and kept in a separate field.
-        # TODO: refactor or remove completely.
-        """
-        Method, that returns a flat array of inner components and their paths used during pipeline initialization.
-        Uses breadth first algorithm.
-        :prefix: - path prefix of the current group.
-        :recursion_level: - how many inner service groups to enter (99 by default).
-        Returns list of tuples: (path to component, component).
-        """
-        prefix += f".{self.name}"
-        services = []
-        if recursion_level > 0:
-            recursion_level -= 1
-            services += [(prefix, service) for service in self.services]
-            for service in self.services:
-                if not isinstance(service, Service):
-                    services += service.get_subgroups_and_services(prefix, recursion_level)
-        return services
-
     def log_optimization_warnings(self):
         """
-        Method for logging service group optimization warnings for all this groups inner components (NOT this group itself!).
-        Warnings are basically messages, that indicate service group inefficiency or explicitly defined parameters mismatch.
+        Method for logging service group optimization warnings for all this groups inner components
+            (NOT this group itself!).
+        Warnings are basically messages,
+            that indicate service group inefficiency or explicitly defined parameters mismatch.
         These are cases for warnings issuing:
             1. Service can be asynchronous, however is marked synchronous explicitly
             2. Service is not asynchronous, however has a timeout defined
