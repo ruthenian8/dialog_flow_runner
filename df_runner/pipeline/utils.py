@@ -63,7 +63,6 @@ def rename_component_incrementing(
         4. Otherwise, it is names 'noname_service'
         5. After that, '_[NUMBER]' is added to the resulting name,
             where number is number of components with the same name in current service group.
-            NB! This happens only if `collisions` argument is not None.
     :service: - service to be renamed.
     :collisions: - services in the same service group as service.
     Returns string - generated name.
@@ -77,14 +76,10 @@ def rename_component_incrementing(
     else:
         base_name = "noname_service"
 
-    collision_names = [component.name for component in collisions]
-    if base_name not in collision_names:
-        return base_name
-    else:
-        name_index = 0
-        while f"{base_name}_{name_index}" in collision_names:
-            name_index += 1
-        return f"{base_name}_{name_index}"
+    name_index = 0
+    while f"{base_name}_{name_index}" in [component.name for component in collisions]:
+        name_index += 1
+    return f"{base_name}_{name_index}"
 
 
 def finalize_service_group(service_group: ServiceGroup, path: str = ".") -> Actor:
@@ -99,17 +94,16 @@ def finalize_service_group(service_group: ServiceGroup, path: str = ".") -> Acto
     actor = None
     names_counter = collections.Counter([component.name for component in service_group.components])
     for component in service_group.components:
-        if names_counter[component.name] > 1:
-            if component.name is None:
-                component.name = rename_component_incrementing(component, service_group.components)
-            else:
-                raise Exception(f"User defined service name collision ({path})!")
+        if component.name is None:
+            component.name = rename_component_incrementing(component, service_group.components)
+        elif names_counter[component.name] > 1:
+            raise Exception(f"User defined service name collision ({path})!")
         component.path = f"{path}.{component.name}"
 
         if isinstance(component, Service) and isinstance(component.handler, Actor):
             current_actor = component.handler
         elif isinstance(component, ServiceGroup):
-            current_actor = finalize_service_group(component, path)
+            current_actor = finalize_service_group(component, f"{path}.{component.name}")
         else:
             current_actor = None
 
