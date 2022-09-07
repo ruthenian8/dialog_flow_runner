@@ -1,5 +1,6 @@
 import collections
 from typing import Union, List, Callable
+from inspect import isfunction
 
 from df_engine.core import Actor
 
@@ -70,7 +71,10 @@ def rename_component_incrementing(
     if isinstance(service, Service) and isinstance(service.handler, Actor):
         base_name = "actor"
     elif isinstance(service, Service) and isinstance(service.handler, Callable):
-        base_name = service.handler.__name__
+        if isfunction(service.handler):
+            base_name = service.handler.__name__
+        else:
+            base_name = service.handler.__class__.__name__
     elif isinstance(service, ServiceGroup):
         base_name = "service_group"
     else:
